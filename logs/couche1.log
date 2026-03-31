@@ -1,0 +1,38 @@
+2026-03-31 15:50:39.575 | INFO     | ocr.detector:detect:62 - Détection du fichier : tableau.xlsx
+2026-03-31 15:50:39.575 | WARNING  | ocr.detector:detect:74 - → Format non supporté : .xlsx
+2026-03-31 16:23:55.828 | INFO     | ocr.detector:detect:62 - Détection du fichier : releve.jpg
+2026-03-31 16:23:55.829 | INFO     | ocr.detector:detect:66 - → Type détecté : IMAGE
+2026-03-31 16:23:55.835 | INFO     | ocr.detector:detect:62 - Détection du fichier : bulletin.png
+2026-03-31 16:23:55.835 | INFO     | ocr.detector:detect:66 - → Type détecté : IMAGE
+2026-03-31 16:23:55.844 | INFO     | ocr.detector:detect:62 - Détection du fichier : cni.jpg
+2026-03-31 16:23:55.844 | INFO     | ocr.detector:detect:66 - → Type détecté : IMAGE
+2026-03-31 16:23:55.851 | INFO     | ocr.detector:detect:62 - Détection du fichier : low_quality.jpg
+2026-03-31 16:23:55.851 | INFO     | ocr.detector:detect:66 - → Type détecté : IMAGE
+2026-03-31 16:23:55.863 | INFO     | ocr.detector:detect:62 - Détection du fichier : releve.jpg
+2026-03-31 16:23:55.864 | INFO     | ocr.detector:detect:66 - → Type détecté : IMAGE
+2026-03-31 16:23:55.864 | INFO     | ocr.detector:detect:62 - Détection du fichier : bulletin.png
+2026-03-31 16:23:55.864 | INFO     | ocr.detector:detect:66 - → Type détecté : IMAGE
+2026-03-31 16:23:55.866 | INFO     | ocr.detector:detect:62 - Détection du fichier : cni.jpg
+2026-03-31 16:23:55.866 | INFO     | ocr.detector:detect:66 - → Type détecté : IMAGE
+2026-03-31 16:23:55.866 | INFO     | ocr.detector:detect:62 - Détection du fichier : low_quality.jpg
+2026-03-31 16:23:55.866 | INFO     | ocr.detector:detect:66 - → Type détecté : IMAGE
+2026-03-31 16:23:55.879 | INFO     | ocr.detector:detect:62 - Détection du fichier : contrat.pdf
+2026-03-31 16:23:55.908 | INFO     | ocr.detector:_analyze_pdf:103 - → PDF SCANNÉ (moyenne 11 chars/page — probablement une image)
+2026-03-31 16:23:55.928 | INFO     | ocr.detector:detect:62 - Détection du fichier : dossier.pdf
+2026-03-31 16:23:55.931 | INFO     | ocr.detector:_analyze_pdf:103 - → PDF SCANNÉ (moyenne 11 chars/page — probablement une image)
+2026-03-31 16:23:55.948 | INFO     | ocr.detector:detect:62 - Détection du fichier : imposition.pdf
+2026-03-31 16:23:55.950 | INFO     | ocr.detector:_analyze_pdf:103 - → PDF SCANNÉ (moyenne 11 chars/page — probablement une image)
+2026-03-31 16:23:55.978 | INFO     | ocr.detector:detect:62 - Détection du fichier : contrat.pdf
+2026-03-31 16:23:55.981 | INFO     | ocr.detector:_analyze_pdf:103 - → PDF SCANNÉ (moyenne 11 chars/page — probablement une image)
+2026-03-31 16:23:56.002 | INFO     | ocr.detector:detect:62 - Détection du fichier : releve_scan.pdf
+2026-03-31 16:23:56.007 | INFO     | ocr.detector:_analyze_pdf:103 - → PDF SCANNÉ (moyenne 0 chars/page — probablement une image)
+2026-03-31 16:23:56.017 | INFO     | ocr.detector:detect:62 - Détection du fichier : bulletin_scan.pdf
+2026-03-31 16:23:56.019 | INFO     | ocr.detector:_analyze_pdf:103 - → PDF SCANNÉ (moyenne 0 chars/page — probablement une image)
+2026-03-31 16:23:56.033 | INFO     | ocr.detector:detect:62 - Détection du fichier : releve_scan.pdf
+2026-03-31 16:23:56.035 | INFO     | ocr.detector:_analyze_pdf:103 - → PDF SCANNÉ (moyenne 0 chars/page — probablement une image)
+2026-03-31 16:23:56.036 | INFO     | ocr.detector:detect:62 - Détection du fichier : bulletin_scan.pdf
+2026-03-31 16:23:56.040 | INFO     | ocr.detector:_analyze_pdf:103 - → PDF SCANNÉ (moyenne 0 chars/page — probablement une image)
+2026-03-31 16:23:56.055 | INFO     | ocr.detector:detect:62 - Détection du fichier : tableau.xlsx
+2026-03-31 16:23:56.055 | WARNING  | ocr.detector:detect:74 - → Format non supporté : .xlsx
+2026-03-31 16:23:56.064 | INFO     | ocr.detector:detect:62 - Détection du fichier : releve.jpg
+2026-03-31 16:23:56.064 | INFO     | ocr.detector:detect:66 - → Type détecté : IMAGE
