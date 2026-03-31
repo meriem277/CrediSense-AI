@@ -1,147 +1,121 @@
 """
-test_detector.py — Tests du détecteur de type de fichier.
-Toutes les données de test sont générées dans le code, pas besoin de vrais fichiers.
+tests/test_detector.py
+Teste que le détecteur reconnaît correctement chaque type de fichier.
+Les données viennent de tests/conftest.py (chargées depuis tests/samples/).
 """
 
 import pytest
 from pathlib import Path
-from PIL import Image, ImageDraw
-import fitz  # PyMuPDF
-
-# L'import utilise maintenant "ocr" (nom réel de ton dossier)
 from ocr.detector import FileDetector, FileType
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def detector():
-    """Instance du détecteur, réutilisée dans tous les tests."""
     return FileDetector()
 
 
-@pytest.fixture
-def image_jpg(tmp_path):
-    """Crée une vraie image JPG avec du texte simulant un relevé bancaire."""
-    img = Image.new("RGB", (400, 200), color=(255, 255, 255))
-    draw = ImageDraw.Draw(img)
-    draw.text((20, 20),  "BANQUE NATIONALE - Relevé de compte", fill=(0, 0, 0))
-    draw.text((20, 60),  "Client : Mohamed Ben Ali", fill=(0, 0, 0))
-    draw.text((20, 100), "Solde : 15 000 DT", fill=(0, 0, 0))
-    draw.text((20, 140), "Date  : 01/01/2025", fill=(0, 0, 0))
-    path = tmp_path / "releve_bancaire.jpg"
-    img.save(path)
-    return path
+class TestImages:
+
+    def test_releve_jpg_est_image(self, detector, img_releve_jpg):
+        assert detector.detect(img_releve_jpg) == FileType.IMAGE
+
+    def test_bulletin_png_est_image(self, detector, img_bulletin_png):
+        assert detector.detect(img_bulletin_png) == FileType.IMAGE
+
+    def test_cni_jpg_est_image(self, detector, img_cni_jpg):
+        assert detector.detect(img_cni_jpg) == FileType.IMAGE
+
+    def test_mauvaise_qualite_est_image(self, detector, img_mauvaise_qualite):
+        assert detector.detect(img_mauvaise_qualite) == FileType.IMAGE
+
+    def test_toutes_images_sont_IMAGE(self, detector, toutes_les_images):
+        """Test paramétré : toutes les images doivent retourner IMAGE."""
+        for img_path in toutes_les_images:
+            result = detector.detect(img_path)
+            assert result == FileType.IMAGE, f"Echec sur {img_path.name} : obtenu {result}"
 
 
-@pytest.fixture
-def image_png(tmp_path):
-    """Crée une image PNG simulant un bulletin de salaire."""
-    img = Image.new("RGB", (500, 300), color=(240, 240, 255))
-    draw = ImageDraw.Draw(img)
-    draw.text((20, 20),  "BULLETIN DE SALAIRE", fill=(0, 0, 100))
-    draw.text((20, 70),  "Salaire brut  : 3 500 DT", fill=(0, 0, 0))
-    draw.text((20, 110), "Cotisations   :   350 DT", fill=(0, 0, 0))
-    draw.text((20, 150), "Salaire net   : 3 150 DT", fill=(0, 0, 0))
-    path = tmp_path / "bulletin_salaire.png"
-    img.save(path)
-    return path
+class TestPDFsNatifs:
+
+    def test_contrat_est_pdf_natif(self, detector, pdf_contrat):
+        assert detector.detect(pdf_contrat) == FileType.PDF_NATIVE
+
+    def test_dossier_est_pdf_natif(self, detector, pdf_dossier):
+        assert detector.detect(pdf_dossier) == FileType.PDF_NATIVE
+
+    def test_imposition_est_pdf_natif(self, detector, pdf_imposition):
+        assert detector.detect(pdf_imposition) == FileType.PDF_NATIVE
+
+    def test_tous_pdfs_natifs(self, detector, tous_les_pdfs_natifs):
+        for pdf_path in tous_les_pdfs_natifs:
+            result = detector.detect(pdf_path)
+            assert result == FileType.PDF_NATIVE, f"Echec sur {pdf_path.name} : obtenu {result}"
 
 
-@pytest.fixture
-def pdf_natif(tmp_path):
-    """Crée un vrai PDF avec texte natif (simulant un contrat de prêt)."""
-    path = tmp_path / "contrat_pret.pdf"
-    doc = fitz.open()
-    page = doc.new_page(width=595, height=842)  # A4
-    page.insert_text(
-        (72, 100),
-        "CONTRAT DE PRET IMMOBILIER\n\n"
-        "Emprunteur : Fatima Zahra Mansouri\n"
-        "Montant    : 200 000 DT\n"
-        "Durée      : 20 ans\n"
-        "Taux       : 7.5%\n\n"
-        "Ce contrat lie les deux parties à compter de la date de signature.",
-        fontsize=12,
-    )
-    doc.save(str(path))
-    doc.close()
-    return path
+class TestPDFsNatifs:
+
+    def test_contrat_est_pdf_natif(self, detector, pdf_contrat):
+        assert detector.detect(pdf_contrat) == FileType.PDF_NATIVE
+
+    def test_dossier_est_pdf_natif(self, detector, pdf_dossier):
+        assert detector.detect(pdf_dossier) == FileType.PDF_NATIVE
+
+    def test_imposition_est_pdf_natif(self, detector, pdf_imposition):
+        assert detector.detect(pdf_imposition) == FileType.PDF_NATIVE
+
+    def test_tous_pdfs_natifs(self, detector, tous_les_pdfs_natifs):
+        for pdf_path in tous_les_pdfs_natifs:
+            result = detector.detect(pdf_path)
+            assert result == FileType.PDF_NATIVE, f"Echec sur {pdf_path.name} : obtenu {result}"
 
 
-@pytest.fixture
-def pdf_scan_simule(tmp_path):
-    """
-    Crée un PDF 'scanné' : une image intégrée dans un PDF, sans texte natif.
-    Le detector doit le reconnaître comme PDF_SCANNED.
-    """
-    # D'abord, crée une image
-    img = Image.new("RGB", (595, 842), color=(255, 255, 255))
-    draw = ImageDraw.Draw(img)
-    draw.text((50, 100), "Fiche de paie scannee - texte en image", fill=(0, 0, 0))
-    img_path = tmp_path / "scan_temp.png"
-    img.save(img_path)
+class TestPDFsNatifs:
 
-    # Ensuite, insère cette image dans un PDF (sans texte natif)
-    pdf_path = tmp_path / "dossier_scanne.pdf"
-    doc = fitz.open()
-    page = doc.new_page(width=595, height=842)
-    rect = fitz.Rect(0, 0, 595, 842)
-    page.insert_image(rect, filename=str(img_path))
-    doc.save(str(pdf_path))
-    doc.close()
-    return pdf_path
+    def test_contrat_est_pdf_natif(self, detector, pdf_contrat):
+        assert detector.detect(pdf_contrat) == FileType.PDF_NATIVE
+
+    def test_dossier_est_pdf_natif(self, detector, pdf_dossier):
+        assert detector.detect(pdf_dossier) == FileType.PDF_NATIVE
+
+    def test_imposition_est_pdf_natif(self, detector, pdf_imposition):
+        assert detector.detect(pdf_imposition) == FileType.PDF_NATIVE
+
+    def test_tous_pdfs_natifs(self, detector, tous_les_pdfs_natifs):
+        for pdf_path in tous_les_pdfs_natifs:
+            result = detector.detect(pdf_path)
+            assert result == FileType.PDF_NATIVE, f"Echec sur {pdf_path.name} : obtenu {result}"
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# TESTS
-# ══════════════════════════════════════════════════════════════════════════════
+class TestPDFsScannes:
 
-class TestFileDetector:
+    def test_releve_scanne_est_pdf_scanne(self, detector, pdf_releve_scanne):
+        assert detector.detect(pdf_releve_scanne) == FileType.PDF_SCANNED
 
-    def test_image_jpg_detectee(self, detector, image_jpg):
-        """Une image JPG doit être détectée comme IMAGE."""
-        result = detector.detect(image_jpg)
-        assert result == FileType.IMAGE, f"Attendu IMAGE, obtenu {result}"
+    def test_bulletin_scanne_est_pdf_scanne(self, detector, pdf_bulletin_scanne):
+        assert detector.detect(pdf_bulletin_scanne) == FileType.PDF_SCANNED
 
-    def test_image_png_detectee(self, detector, image_png):
-        """Une image PNG doit être détectée comme IMAGE."""
-        result = detector.detect(image_png)
-        assert result == FileType.IMAGE
+    def test_tous_pdfs_scannes(self, detector, tous_les_pdfs_scannes):
+        for pdf_path in tous_les_pdfs_scannes:
+            result = detector.detect(pdf_path)
+            assert result == FileType.PDF_SCANNED, f"Echec sur {pdf_path.name} : obtenu {result}"
 
-    def test_pdf_natif_detecte(self, detector, pdf_natif):
-        """Un PDF avec texte natif doit être détecté comme PDF_NATIVE."""
-        result = detector.detect(pdf_natif)
-        assert result == FileType.PDF_NATIVE, (
-            f"Attendu PDF_NATIVE, obtenu {result}. "
-            "Vérifie que le PDF contient bien du texte."
-        )
 
-    def test_pdf_scanne_detecte(self, detector, pdf_scan_simule):
-        """Un PDF scanné (image dans PDF) doit être détecté comme PDF_SCANNED."""
-        result = detector.detect(pdf_scan_simule)
-        assert result == FileType.PDF_SCANNED, (
-            f"Attendu PDF_SCANNED, obtenu {result}"
-        )
+class TestCasErreur:
 
     def test_fichier_inexistant(self, detector):
-        """Un fichier qui n'existe pas doit lever FileNotFoundError."""
         with pytest.raises(FileNotFoundError):
-            detector.detect("C:/fichier/qui/nexiste/pas.pdf")
+            detector.detect("C:/fichier/inexistant.pdf")
 
     def test_fichier_vide(self, detector, tmp_path):
-        """Un fichier vide (0 octets) doit lever ValueError."""
-        fichier_vide = tmp_path / "vide.jpg"
-        fichier_vide.write_bytes(b"")
+        f = tmp_path / "vide.jpg"
+        f.write_bytes(b"")
         with pytest.raises(ValueError):
-            detector.detect(fichier_vide)
+            detector.detect(f)
 
     def test_format_non_supporte(self, detector, tmp_path):
-        """Un fichier .xlsx doit retourner UNSUPPORTED."""
-        fake_excel = tmp_path / "budget.xlsx"
-        fake_excel.write_text("contenu quelconque")
-        result = detector.detect(fake_excel)
-        assert result == FileType.UNSUPPORTED
+        f = tmp_path / "tableau.xlsx"
+        f.write_text("fake")
+        assert detector.detect(f) == FileType.UNSUPPORTED
 
-    def test_retourne_bien_un_filetype(self, detector, image_jpg):
-        """Le résultat doit toujours être une instance de FileType."""
-        result = detector.detect(image_jpg)
-        assert isinstance(result, FileType)
+    def test_retourne_toujours_filetype(self, detector, img_releve_jpg):
+        assert isinstance(detector.detect(img_releve_jpg), FileType)
