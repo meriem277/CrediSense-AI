@@ -1,71 +1,87 @@
-# ocr/pdf_extractor.py
 """
-Extraction directe de texte depuis un PDF natif via PyMuPDF.
-Aucun OCR impliqué — rapide et précis sur les PDF générés par ordinateur
-(relevés bancaires exportés, fiches de paie numériques).
+pdf_extractor.py — Extrait le texte d'un PDF natif (non scanné) sans OCR.
+
+Utilisé uniquement quand detector.py retourne FileType.PDF_NATIVE.
+
+Avantages :
+- Très rapide (millisecondes vs secondes pour l'OCR)
+- Précision parfaite (pas de risque d'erreur de reconnaissance)
+- Préserve la structure (sauts de page, paragraphes)
+
+PyMuPDF (fitz) est utilisé car il est le plus rapide et le plus complet
+pour extraire le texte structuré d'un PDF.
 """
 
-import fitz  # PyMuPDF
 from pathlib import Path
+import fitz  # PyMuPDF
+from .utils import logger, validate_file_path, clean_text, Timer
 
 
-def extract_native_pdf(path: str) -> tuple[str, bool]:
+class PDFExtractor:
     """
-    Tente d'extraire le texte natif d'un PDF.
-
-    Retourne :
-        (texte, is_native) où is_native=False signifie que le PDF
-        est scanné et qu'il faut passer à un moteur OCR.
+    Extrait le texte d'un PDF numérique (non scanné).
+    
+    Usage :
+        extractor = PDFExtractor()
+        result = extractor.extract("releve_bancaire.pdf")
+        print(result["text"])
+        print(result["num_pages"])
     """
-    doc = fitz.open(path)
-    pages_text = []
-    total_chars = 0
-
-    for page_num in range(len(doc)):
-        page = doc[page_num]
-
-        # Extraction du texte avec préservation des blocs
-        # "blocks" conserve la structure : colonnes, tableaux, headers
-        blocks = page.get_text("blocks", sort=True)
-
-        page_text = ""
-        for block in blocks:
-            # block = (x0, y0, x1, y1, text, block_no, block_type)
-            if block[6] == 0:  # type 0 = bloc texte (pas image)
-                page_text += block[4].strip() + "\n"
-
-        pages_text.append(page_text)
-        total_chars += len(page_text)
-
-    doc.close()
-
-    full_text = "\n\n--- PAGE ---\n\n".join(pages_text)
-
-    # Heuristique : si moins de 80 chars en moyenne par page → PDF scanné
-    avg_chars_per_page = total_chars / max(1, len(pages_text))
-    is_native = avg_chars_per_page >= 80
-
-    return full_text, is_native
-
-
-def pdf_to_images(path: str, dpi: int = 200) -> list:
-    """
-    Convertit chaque page du PDF en image PIL.
-    Utilisé quand le PDF est scanné → on passe les images à l'OCR.
-    dpi=200 est le bon compromis vitesse/qualité pour l'OCR.
-    """
-    from PIL import Image
-    import io
-
-    doc = fitz.open(path)
-    images = []
-
-    for page in doc:
-        # mat = matrice de transformation pour le DPI voulu
-        mat = fitz.Matrix(dpi / 72, dpi / 72)
-        pix = page.get_pixmap(matrix=mat, colorspace=fitz.csRGB)
-        img_bytes = pix.tobytes("png")
-        images.append(Image.open(io.BytesIO(img_bytes)))
-
-    doc.close()
-    return images
+    
+    def extract(self, file_path: str | Path) -> dict:
+        """
+        Extrait tout le texte du PDF.
+        
+        Retourne un dictionnaire avec :
+        - text        : texte complet nettoyé
+        - num_pages   : nombre de pages
+        - pages_text  : liste du texte par page (utile pour le chunking ensuite)
+        - metadata    : infos du PDF (auteur, date de création...)
+        - source      : chemin du fichier source
+        """
+        path = validate_file_path(file_path)
+        
+        with Timer("PDF extraction") as t:
+            doc = fitz.open(str(path))
+            
+            pages_text = []
+            full_text_parts = []
+            
+            for page_num in range(len(doc)):
+                page = doc[page_num]
+                
+                # get_text("text") : extraction simple du texte
+                # get_text("blocks") : extraction par blocs (paragraphes)
+                # On utilise "text" pour avoir le flux de texte linéaire
+                raw_text = page.get_text("text")
+                cleaned = clean_text(raw_text)
+                
+                pages_text.append({
+                    "page": page_num + 1,
+                    "text": cleaned,
+                    "char_count": len(cleaned),
+                })
+                full_text_parts.append(cleaned)
+            
+            # Métadonnées du PDF
+            metadata = doc.metadata
+            doc.close()
+        
+        full_text = "\n\n--- PAGE SUIVANTE ---\n\n".join(full_text_parts)
+        
+        result = {
+            "text": full_text,
+            "num_pages": len(pages_text),
+            "pages_text": pages_text,
+            "metadata": metadata,
+            "source": str(path),
+            "extraction_method": "pdf_native",
+            "duration_seconds": t.elapsed,
+        }
+        
+        logger.success(
+            f"PDF extrait : {len(doc) if False else result['num_pages']} pages, "
+            f"{len(full_text)} caractères, {t.elapsed:.2f}s"
+        )
+        
+        return result
