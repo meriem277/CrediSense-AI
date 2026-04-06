@@ -50,12 +50,7 @@ class FileDetector:
     """
     
     def detect(self, file_path: str | Path) -> FileType:
-        """
-        Point d'entrée principal. Détecte le type d'un fichier.
-        
-        Paramètre : file_path — chemin vers le fichier
-        Retourne  : FileType
-        """
+   
         path = validate_file_path(file_path)
         extension = path.suffix.lower()
         
