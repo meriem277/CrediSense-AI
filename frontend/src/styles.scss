@@ -1,8 +1,14 @@
-* { box-sizing: border-box; margin: 0; padding: 0; }
+/* ===== RESET & BASE ===== */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
 
-body {
-  background: #0a0a0a;
-  font-family: 'Segoe UI', Arial, sans-serif;
-  min-height: 100vh;
-  padding: 1rem;
+html, body {
+  height: 100%;
+  background: #0A0A0A;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  color: #F5F5F0;
+  -webkit-font-smoothing: antialiased;
 }

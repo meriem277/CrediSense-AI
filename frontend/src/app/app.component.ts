@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, ViewEncapsulation } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient, HttpClientModule } from '@angular/common/http';
@@ -15,7 +15,9 @@ export interface ChatMessage {
   standalone: true,
   imports: [CommonModule, HttpClientModule, FormsModule],
   templateUrl: './app.component.html',
-  styleUrls: ['./app.component.scss']
+  styleUrls: ['./app.component.scss'],
+    encapsulation: ViewEncapsulation.None   // ← ajoutez cette ligne
+
 })
 export class AppComponent {
   activeTab: Tab = 'upload';
