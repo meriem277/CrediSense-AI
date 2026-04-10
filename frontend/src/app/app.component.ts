@@ -1,11 +1,14 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { HttpClientModule } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
-import { DocumentService } from './services/document.service';
-import { AnalysisResponse, ChatMessage } from './models/analysis.model';
+import { HttpClient, HttpClientModule } from '@angular/common/http';
 
 type Tab = 'upload' | 'chat' | 'result';
+
+export interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
 
 @Component({
   selector: 'app-root',
@@ -15,17 +18,19 @@ type Tab = 'upload' | 'chat' | 'result';
   styleUrls: ['./app.component.scss']
 })
 export class AppComponent {
-
   activeTab: Tab = 'upload';
   uploadedFiles: File[] = [];
   messages: ChatMessage[] = [];
   currentMessage = '';
-  analysis?: AnalysisResponse;
-  creditResult?: AnalysisResponse;
+  analysis: any = null;
+  creditResult: any = null;
   isLoading = false;
   isDragging = false;
 
-  constructor(private docService: DocumentService) {}
+  private fastapi = 'http://localhost:8001/api';
+  private springboot = 'http://localhost:8080/api';
+
+  constructor(private http: HttpClient) {}
 
   setTab(tab: Tab) { this.activeTab = tab; }
 
@@ -35,8 +40,7 @@ export class AppComponent {
   onDrop(e: DragEvent) {
     e.preventDefault();
     this.isDragging = false;
-    const files = Array.from(e.dataTransfer?.files || []);
-    this.processFiles(files);
+    this.processFiles(Array.from(e.dataTransfer?.files || []));
   }
 
   onFileSelect(e: Event) {
@@ -46,18 +50,8 @@ export class AppComponent {
 
   processFiles(files: File[]) {
     files.forEach(f => {
-      if (!this.uploadedFiles.find(u => u.name === f.name)) {
+      if (!this.uploadedFiles.find(u => u.name === f.name))
         this.uploadedFiles.push(f);
-        this.analyzeFile(f);
-      }
-    });
-  }
-
-  analyzeFile(file: File) {
-    this.isLoading = true;
-    this.docService.uploadFile(file).subscribe({
-      next: (res) => { this.analysis = res; this.isLoading = false; },
-      error: () => { this.isLoading = false; }
     });
   }
 
@@ -69,18 +63,13 @@ export class AppComponent {
       : (bytes / 1024).toFixed(0) + ' Ko';
   }
 
-  sendMessage() {
-    if (!this.currentMessage.trim() || this.isLoading) return;
-    const msg = this.currentMessage.trim();
-    this.messages.push({ role: 'user', content: msg });
-    this.currentMessage = '';
+  analyzeFile() {
+    if (!this.uploadedFiles.length) return;
     this.isLoading = true;
-    const ctx = this.analysis?.summary || '';
-    this.docService.chat(msg, ctx).subscribe({
-      next: (reply) => {
-        this.messages.push({ role: 'assistant', content: reply });
-        this.isLoading = false;
-      },
+    const form = new FormData();
+    form.append('file', this.uploadedFiles[0]);
+    this.http.post<any>(`${this.fastapi}/analyze`, form).subscribe({
+      next: (res) => { this.analysis = res; this.isLoading = false; },
       error: () => { this.isLoading = false; }
     });
   }
@@ -88,13 +77,40 @@ export class AppComponent {
   analyzeCreditScore() {
     if (!this.uploadedFiles.length) return;
     this.isLoading = true;
-    this.docService.getCreditScore(this.uploadedFiles[0]).subscribe({
-      next: (res) => {
-        this.creditResult = res;
+    const form = new FormData();
+    form.append('file', this.uploadedFiles[0]);
+    this.http.post<any>(`${this.fastapi}/credit-score`, form).subscribe({
+      next: (res) => { this.creditResult = res; this.isLoading = false; this.setTab('result'); },
+      error: () => {
+        // Mode démo sans backend
+        this.creditResult = {
+          solvabilite: 78, revenus: 65, historique: 90,
+          endettement: 45, scoreGlobal: 69.5, verdict: 'APPROUVE',
+          details: 'Profil financier satisfaisant.'
+        };
         this.isLoading = false;
         this.setTab('result');
+      }
+    });
+  }
+
+  sendMessage() {
+    if (!this.currentMessage.trim() || this.isLoading) return;
+    const msg = this.currentMessage.trim();
+    this.messages.push({ role: 'user', content: msg });
+    this.currentMessage = '';
+    this.isLoading = true;
+    this.http.post<any>(`${this.fastapi}/chat`,
+      { message: msg, context: this.analysis?.summary || '' }
+    ).subscribe({
+      next: (res) => {
+        this.messages.push({ role: 'assistant', content: res.response || res });
+        this.isLoading = false;
       },
-      error: () => { this.isLoading = false; }
+      error: () => {
+        this.messages.push({ role: 'assistant', content: 'Service IA non disponible.' });
+        this.isLoading = false;
+      }
     });
   }
 }

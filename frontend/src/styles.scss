@@ -1,25 +1,8 @@
-/* You can add global styles to this file, and also import other style files */
-:root {
-  --orange: #FF6B00;
-  --orange-light: #ff8c33;
-  --black: #111111;
-  --dark: #1a1a1a;
-  --dark-orange: #1a1100;
-  --border: #333333;
-  --text-muted: #888888;
-  --text: #dddddd;
-}
-
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-  font-family: 'Segoe UI', sans-serif;
-  background: var(--black);
-  color: var(--text);
+  background: #0a0a0a;
+  font-family: 'Segoe UI', Arial, sans-serif;
   min-height: 100vh;
-}
-
-button {
-  cursor: pointer;
-  font-family: inherit;
+  padding: 1rem;
 }
