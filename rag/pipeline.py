@@ -1,16 +1,5 @@
 # rag/pipeline.py
-"""
-Pipeline RAG complet : du texte brut au contexte prêt pour le LLM.
 
-Orchestration des 4 étapes :
-  1. clean_text()      → texte nettoyé
-  2. chunk_document()  → chunks sémantiques
-  3. embed_chunks()    → matrice d'embeddings FAISS
-  4. store.add()       → index FAISS persisté
-
-Puis au moment d'une question :
-  5. retrieve_context() → contexte injecté dans le prompt LLM
-"""
 
 from rag.cleaner     import clean_text
 from rag.chunker     import chunk_document
