@@ -1,14 +1,25 @@
-/* ===== RESET & BASE ===== */
-*, *::before, *::after {
-  box-sizing: border-box;
+body {
   margin: 0;
-  padding: 0;
+  font-family: "Inter", sans-serif;
+  background: #f4f6f9;
 }
 
-html, body {
-  height: 100%;
-  background: #0A0A0A;
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  color: #F5F5F0;
-  -webkit-font-smoothing: antialiased;
+/* cards global */
+.card, .upload, .credit, .chat, .history {
+  background: white;
+  border-radius: 14px;
+  padding: 18px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+}
+
+/* titres */
+h3 {
+  font-size: 14px;
+  color: #888;
+  margin-bottom: 10px;
+}
+
+/* spacing */
+.content {
+  padding: 25px;
 }

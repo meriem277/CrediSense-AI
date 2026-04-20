@@ -1,0 +1,37 @@
+.score {
+  font-size: 38px;
+  font-weight: bold;
+  color: #ff6a00;
+}
+
+.status {
+  margin: 10px 0;
+  background: #e8f7ee;
+  color: #28a745;
+  padding: 6px 12px;
+  border-radius: 20px;
+  display: inline-block;
+}
+
+.progress {
+  margin-top: 12px;
+}
+
+.progress span {
+  font-size: 12px;
+  color: #666;
+}
+
+.bar {
+  height: 6px;
+  background: #eee;
+  border-radius: 10px;
+  margin-top: 5px;
+}
+
+.bar span {
+  display: block;
+  height: 100%;
+  background: #ff6a00;
+  border-radius: 10px;
+}

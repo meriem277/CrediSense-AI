@@ -1,17 +1,17 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { Upload } from './upload';
+import { ExportButton } from './export-button';
 
-describe('Upload', () => {
-  let component: Upload;
-  let fixture: ComponentFixture<Upload>;
+describe('ExportButton', () => {
+  let component: ExportButton;
+  let fixture: ComponentFixture<ExportButton>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [Upload],
+      imports: [ExportButton],
     }).compileComponents();
 
-    fixture = TestBed.createComponent(Upload);
+    fixture = TestBed.createComponent(ExportButton);
     component = fixture.componentInstance;
     await fixture.whenStable();
   });

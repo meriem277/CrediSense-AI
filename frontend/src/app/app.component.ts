@@ -2,7 +2,14 @@ import { Component, ViewEncapsulation } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient, HttpClientModule } from '@angular/common/http';
-
+import { Sidebar } from "./components/sidebar/sidebar";
+import { Header } from "./components/header/header";
+import { UploadSection } from "./components/upload-section/upload-section";
+import { HistoryList } from "./components/history-list/history-list";
+import { CreditResult } from "./components/credit-result/credit-result";
+import { ChatAssistant } from "./components/chat-assistant/chat-assistant";
+import { ExportButton } from "./components/export-button/export-button";
+import { DashboardCard } from './components/dashboard-card/dashboard-card';
 type Tab = 'upload' | 'chat' | 'result';
 
 export interface ChatMessage {
@@ -13,7 +20,7 @@ export interface ChatMessage {
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, HttpClientModule, FormsModule],
+  imports: [CommonModule, HttpClientModule, FormsModule, Sidebar, Header, UploadSection, HistoryList, CreditResult, ChatAssistant, ExportButton, DashboardCard],
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.scss'],
     encapsulation: ViewEncapsulation.None   // ← ajoutez cette ligne

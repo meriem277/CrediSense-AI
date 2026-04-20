@@ -1,183 +1,37 @@
-<div class="app-container">
+<div class="layout">
 
-  <!-- HEADER -->
-  <div class="header">
-    <div class="header-logo">C</div>
-    <div class="header-text">
-      <h1>Assistant de Documents Bancaires</h1>
-      <p>Téléchargez vos fichiers PDF et images, puis posez vos questions</p>
-    </div>
-  </div>
+  <!-- SIDEBAR -->
+  <app-sidebar></app-sidebar>
 
-  <!-- TABS -->
-  <div class="tabs">
-    <button class="tab" [class.active]="activeTab === 'upload'" (click)="setTab('upload')">
-      <span class="tab-icon">&#128196;</span> Téléchargement
-    </button>
-    <button class="tab" [class.active]="activeTab === 'chat'" (click)="setTab('chat')">
-      <span class="tab-icon">&#128172;</span> Chat ({{ messages.length }})
-    </button>
-    <button class="tab tab-result" [class.active]="activeTab === 'result'" (click)="setTab('result')">
-      <span class="tab-icon">&#9733;</span> Résultat du Crédit
-    </button>
-  </div>
+  <!-- MAIN -->
+  <div class="main">
 
-  <!-- ═══════════════ ONGLET UPLOAD ═══════════════ -->
-  <div class="tab-content" *ngIf="activeTab === 'upload'">
+    <app-header></app-header>
 
-    <div class="upload-zone"
-         [class.dragging]="isDragging"
-         (dragover)="onDragOver($event)"
-         (dragleave)="onDragLeave()"
-         (drop)="onDrop($event)"
-         (click)="fileInput.click()">
-      <div class="upload-arrow">&#8679;</div>
-      <h3>Glissez-déposez vos fichiers ici</h3>
-      <p>PDF et images acceptés (max 20 Mo)</p>
-      <button class="btn-primary" (click)="$event.stopPropagation(); fileInput.click()">
-        Sélectionner des fichiers
-      </button>
-      <input #fileInput type="file" multiple accept=".pdf,image/*"
-             style="display:none" (change)="onFileSelect($event)">
-    </div>
+    <div class="content">
 
-    <!-- Liste des fichiers -->
-    <div class="files-list" *ngIf="uploadedFiles.length > 0">
-      <div class="file-item" *ngFor="let f of uploadedFiles; let i = index">
-        <span class="file-dot"></span>
-        <span class="file-name">{{ f.name }}</span>
-        <span class="file-size">{{ formatSize(f.size) }}</span>
-        <button class="file-del" (click)="removeFile(i)">&#10005;</button>
-      </div>
-    </div>
+      <!-- TOP CARDS -->
+      <app-dashboard-card></app-dashboard-card>
 
-    <!-- Résumé du document -->
-    <div class="summary-box" *ngIf="analysis?.summary">
-      <div class="summary-label">&#128196; Résumé du document</div>
-      <p>{{ analysis.summary }}</p>
-    </div>
+      <div class="grid">
 
-    <!-- Boutons d'action -->
-    <div class="action-buttons" *ngIf="uploadedFiles.length > 0">
-      <button class="btn-analyze" (click)="analyzeFile()" [disabled]="isLoading">
-        <span *ngIf="!isLoading">&#128269; Analyser le document</span>
-        <span *ngIf="isLoading" class="loading-dots">Analyse en cours...</span>
-      </button>
-      <button class="btn-credit" (click)="analyzeCreditScore()" [disabled]="isLoading">
-        <span *ngIf="!isLoading">&#9733; Résultat du Crédit</span>
-        <span *ngIf="isLoading">Calcul en cours...</span>
-      </button>
-    </div>
-
-  </div>
-
-  <!-- ═══════════════ ONGLET CHAT ═══════════════ -->
-  <div class="tab-content chat-tab" *ngIf="activeTab === 'chat'">
-
-    <div class="messages" *ngIf="messages.length > 0; else noMessages">
-      <div class="msg" *ngFor="let m of messages" [class.user]="m.role === 'user'" [class.assistant]="m.role === 'assistant'">
-        <span class="msg-label">{{ m.role === 'user' ? 'Vous' : '&#129302; Assistant' }}</span>
-        <p>{{ m.content }}</p>
-      </div>
-    </div>
-
-    <ng-template #noMessages>
-      <div class="empty-state">
-        <div class="empty-icon">&#128172;</div>
-        <p>Téléchargez un document, puis posez vos questions ici.</p>
-      </div>
-    </ng-template>
-
-    <div class="chat-input-bar">
-      <input
-        type="text"
-        [(ngModel)]="currentMessage"
-        placeholder="Ex : Quel est le taux d'endettement du client ?"
-        (keyup.enter)="sendMessage()"
-        [disabled]="isLoading">
-      <button class="btn-send" (click)="sendMessage()" [disabled]="isLoading || !currentMessage.trim()">
-        &#9658;
-      </button>
-    </div>
-
-  </div>
-
-  <!-- ═══════════════ ONGLET RÉSULTAT ═══════════════ -->
-  <div class="tab-content" *ngIf="activeTab === 'result'">
-
-    <div class="no-result" *ngIf="!creditResult">
-      <div class="empty-icon">&#9733;</div>
-      <p>Aucune analyse disponible.</p>
-      <p>Téléchargez un dossier et cliquez sur <strong>"Résultat du Crédit"</strong>.</p>
-    </div>
-
-    <div class="result-card" *ngIf="creditResult">
-
-      <div class="result-header">
-        <span class="result-title">Analyse de crédit</span>
-        <span class="verdict-badge"
-              [class.approve]="creditResult.verdict === 'APPROUVE'"
-              [class.reject]="creditResult.verdict === 'REJETE'"
-              [class.incomplete]="creditResult.verdict === 'INCOMPLET'">
-          {{ creditResult.verdict === 'APPROUVE' ? '✓ Approuvé'
-           : creditResult.verdict === 'REJETE'   ? '✗ Refusé'
-           : '⚠ Incomplet' }}
-        </span>
-      </div>
-
-      <div class="score-global">
-        <span class="score-num">{{ creditResult.scoreGlobal }}</span>
-        <span class="score-label">/ 100</span>
-      </div>
-
-      <div class="scores">
-        <div class="score-row">
-          <span class="score-name">Solvabilité</span>
-          <div class="score-bar">
-            <div class="score-fill" [style.width.%]="creditResult.solvabilite"></div>
-          </div>
-          <span class="score-val">{{ creditResult.solvabilite }}%</span>
+        <!-- LEFT -->
+        <div class="left">
+          <app-upload-section></app-upload-section>
+          <app-history-list></app-history-list>
         </div>
-        <div class="score-row">
-          <span class="score-name">Revenus</span>
-          <div class="score-bar">
-            <div class="score-fill" [style.width.%]="creditResult.revenus"></div>
-          </div>
-          <span class="score-val">{{ creditResult.revenus }}%</span>
+
+        <!-- RIGHT -->
+        <div class="right">
+          <app-credit-result></app-credit-result>
+          <app-chat-assistant></app-chat-assistant>
         </div>
-        <div class="score-row">
-          <span class="score-name">Historique</span>
-          <div class="score-bar">
-            <div class="score-fill" [style.width.%]="creditResult.historique"></div>
-          </div>
-          <span class="score-val">{{ creditResult.historique }}%</span>
-        </div>
-        <div class="score-row">
-          <span class="score-name">Endettement</span>
-          <div class="score-bar">
-            <div class="score-fill" [style.width.%]="creditResult.endettement"></div>
-          </div>
-          <span class="score-val">{{ creditResult.endettement }}%</span>
-        </div>
+
       </div>
 
-      <div class="result-details" *ngIf="creditResult.details">
-        <span class="details-label">Justification</span>
-        <p>{{ creditResult.details }}</p>
-      </div>
-
-      <button class="btn-retry" (click)="creditResult = null; setTab('upload')">
-        &#8635; Analyser un autre dossier
-      </button>
+      <app-export-button></app-export-button>
 
     </div>
-
-  </div>
-
-  <!-- LOADER OVERLAY -->
-  <div class="loader-overlay" *ngIf="isLoading">
-    <div class="loader-spinner"></div>
-    <p>Traitement en cours...</p>
   </div>
 
 </div>
