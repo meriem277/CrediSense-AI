@@ -10,6 +10,7 @@ import { CreditResult } from "./components/credit-result/credit-result";
 import { ChatAssistant } from "./components/chat-assistant/chat-assistant";
 import { ExportButton } from "./components/export-button/export-button";
 import { DashboardCard } from './components/dashboard-card/dashboard-card';
+import { RouterOutlet } from "@angular/router";
 type Tab = 'upload' | 'chat' | 'result';
 
 export interface ChatMessage {
@@ -20,7 +21,7 @@ export interface ChatMessage {
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, HttpClientModule, FormsModule, Sidebar, Header, UploadSection, HistoryList, CreditResult, ChatAssistant, ExportButton, DashboardCard],
+  imports: [CommonModule, HttpClientModule, FormsModule, RouterOutlet],
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.scss'],
     encapsulation: ViewEncapsulation.None   // ← ajoutez cette ligne

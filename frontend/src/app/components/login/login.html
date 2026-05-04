@@ -1,0 +1,50 @@
+<!-- login.component.html -->
+<div class="login-page">
+  <div class="blob blob1"></div>
+  <div class="blob blob2"></div>
+
+  <div class="brand">
+    <div class="brand-icon"></div>
+    <span class="brand-name">CrediSense-attijari</span>
+  </div>
+
+  <h1 class="title">Ravi de vous revoir</h1>
+
+  <div class="card">
+    <form [formGroup]="form" (ngSubmit)="onSubmit()">
+
+      <div class="form-group">
+        <label>Votre adresse e-mail</label>
+        <div class="input-wrap">
+          <span class="icon">✉</span>
+          <input type="email" formControlName="email" placeholder="ex. agent@attijari.com" />
+        </div>
+        <small *ngIf="form.get('email')?.touched && form.get('email')?.invalid">
+          E-mail invalide
+        </small>
+      </div>
+
+      <div class="form-group">
+        <label>Votre mot de passe</label>
+        <div class="input-wrap">
+          <span class="icon">🔒</span>
+          <input type="password" formControlName="password" placeholder="••••••" />
+        </div>
+        <small *ngIf="form.get('password')?.touched && form.get('password')?.invalid">
+          Minimum 6 caractères
+        </small>
+      </div>
+
+      <div class="error-msg" *ngIf="error">{{ error }}</div>
+
+      <button type="submit" [disabled]="form.invalid || loading">
+        {{ loading ? 'Connexion...' : 'Se connecter' }}
+      </button>
+    </form>
+
+    <div class="links">
+      <a routerLink="/register">Pas encore de compte ?</a>
+      <a routerLink="/forgot-password">Mot de passe oublié ?</a>
+    </div>
+  </div>
+</div>

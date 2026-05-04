@@ -23,6 +23,7 @@ public class Agent {
    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private RoleType role;
+   private String password;
 
 
     @CreationTimestamp

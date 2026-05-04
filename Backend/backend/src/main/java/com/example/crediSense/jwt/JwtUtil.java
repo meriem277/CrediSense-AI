@@ -1,4 +1,4 @@
-package com.example.crediSense.Service.impl;
+package com.example.crediSense.jwt;
 
 import java.util.Date;
 

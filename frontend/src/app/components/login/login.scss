@@ -1,0 +1,79 @@
+/* login.component.scss */
+.login-page {
+  min-height: 100vh;
+  background: #f5f0e8;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  padding: 2rem;
+}
+
+.blob { position: absolute; border-radius: 50%; }
+.blob1 {
+  top: -60px; right: -60px;
+  width: 220px; height: 220px;
+  background: linear-gradient(135deg, #e05a2b, #f59d2a);
+}
+.blob2 {
+  bottom: 60px; left: 40px;
+  width: 90px; height: 75px;
+  border-radius: 50% 40% 55% 45%;
+  background: linear-gradient(135deg, #f59d2a, #e05a2b);
+  opacity: 0.75;
+}
+
+.brand {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 1.25rem; z-index: 1;
+}
+.brand-icon {
+  width: 30px; height: 30px; border-radius: 50%;
+  background: linear-gradient(135deg, #e05a2b, #f59d2a);
+}
+.brand-name { font-size: 18px; font-weight: 600; color: #1a1a1a; }
+
+.title { font-size: 26px; font-weight: 700; color: #1a1a1a; margin-bottom: 1.5rem; z-index: 1; }
+
+.card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 2rem;
+  width: 100%; max-width: 380px;
+  z-index: 1;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.06);
+}
+
+.form-group { margin-bottom: 1.1rem; }
+.form-group label { display: block; font-size: 13px; color: #666; margin-bottom: 6px; }
+.input-wrap {
+  display: flex; align-items: center; gap: 8px;
+  border: 1.5px solid #e0ddd6; border-radius: 8px;
+  background: #faf9f7; padding: 0 12px;
+}
+.input-wrap:focus-within { border-color: #e05a2b; background: #fff; }
+.input-wrap input {
+  border: none; background: transparent; outline: none;
+  width: 100%; padding: 11px 0; font-size: 14px;
+}
+
+small { color: #c0392b; font-size: 12px; }
+.error-msg { color: #c0392b; font-size: 13px; margin-bottom: 8px; }
+
+button[type="submit"] {
+  width: 100%; padding: 12px;
+  border-radius: 50px; border: none;
+  background: #2ea84b; color: #fff;
+  font-size: 15px; font-weight: 600;
+  cursor: pointer; margin-top: 0.5rem;
+}
+button[type="submit"]:hover { background: #27963f; }
+button:disabled { opacity: 0.7; cursor: not-allowed; }
+
+.links {
+  display: flex; justify-content: space-between;
+  margin-top: 1rem; font-size: 13px;
+}
+.links a { color: #1a5fb4; text-decoration: underline; cursor: pointer; }
