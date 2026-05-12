@@ -1,8 +1,10 @@
 import { CommonModule } from '@angular/common';
 import { Component } from '@angular/core';
-import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
+import { AuthResponse, LoginRequest } from '../../models/auth.model';
+import { HttpClient } from '@angular/common/http';
 
 @Component({
   selector: 'app-login',
@@ -12,22 +14,36 @@ import { AuthService } from '../../services/auth.service';
   styleUrl: './login.scss',
 })
 export class Login {
-   form = new FormGroup({
-    email: new FormControl('', [Validators.required, Validators.email]),
-    password: new FormControl('', [Validators.required, Validators.minLength(6)])
-  });
-
-  error = '';
+   form: FormGroup;
   loading = false;
+  error = '';
 
-  constructor(private authService: AuthService, private router: Router) {}
+  constructor(
+    private fb: FormBuilder,
+    private http: HttpClient,
+    private auth: AuthService,
+    private router: Router
+  ) {
+    this.form = this.fb.group({
+      email:    ['', [Validators.required, Validators.email]],
+      password: ['', Validators.required]
+    });
+  }
 
-  onSubmit(): void {
+  submit() {
     if (this.form.invalid) return;
     this.loading = true;
-    this.authService.login(this.form.value as any).subscribe({
-      next: () => this.router.navigate(['/dashboard']),
-      error: () => { this.error = 'Email ou mot de passe incorrect'; this.loading = false; }
-    });
+    this.error = '';
+
+    const body: LoginRequest = this.form.value;
+
+    this.http.post<AuthResponse>('http://localhost:8080/api/auth/login', body)
+      .subscribe({
+        next: (res) => this.auth.login(res.token, { email: res.email, nom: res.nom, role: res.role }),
+        error: (err) => {
+          this.error = err.error?.message || 'Identifiants invalides';
+          this.loading = false;
+        }
+      });
   }
 }

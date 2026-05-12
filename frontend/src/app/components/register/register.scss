@@ -1,64 +1,130 @@
-// Copier tout le SCSS de login.component.scss, puis ajouter :
+/* ================= VARIABLES ================= */
+$orange: #ff7a18;
+$orangeSoft: #ff9a3c;
+$red: #e53935;
 
-.register-card {
-  max-width: 480px;
+$dark: #0b0b0d;
+$card: #121214;
+
+$text: #f5f5f5;
+$textSoft: rgba(255,255,255,0.5);
+
+/* ================= PAGE ================= */
+.page {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: $dark;
+  font-family: 'DM Sans', sans-serif;
 }
 
-.admin-badge {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: #fff3e0;
-  color: #e65100;
-  border: 1px solid #ffcc80;
-  border-radius: 8px;
-  padding: 10px 14px;
+/* ================= CARD ================= */
+.card {
+  width: 420px;
+  background: $card;
+  padding: 40px;
+  border-radius: 14px;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+  border: 1px solid rgba(255,255,255,0.05);
+}
+
+/* ================= TITLES ================= */
+h1 {
+  color: $text;
+  margin-bottom: 6px;
+  font-size: 26px;
+}
+
+.sub {
+  color: $textSoft;
   font-size: 13px;
-  font-weight: 600;
-  margin-bottom: 24px;
+  margin-bottom: 30px;
 }
 
-.role-selector {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
+/* ================= FIELD ================= */
+.field {
+  margin-bottom: 18px;
+
+  label {
+    display: block;
+    font-size: 11px;
+    text-transform: uppercase;
+    color: $textSoft;
+    margin-bottom: 6px;
+  }
+
+  input, select {
+    width: 100%;
+    padding: 12px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.03);
+    color: $text;
+    font-size: 13px;
+    outline: none;
+    transition: all 0.2s;
+
+    &:focus {
+      border-color: $orange;
+      background: rgba($orange, 0.08);
+      box-shadow: 0 0 0 1px rgba($orange, 0.3);
+    }
+  }
 }
 
-.role-option {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 16px 12px;
-  border: 2px solid #e0e0e0;
+/* ================= ERROR ================= */
+.err {
+  display: block;
+  font-size: 11px;
+  color: $red;
+  margin-top: 4px;
+
+  &.global {
+    margin-bottom: 10px;
+    text-align: center;
+  }
+}
+
+/* ================= BUTTON ================= */
+button {
+  width: 100%;
+  padding: 13px;
   border-radius: 10px;
+  border: none;
+  background: linear-gradient(135deg, $orange, $orangeSoft);
+  color: black;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
-  background: #fafafa;
+  margin-top: 10px;
 
-  .role-icon { font-size: 24px; margin-bottom: 6px; }
-  .role-label { font-weight: 600; color: #333; font-size: 14px; }
-  small { color: #999; font-size: 11px; margin-top: 2px; }
-
-  &:hover {
-    border-color: #1a237e;
-    background: #f0f3ff;
+  &:hover:not(:disabled) {
+    transform: translateY(-1px);
+    opacity: 0.9;
+    box-shadow: 0 5px 20px rgba($orange, 0.4);
   }
 
-  &.selected {
-    border-color: #1a237e;
-    background: #e8eaf6;
-
-    .role-label { color: #1a237e; }
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
   }
 }
 
-.btn-back {
-  display: block;
+/* ================= SWITCH ================= */
+.switch {
+  margin-top: 18px;
   text-align: center;
-  margin-top: 16px;
-  color: #666;
-  font-size: 14px;
-  text-decoration: none;
+  font-size: 13px;
+  color: $textSoft;
 
-  &:hover { color: #1a237e; }
+  a {
+    color: $orange;
+    text-decoration: none;
+    margin-left: 5px;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
 }

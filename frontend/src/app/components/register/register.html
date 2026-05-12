@@ -1,122 +1,45 @@
-<div class="auth-wrapper">
-  <div class="auth-card register-card">
+<div class="page">
+  <div class="card">
+    <h1>Inscription</h1>
+    <p class="sub">Créez votre compte pour commencer</p>
 
-    <div class="auth-header">
-      <div class="logo">
-        <span class="logo-icon">🏦</span>
-        <h1>BankDoc</h1>
-      </div>
-      <p class="subtitle">Créer un compte agent / administrateur</p>
-    </div>
-
-    <!-- Badge Admin Only -->
-    <div class="admin-badge">
-      <span>🔐</span> Accès réservé aux administrateurs
-    </div>
-
-    <form [formGroup]="form" (ngSubmit)="onSubmit()">
-
-      <div class="form-group">
+    <form [formGroup]="form" (ngSubmit)="submit()">
+      <div class="field">
         <label>Nom complet</label>
-        <div class="input-wrapper">
-          <span class="input-icon">👤</span>
-          <input
-            type="text"
-            formControlName="nom"
-            placeholder="Prénom Nom"
-            [class.error]="form.get('nom')?.touched && form.get('nom')?.invalid"
-          />
-        </div>
-        <small class="error-msg"
-          *ngIf="form.get('nom')?.touched && form.get('nom')?.invalid">
-          Le nom est requis
-        </small>
+        <input type="text" formControlName="nom" placeholder="Jean Dupont" />
+        <span class="err" *ngIf="form.get('nom')?.invalid && form.get('nom')?.touched">Champ requis</span>
       </div>
 
-      <div class="form-group">
+      <div class="field">
         <label>Email</label>
-        <div class="input-wrapper">
-          <span class="input-icon">✉</span>
-          <input
-            type="email"
-            formControlName="email"
-            placeholder="agent@bankdoc.com"
-            [class.error]="form.get('email')?.touched && form.get('email')?.invalid"
-          />
-        </div>
-        <small class="error-msg"
-          *ngIf="form.get('email')?.touched && form.get('email')?.hasError('required')">
-          L'email est requis
-        </small>
-        <small class="error-msg"
-          *ngIf="form.get('email')?.touched && form.get('email')?.hasError('email')">
-          Format email invalide
-        </small>
+        <input type="email" formControlName="email" placeholder="vous@exemple.com" />
+        <span class="err" *ngIf="form.get('email')?.invalid && form.get('email')?.touched">Email invalide</span>
       </div>
 
-      <div class="form-group">
+      <div class="field">
         <label>Mot de passe</label>
-        <div class="input-wrapper">
-          <span class="input-icon">🔒</span>
-          <input
-            [type]="showPassword ? 'text' : 'password'"
-            formControlName="password"
-            placeholder="••••••••"
-            [class.error]="form.get('password')?.touched && form.get('password')?.invalid"
-          />
-          <span class="toggle-password" (click)="showPassword = !showPassword">
-            {{ showPassword ? '🙈' : '👁' }}
-          </span>
-        </div>
-        <small class="error-msg"
-          *ngIf="form.get('password')?.touched && form.get('password')?.hasError('minlength')">
-          Minimum 6 caractères
-        </small>
+        <input type="password" formControlName="password" placeholder="6 caractères min." />
+        <span class="err" *ngIf="form.get('password')?.invalid && form.get('password')?.touched">6 caractères minimum</span>
       </div>
 
-      <div class="form-group">
+      <div class="field">
         <label>Rôle</label>
-        <div class="role-selector">
-          <div
-            class="role-option"
-            [class.selected]="form.get('role')?.value === 'AGENT'"
-            (click)="form.get('role')?.setValue('AGENT')">
-            <span class="role-icon">👔</span>
-            <span class="role-label">Agent</span>
-            <small>Accès limité</small>
-          </div>
-          <div
-            class="role-option"
-            [class.selected]="form.get('role')?.value === 'ADMIN'"
-            (click)="form.get('role')?.setValue('ADMIN')">
-            <span class="role-icon">🛡</span>
-            <span class="role-label">Admin</span>
-            <small>Accès total</small>
-          </div>
-        </div>
+        <select formControlName="role">
+          <option value="AGENT">Agent</option>
+          <option value="ADMIN">Admin</option>
+        </select>
       </div>
 
-      <div class="alert alert-success" *ngIf="success">
-        <span>✅</span> {{ success }}
-      </div>
+      <span class="err global" *ngIf="error">{{ error }}</span>
 
-      <div class="alert alert-error" *ngIf="error">
-        <span>⚠</span> {{ error }}
-      </div>
-
-      <button
-        type="submit"
-        class="btn-primary"
-        [disabled]="form.invalid || loading">
-        <span class="spinner" *ngIf="loading"></span>
-        {{ loading ? 'Création...' : 'Créer le compte' }}
+      <button type="submit" [disabled]="loading">
+        {{ loading ? 'Inscription…' : 'Créer mon compte' }}
       </button>
-
-      <a routerLink="/dashboard" class="btn-back">
-        ← Retour au dashboard
-      </a>
-
     </form>
 
+    <p class="switch">
+      Déjà un compte ?
+      <a routerLink="/login">Se connecter</a>
+    </p>
   </div>
 </div>
