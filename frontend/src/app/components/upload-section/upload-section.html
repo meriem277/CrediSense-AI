@@ -1,21 +1,78 @@
 <div class="upload">
   <h3>Téléchargement de Documents</h3>
 
-  <div class="upload-box">
-    <p>Glissez-déposez vos fichiers ici</p>
-    <button>Sélectionner des fichiers</button>
+  <!-- Zone de dépôt -->
+  <div
+    class="upload-box"
+    [class.drag-over]="isDragging"
+    (click)="fileInput.click()"
+    (dragover)="onDragOver($event)"
+    (dragleave)="onDragLeave($event)"
+    (drop)="onDrop($event)"
+  >
+    <p>Glissez-déposez vos fichiers ici<br>PDF, PNG, JPG, TIFF · max 50 MB</p>
+    <button (click)="fileInput.click(); $event.stopPropagation()">
+      Sélectionner des fichiers
+    </button>
+
+    <input
+      #fileInput
+      type="file"
+      multiple
+      accept=".pdf,.png,.jpg,.jpeg,.docx"
+      style="display:none"
+      (change)="onFileSelected($event)"
+    />
   </div>
 
-  <div class="file">
-    📄 Bulletin.pdf <span>240 KB</span>
+  <!-- Liste des fichiers — juste en dessous de la zone -->
+  <div class="file" *ngFor="let entry of files">
+    <span class="file-icon">{{ getIcon(entry.file.name) }}</span>
+
+    <div class="file-info">
+      <span class="file-name">{{ entry.file.name }}</span>
+      <span class="file-size">{{ formatSize(entry.file.size) }}</span>
+
+      <div class="progress-bar">
+        <div class="progress-fill" [style.width.%]="entry.progress"></div>
+      </div>
+
+      <span
+        class="file-status"
+        [class.status-done]="entry.status === 'done'"
+        [class.status-error]="entry.status === 'error'"
+      >
+        {{ getStatusLabel(entry.status) }}
+      </span>
+    </div>
+
+    <button class="btn-remove" (click)="removeFile(entry.id)">✕</button>
   </div>
 
-  <div class="file">
-    📄 Relevé.pdf <span>1.1 MB</span>
+  <!-- Message vide -->
+  <p class="empty-hint" *ngIf="files.length === 0">
+    Aucun fichier sélectionné
+  </p>
+
+  <!-- Toast notifications -->
+  <div class="toast-area">
+    <div
+      class="toast"
+      *ngFor="let toast of toasts"
+      [class.toast-success]="toast.type === 'success'"
+      [class.toast-error]="toast.type === 'error'"
+    >
+      {{ toast.message }}
+    </div>
   </div>
 
-  <div class="actions">
-    <button class="secondary">Analyser</button>
-    <button class="primary">Score Crédit</button>
+  <!-- Actions -->
+  <div class="actions" *ngIf="files.length > 0">
+    <button class="secondary" [disabled]="!allDone" (click)="handleAnalyse()">
+      Analyser
+    </button>
+    <button class="primary" [disabled]="!allDone" (click)="handleScore()">
+      Score Crédit
+    </button>
   </div>
 </div>

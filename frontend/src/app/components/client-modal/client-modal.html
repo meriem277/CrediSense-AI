@@ -1,0 +1,128 @@
+<!-- Backdrop -->
+<div class="modal-backdrop" (click)="onBackdropClick($event)">
+
+  <!-- Modal -->
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+
+    <!-- Header -->
+    <div class="modal-header">
+      <div class="modal-header-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+          <circle cx="12" cy="7" r="4"/>
+        </svg>
+      </div>
+      <div>
+        <h2 id="modal-title" class="modal-title">Nouveau Client</h2>
+        <p class="modal-subtitle">Créer un compte client</p>
+      </div>
+      <button class="modal-close-btn" (click)="onClose()" aria-label="Fermer">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2.5" stroke-linecap="round">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Body -->
+    <div class="modal-body">
+
+      <!-- Success -->
+      <div class="alert alert-success" *ngIf="successMsg">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2.5" stroke-linecap="round">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+        {{ successMsg }}
+      </div>
+
+      <!-- Error -->
+      <div class="alert alert-error" *ngIf="errorMsg">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2.5" stroke-linecap="round">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        {{ errorMsg }}
+      </div>
+
+      <!-- Form -->
+      <div class="form-group">
+        <label class="form-label" for="cin">
+          CIN
+          <span class="required">*</span>
+        </label>
+        <input
+          id="cin"
+          type="text"
+          class="form-input"
+          [class.input-error]="cinError"
+          placeholder="Ex : AB123456"
+          [(ngModel)]="form.cin"
+          maxlength="20"
+          autocomplete="off"
+        />
+        <span class="field-error" *ngIf="cinError">{{ cinError }}</span>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" for="nom">
+            Nom
+            <span class="required">*</span>
+          </label>
+          <input
+            id="nom"
+            type="text"
+            class="form-input"
+            placeholder="Ex : Ben Ali"
+            [(ngModel)]="form.nom"
+            maxlength="50"
+            autocomplete="off"
+          />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="prenom">
+            Prénom
+            <span class="required">*</span>
+          </label>
+          <input
+            id="prenom"
+            type="text"
+            class="form-input"
+            placeholder="Ex : Mohamed"
+            [(ngModel)]="form.prenom"
+            maxlength="50"
+            autocomplete="off"
+          />
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Footer -->
+    <div class="modal-footer">
+      <button class="btn btn-cancel" (click)="onClose()" [disabled]="isLoading">
+        Annuler
+      </button>
+      <button
+        class="btn btn-submit"
+        (click)="onSubmit()"
+        [disabled]="!isFormValid || isLoading"
+      >
+        <span class="btn-spinner" *ngIf="isLoading"></span>
+        <svg *ngIf="!isLoading" width="16" height="16" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+          <line x1="12" y1="5" x2="12" y2="19"/>
+          <line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        {{ isLoading ? 'Création...' : 'Créer le client' }}
+      </button>
+    </div>
+
+  </div>
+</div>

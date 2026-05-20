@@ -5,6 +5,7 @@ import java.util.UUID;
 
 import com.example.crediSense.dto.request.FichierRequest;
 import com.example.crediSense.dto.response.FichierResponse;
+import org.springframework.web.multipart.MultipartFile;
 
 public interface FichierService {
      FichierResponse create(FichierRequest request);
@@ -13,4 +14,6 @@ public interface FichierService {
     List<FichierResponse> getByCin(String cin);
     List<FichierResponse> getAll();
     void delete(UUID id);
-}
+    FichierResponse uploadAndConvert(MultipartFile file, String cin, UUID agentId) ;
+
+    }

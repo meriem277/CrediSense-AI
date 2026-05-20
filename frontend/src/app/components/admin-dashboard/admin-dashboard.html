@@ -1,0 +1,84 @@
+<div class="admin-wrap">
+
+  <!-- Sidebar -->
+  <div class="admin-sidebar">
+    <div class="brand">
+      <div class="brand-icon">C</div>
+      <span>CrediSense Admin</span>
+    </div>
+
+    <nav>
+      <button [class.active]="activeTab === 'overview'"
+              (click)="activeTab = 'overview'">
+        📊 Vue générale
+      </button>
+      <button [class.active]="activeTab === 'agents'"
+              (click)="activeTab = 'agents'">
+        👥 Agents
+      </button>
+      <button [class.active]="activeTab === 'register'"
+              (click)="activeTab = 'register'">
+        ➕ Créer un compte
+      </button>
+    </nav>
+
+    <div class="sidebar-bottom">
+      <p class="admin-name">{{ nom }}</p>
+      <span class="admin-role">Administrateur</span>
+      <button class="btn-logout" (click)="logout()">Déconnexion</button>
+    </div>
+  </div>
+
+  <!-- Contenu principal -->
+  <div class="admin-main">
+
+    <!-- Vue générale -->
+    <div *ngIf="activeTab === 'overview'">
+      <h1>Vue générale</h1>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <span class="stat-label">Agents actifs</span>
+          <span class="stat-value">{{ agents.length }}</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Dossiers traités</span>
+          <span class="stat-value">—</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">En attente</span>
+          <span class="stat-value">—</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Liste des agents -->
+    <div *ngIf="activeTab === 'agents'">
+      <h1>Agents enregistrés</h1>
+      <table class="agents-table">
+        <thead>
+          <tr>
+            <th>Nom</th>
+            <th>Email</th>
+            <th>Rôle</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let a of agents">
+            <td>{{ a.nom }}</td>
+            <td>{{ a.email }}</td>
+            <td><span class="role-badge">{{ a.role }}</span></td>
+          </tr>
+          <tr *ngIf="agents.length === 0">
+            <td colspan="3">Aucun agent trouvé.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+   
+    <div *ngIf="activeTab === 'register'">
+  <app-register />
+</div>
+
+  </div>
+</div>

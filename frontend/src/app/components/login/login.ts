@@ -26,24 +26,33 @@ export class Login {
   ) {
     this.form = this.fb.group({
       email:    ['', [Validators.required, Validators.email]],
-      password: ['', Validators.required]
+  password: ['', [Validators.required, Validators.minLength(6)]]
     });
   }
 
-  submit() {
-    if (this.form.invalid) return;
-    this.loading = true;
-    this.error = '';
+submit() {
+  if (this.form.invalid) return;
+  this.loading = true;
+  this.error = '';
 
-    const body: LoginRequest = this.form.value;
+  const body: LoginRequest = this.form.value;
 
-    this.http.post<AuthResponse>('http://localhost:8080/api/auth/login', body)
-      .subscribe({
-        next: (res) => this.auth.login(res.token, { email: res.email, nom: res.nom, role: res.role }),
-        error: (err) => {
-          this.error = err.error?.message || 'Identifiants invalides';
-          this.loading = false;
+  this.http.post<AuthResponse>('http://localhost:8081/api/auth/login', body)
+    .subscribe({
+      next: (res) => {
+        this.loading = false;  // ✅ ajouté
+        this.auth.login(res.token, { email: res.email, nom: res.nom, role: res.role });
+         if (res.role === 'ADMIN') {
+          this.router.navigate(['/admin-dashboard']);
+        } else {
+          this.router.navigate(['/dashboard']);
         }
-      });
-  }
+      },
+      error: (err) => {
+        this.error = err.error?.message || 'Compte introuvable';  // ✅ message mis à jour
+        this.loading = false;
+      }
+    });
+}
+
 }

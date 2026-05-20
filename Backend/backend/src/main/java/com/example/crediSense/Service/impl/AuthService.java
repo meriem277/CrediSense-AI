@@ -20,16 +20,15 @@ public class AuthService {
 
     public AuthResponse login(LoginRequest request) {
         Agent agent = agentRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("Email ou mot de passe incorrect"));
+                .orElseThrow(() -> new RuntimeException("Compte introuvable"));
 
         if (!passwordEncoder.matches(request.getPassword(), agent.getPassword())) {
-            throw new RuntimeException("Email ou mot de passe incorrect");
+            throw new RuntimeException("Compte introuvable");
         }
 
         String token = jwtUtil.generateToken(agent);
         return new AuthResponse(token, agent.getEmail(), agent.getNom(), agent.getRole().name());
     }
-
     public AuthResponse register(RegisterRequest request) {
         if (agentRepository.existsByEmail(request.getEmail())) {
             throw new RuntimeException("Email déjà utilisé");

@@ -1,3 +1,4 @@
+<!-- dashboard.html -->
 <div class="layout">
 
   <!-- SIDEBAR -->
@@ -10,14 +11,28 @@
 
     <div class="content">
 
-      <!-- TOP CARDS -->
-      <app-dashboard-card></app-dashboard-card>
+      <!-- TOP : CARDS + BOUTON NOUVEAU CLIENT -->
+      <div class="top-bar">
+        <app-dashboard-card></app-dashboard-card>
+
+        <!-- ✅ Bouton Nouveau Client -->
+        <button class="btn-nouveau-client" (click)="openClientModal()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <line x1="19" y1="8" x2="19" y2="14"/>
+            <line x1="16" y1="11" x2="22" y2="11"/>
+          </svg>
+          Nouveau Client
+        </button>
+      </div>
 
       <div class="grid">
 
         <!-- LEFT -->
         <div class="left">
-          <app-upload-section></app-upload-section>
+<app-upload-section [cin]="currentCin"></app-upload-section>
           <app-history-list></app-history-list>
         </div>
 
@@ -35,3 +50,8 @@
   </div>
 
 </div>
+<app-client-modal
+  *ngIf="showClientModal"
+  (closed)="closeClientModal()"
+  (clientCreated)="onClientCreated($event)">
+</app-client-modal>

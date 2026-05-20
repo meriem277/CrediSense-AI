@@ -64,7 +64,7 @@
 
       <div class="error-msg" *ngIf="error">{{ error }}</div>
 
-      <button type="submit" class="btn-login" [disabled]="form.invalid || loading"  routerLink="/dashboard" >
+<button type="submit" class="btn-login" [disabled]="form.invalid || loading">
         {{ loading ? 'Connexion...' : 'Se connecter' }}
 
       </button>

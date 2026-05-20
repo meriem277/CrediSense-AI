@@ -24,7 +24,7 @@ public class AuthController {
 
     // Accessible seulement par ADMIN pour créer d'autres comptes
     @PostMapping("/register")
-    //@PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<AuthResponse> register(@RequestBody RegisterRequest request) {
         return ResponseEntity.ok(authService.register(request));
     }

@@ -6,7 +6,7 @@ import { AnalysisResponse } from '../models/analysis.model';
 @Injectable({ providedIn: 'root' })
 export class DocumentService {
 
-  private base = 'http://localhost:8080/api';
+  private base = 'http://localhost:8081/api';
 
   constructor(private http: HttpClient) {}
 

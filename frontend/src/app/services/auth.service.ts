@@ -40,7 +40,6 @@ export class AuthService {
       localStorage.setItem(this.TOKEN_KEY, token);
       localStorage.setItem(this.USER_KEY, JSON.stringify(user));
     }
-    this.router.navigate(['/dashboard']);
   }
 
   logout(): void {
