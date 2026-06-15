@@ -8,6 +8,8 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -39,6 +41,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/init-admin").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
                         .requestMatchers("/api/fichiers/**").permitAll()
+                        .requestMatchers("/api/dossiers/**").permitAll()
+                        .requestMatchers("/api/chatbot/**").permitAll()  // ← ajouter
+
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
@@ -62,5 +67,11 @@ public class SecurityConfig {
         source.registerCorsConfiguration("/**", config);
         return source;
     }
+    @Bean
+    public UserDetailsService userDetailsService() {
+        return username -> {
+            throw new UsernameNotFoundException("Use JWT authentication");
+        };}}
 
-}
+
+

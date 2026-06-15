@@ -5,7 +5,7 @@ import java.util.UUID;
 
 @Data
 public class DossierResponse {
-       private UUID id;
+    private UUID id;
     private String typeCredit;
     private String statut;
     private UUID clientId;

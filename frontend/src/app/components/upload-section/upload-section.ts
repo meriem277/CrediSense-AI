@@ -34,7 +34,8 @@ export class UploadSection {
   private idCounter = 0;
 
   // CIN du client — à adapter selon ton formulaire ou ta route
-@Input() cin: string = '';
+@Input() cin:       string = '';
+@Input() dossierId: string = '';
 
   constructor(
     private http: HttpClient,
@@ -72,7 +73,7 @@ export class UploadSection {
   // ─── Ajout & validation ───────────────────────────────────────
 
   private addFiles(newFiles: File[]): void {
-    const allowedTypes = ['image/jpeg', 'image/png', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+    const allowedTypes = ['image/jpeg', 'image/png', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document','application/pdf'];
 
     newFiles.forEach(file => {
       if (file.size > 10 * 1024 * 1024) {
@@ -120,7 +121,7 @@ if (!agentId) {
 
     // Appel au backend : POST /api/fichiers/upload
     // Le JWT est ajouté automatiquement par jwtInterceptor
-    this.fichierService.uploadAndConvert(entry.file, this.cin, agentId).subscribe({
+    this.fichierService.uploadAndConvert(entry.file, this.cin, agentId, this.dossierId).subscribe({
       next: (fichier: Fichier) => {
         entry.status   = 'done';
         entry.progress = 100;
@@ -130,7 +131,7 @@ if (!agentId) {
       error: (err) => {
         entry.status = 'error';
         entry.erreur = err?.error?.message ?? 'Erreur inconnue';
-        this.showToast(`Erreur : ${entry.file.name}`, 'error');
+        this.showToast(`Errkkkkkeur : ${entry.file.name}`, 'error');
       },
     });
   }

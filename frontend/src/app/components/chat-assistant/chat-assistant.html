@@ -1,13 +1,89 @@
-<div class="chat">
-  <h3>Assistant IA</h3>
+<div class="chat-container">
 
-  <div class="messages">
-    <div class="message">Bonjour !</div>
-    <div class="message">Le taux est 32%</div>
+  <!-- En-tête -->
+  <div class="chat-header">
+    <div class="chat-header-icon">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+      </svg>
+    </div>
+    <div>
+      <span class="chat-title">Assistant IA</span>
+      <span class="chat-subtitle">CrediSense · GROQ</span>
+    </div>
+    <div class="chat-status">
+      <span class="status-dot"></span>
+      <span>En ligne</span>
+    </div>
   </div>
 
-  <div class="input">
-    <input placeholder="Posez votre question..." />
-    <button>➤</button>
+  <!-- Messages -->
+  <div class="chat-messages">
+
+    <!-- Aucun dossier sélectionné -->
+    <div class="chat-empty" *ngIf="messages.length === 0">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="1.2" stroke-linecap="round">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+      </svg>
+      <p>Sélectionnez un dossier pour démarrer</p>
+    </div>
+
+    <!-- Liste des messages -->
+    <div
+      *ngFor="let msg of messages"
+      class="message"
+      [class.message-user]="msg.role === 'user'"
+      [class.message-assistant]="msg.role === 'assistant'"
+    >
+      <div class="message-avatar" *ngIf="msg.role === 'assistant'">IA</div>
+
+      <div class="message-bubble">
+        <p class="message-content">{{ msg.content }}</p>
+        <span class="message-time">{{ msg.timestamp | date:'HH:mm' }}</span>
+      </div>
+
+      <div class="message-avatar message-avatar-user" *ngIf="msg.role === 'user'">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+          <circle cx="12" cy="7" r="4"/>
+        </svg>
+      </div>
+    </div>
+
+    <!-- Typing indicator -->
+    <div class="message message-assistant" *ngIf="loading">
+      <div class="message-avatar">IA</div>
+      <div class="message-bubble typing">
+        <span></span><span></span><span></span>
+      </div>
+    </div>
+
   </div>
+
+  <!-- Input — toujours visible -->
+  <div class="chat-input">
+    <input
+      type="text"
+      class="chat-input-field"
+      placeholder="Posez votre question sur le dossier..."
+      [(ngModel)]="question"
+      (keydown)="onKeyDown($event)"
+      [disabled]="loading"
+    />
+    <button
+      class="chat-send-btn"
+      (click)="envoyer()"
+      [disabled]="!question.trim() || loading"
+    >
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+        <line x1="22" y1="2" x2="11" y2="13"/>
+        <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+      </svg>
+    </button>
+  </div>
+
 </div>

@@ -22,11 +22,12 @@ export class FichierService {
    * @param cin     CIN du client
    * @param agentId UUID de l'agent connecté (récupéré depuis AuthService)
    */
-  uploadAndConvert(file: File, cin: string, agentId: string): Observable<Fichier> {
+  uploadAndConvert(file: File, cin: string, agentId: string,   dossierId: string  ): Observable<Fichier> {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('cin', cin);
     formData.append('agentId', agentId);
+     formData.append('dossierId', dossierId);
 
     // Le JWT est ajouté automatiquement par jwtInterceptor
     // Ne PAS mettre Content-Type manuellement (le browser le gère pour FormData)
@@ -34,7 +35,9 @@ export class FichierService {
   }
 
   // ─── CRUD ──────────────────────────────────────────────────────────────────
-
+  getByDossierId(dossierId: string): Observable<Fichier[]> {
+    return this.http.get<Fichier[]>(`${this.apiUrl}/dossier/${dossierId}`);
+  }
   getById(id: string): Observable<Fichier> {
     return this.http.get<Fichier>(`${this.apiUrl}/${id}`);
   }

@@ -14,6 +14,8 @@ import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/json-extractions")
+@CrossOrigin(origins = "http://localhost:4200")
+
 @RequiredArgsConstructor
 public class JsonExtractionController {
 

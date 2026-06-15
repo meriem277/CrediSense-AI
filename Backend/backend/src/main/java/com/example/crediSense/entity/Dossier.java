@@ -40,4 +40,8 @@ public class Dossier {
     @OneToMany(mappedBy = "dossier", cascade = CascadeType.ALL)
     @ToString.Exclude
     private List<RagContext> ragContexts;
+
+    @OneToMany(mappedBy = "dossier", cascade = CascadeType.ALL)
+    @ToString.Exclude
+    private List<Fichier> fichiers;
 }

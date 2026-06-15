@@ -1,21 +1,15 @@
 <!-- dashboard.html -->
 <div class="layout">
-
-  <!-- SIDEBAR -->
   <app-sidebar></app-sidebar>
 
-  <!-- MAIN -->
   <div class="main">
-
     <app-header></app-header>
 
     <div class="content">
 
-      <!-- TOP : CARDS + BOUTON NOUVEAU CLIENT -->
+      <!-- KPI Cards -->
       <div class="top-bar">
         <app-dashboard-card></app-dashboard-card>
-
-        <!-- ✅ Bouton Nouveau Client -->
         <button class="btn-nouveau-client" (click)="openClientModal()">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
                stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
@@ -28,30 +22,218 @@
         </button>
       </div>
 
+      <!-- Grid principal -->
       <div class="grid">
 
-        <!-- LEFT -->
+        <!-- ══ COLONNE GAUCHE : liste clients ══ -->
         <div class="left">
-<app-upload-section [cin]="currentCin"></app-upload-section>
-          <app-history-list></app-history-list>
+          <app-client-list
+            (clientSelected)="onClientSelected($event)"
+            (createClicked)="openClientModal()">
+          </app-client-list>
         </div>
 
-        <!-- RIGHT -->
+        <!-- ══ COLONNE DROITE ══ -->
         <div class="right">
-          <app-credit-result></app-credit-result>
-          <app-chat-assistant></app-chat-assistant>
-        </div>
 
+          <!-- ─── NIVEAU 0 : aucun client ─── -->
+          <div class="no-client" *ngIf="!selectedClient">
+            <svg width="52" height="52" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="1.2" stroke-linecap="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+              <circle cx="12" cy="7" r="4"/>
+            </svg>
+            <p>Sélectionnez un client pour voir ses dossiers</p>
+          </div>
+
+          <!-- ─── NIVEAU 1 : client sélectionné → liste dossiers ─── -->
+          <div class="client-detail" *ngIf="selectedClient && !selectedDossier">
+
+            <!-- En-tête client -->
+            <div class="client-header">
+              <div class="client-avatar">{{ getInitiales(selectedClient) }}</div>
+              <div class="client-header-info">
+                <h2>{{ selectedClient.prenom }} {{ selectedClient.nom }}</h2>
+                <span>CIN : {{ selectedClient.cin }}</span>
+              </div>
+              <button class="btn-back" (click)="backToClients()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                  <polyline points="15 18 9 12 15 6"/>
+                </svg>
+                Retour
+              </button>
+            </div>
+
+            <!-- Section dossiers -->
+            <div class="dossiers-section">
+
+              <!-- Header avec bouton -->
+              <div class="dossiers-header">
+                <h3>Dossiers de crédit</h3>
+                <div class="dossiers-header-actions">
+                  <span class="dossiers-count" *ngIf="dossiers.length > 0">
+                    {{ dossiers.length }} dossier{{ dossiers.length > 1 ? 's' : '' }}
+                  </span>
+                  <button class="btn-add-dossier" (click)="openDossierModal()">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+                         stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                      <line x1="12" y1="5" x2="12" y2="19"/>
+                      <line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                    Nouveau dossier
+                  </button>
+                </div>
+              </div>
+
+              <!-- Loading -->
+              <div class="dossiers-loading" *ngIf="loadingDossiers">
+                <span class="spinner"></span>
+                <span>Chargement...</span>
+              </div>
+
+              <!-- Aucun dossier -->
+              <div class="dossiers-empty" *ngIf="!loadingDossiers && dossiers.length === 0">
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="1.2" stroke-linecap="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                </svg>
+                <p>Aucun dossier pour ce client</p>
+                <button class="btn-add-dossier-empty" (click)="openDossierModal()">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+                       stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                    <line x1="12" y1="5" x2="12" y2="19"/>
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                  </svg>
+                  Créer un dossier
+                </button>
+              </div>
+
+              <!-- Grille dossiers -->
+              <div class="dossiers-grid" *ngIf="!loadingDossiers && dossiers.length > 0">
+                <div
+                  class="dossier-card"
+                  *ngFor="let dossier of dossiers"
+                  (click)="selectDossier(dossier)"
+                >
+                  <div class="dossier-icon">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+                         stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                      <polyline points="14 2 14 8 20 8"/>
+                    </svg>
+                  </div>
+                  <div class="dossier-info">
+                    <span class="dossier-type">{{ getTypeCreditLabel(dossier.typeCredit) }}</span>
+                    <span class="dossier-date">{{ dossier.createdAt | date:'dd/MM/yyyy' }}</span>
+                  </div>
+                  <span class="dossier-statut" [class]="getStatutClass(dossier.statut)">
+                    {{ dossier.statut }}
+                  </span>
+                  <svg class="dossier-chevron" width="16" height="16" viewBox="0 0 24 24"
+                       fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                    <polyline points="9 18 15 12 9 6"/>
+                  </svg>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- ─── NIVEAU 2 : dossier sélectionné → upload + analyse ─── -->
+          <div class="client-detail" *ngIf="selectedClient && selectedDossier">
+
+            <!-- En-tête client + dossier -->
+            <div class="client-header">
+              <div class="client-avatar">{{ getInitiales(selectedClient) }}</div>
+              <div class="client-header-info">
+                <h2>{{ selectedClient.prenom }} {{ selectedClient.nom }}</h2>
+                <span>
+                  CIN : {{ selectedClient.cin }} ·
+                  {{ getTypeCreditLabel(selectedDossier.typeCredit) }}
+                </span>
+              </div>
+              <span class="client-badge" [class]="getStatutClass(selectedDossier.statut)">
+                {{ selectedDossier.statut }}
+              </span>
+              <button class="btn-back" (click)="backToDossiers()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                  <polyline points="15 18 9 12 15 6"/>
+                </svg>
+                Dossiers
+              </button>
+            </div>
+
+            <!-- Onglets -->
+            <div class="tabs">
+              <button class="tab" [class.active]="activeTab==='documents'"  (click)="activeTab='documents'">Documents</button>
+              <button class="tab" [class.active]="activeTab==='score'"      (click)="activeTab='score'">Score crédit</button>
+              <button class="tab" [class.active]="activeTab==='assistant'"  (click)="activeTab='assistant'">Assistant IA</button>
+              <button class="tab" [class.active]="activeTab==='historique'" (click)="activeTab='historique'">Historique</button>
+            </div>
+
+            <!-- Contenu onglets -->
+            <div class="tab-content">
+
+              <div class="tab-panel" *ngIf="activeTab==='documents'">
+                <div class="panel-grid">
+                  <div class="panel-left">
+                    <app-upload-section [cin]="currentCin"
+                       [dossierId]="selectedDossier?.id ?? ''">
+
+                    </app-upload-section>
+                  </div>
+                  <div class="panel-right">
+                    <app-credit-result></app-credit-result>
+                    <app-chat-assistant></app-chat-assistant>
+                  </div>
+                </div>
+              </div>
+
+              <div class="tab-panel" *ngIf="activeTab==='score'">
+                <app-credit-result></app-credit-result>
+              </div>
+
+          <div class="tab-panel" *ngIf="activeTab==='assistant'">
+  <ng-container *ngIf="selectedDossierId; else noDossier">
+    <app-chat-assistant
+      [cin]="currentCin"
+      [dossierId]="selectedDossierId">
+    </app-chat-assistant>
+  </ng-container>
+  <ng-template #noDossier>
+    <p>Aucun dossier sélectionné</p>
+  </ng-template>
+</div>
+              <div class="tab-panel" *ngIf="activeTab==='historique'">
+                <app-history-list></app-history-list>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
       </div>
 
       <app-export-button></app-export-button>
 
     </div>
   </div>
-
 </div>
+
+<!-- Modal création client -->
 <app-client-modal
   *ngIf="showClientModal"
   (closed)="closeClientModal()"
   (clientCreated)="onClientCreated($event)">
 </app-client-modal>
+
+<!-- Modal création dossier -->
+<app-dossier
+  *ngIf="showDossierModal && selectedClient"
+  [clientId]="selectedClient.id"
+  (closed)="closeDossierModal()"
+  (dossierCreated)="onDossierCreated($event)">
+</app-dossier>

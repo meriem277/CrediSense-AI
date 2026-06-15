@@ -2,6 +2,9 @@ package com.example.crediSense.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -19,6 +22,7 @@ public class JsonExtraction {
     private String cin;
 
     @Column(columnDefinition = "jsonb")
+    @JdbcTypeCode(SqlTypes.JSON)
     private String jsonData;
 
     private Double confidenceScore;

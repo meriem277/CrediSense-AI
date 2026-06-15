@@ -1,0 +1,202 @@
+/* ════════════════════════════════════════
+   client-list.scss — Compact & Pro
+════════════════════════════════════════ */
+
+.clients-list {
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  border: 1px solid #f0f0f0;
+  overflow: hidden;
+  max-height: 520px;
+}
+
+/* ── En-tête ── */
+.list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid #f5f5f5;
+  background: #fff;
+}
+
+.list-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: #bbb;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.list-count {
+  font-size: 11px;
+  background: #fff3e8;
+  color: #f47920;
+  font-weight: 700;
+  padding: 2px 9px;
+  border-radius: 20px;
+  border: 1px solid #ffd8bc;
+}
+
+/* ── États ── */
+.list-loading,
+.list-empty,
+.list-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 28px 16px;
+  font-size: 12px;
+  color: #ccc;
+  text-align: center;
+}
+
+.list-error { color: #e74c3c; }
+
+.spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid #f0f0f0;
+  border-top-color: #f47920;
+  border-radius: 50%;
+  animation: spin 0.65s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Liste ── */
+.list {
+  list-style: none;
+  padding: 8px;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow-y: auto;
+  flex: 1;
+
+  &::-webkit-scrollbar { width: 3px; }
+  &::-webkit-scrollbar-thumb {
+    background: #ececec;
+    border-radius: 4px;
+    &:hover { background: #ddd; }
+  }
+}
+
+/* ── Item client ── */
+.list-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 9px;
+  cursor: pointer;
+  transition: background 0.13s;
+  border: 1.5px solid transparent;
+
+  &:hover {
+    background: #fff8f3;
+    border-color: #ffe0c8;
+
+    .client-chevron { color: #f47920; transform: translateX(2px); }
+  }
+
+  &.active {
+    background: #fff3e8;
+    border-color: #f47920;
+
+    .client-name { color: #f47920; }
+
+    .client-initials {
+      background: linear-gradient(135deg, #f47920, #ff9a4d);
+      color: #fff;
+      box-shadow: 0 3px 10px rgba(244,121,32,0.3);
+    }
+  }
+}
+
+/* ── Avatar ── */
+.client-initials {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  border-radius: 50%;
+  background: #f5f5f5;
+  color: #aaa;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-transform: uppercase;
+  transition: all 0.15s;
+}
+
+/* ── Infos ── */
+.client-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.client-name {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1a1a2e;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 1px;
+  transition: color 0.13s;
+}
+
+.client-cin {
+  display: block;
+  font-size: 11px;
+  color: #bbb;
+  font-family: 'SF Mono', 'Courier New', monospace;
+  letter-spacing: 0.02em;
+}
+
+/* ── Chevron ── */
+.client-chevron {
+  color: #e0e0e0;
+  transition: color 0.13s, transform 0.13s;
+  flex-shrink: 0;
+}
+
+/* ── Footer ── */
+.list-footer {
+  padding: 10px;
+  border-top: 1px solid #f5f5f5;
+  background: #fafafa;
+}
+
+.btn-create-client {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: 100%;
+  padding: 9px;
+  border: 1.5px dashed #f0c09a;
+  border-radius: 9px;
+  background: transparent;
+  color: #f47920;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.13s, border-color 0.13s;
+
+  &:hover {
+    background: #fff8f3;
+    border-color: #f47920;
+  }
+}

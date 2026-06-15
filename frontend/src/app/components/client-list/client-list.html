@@ -1,0 +1,30 @@
+
+<div class="clients-list">
+
+  <!-- Titre -->
+  <h3 class="list-title">Liste des clients</h3>
+
+  <!-- Chargement -->
+  <p class="list-loading" *ngIf="loading">Chargement...</p>
+
+  <!-- Erreur -->
+  <p class="list-error" *ngIf="error">{{ error }}</p>
+
+  <!-- Vide -->
+  <p class="list-empty" *ngIf="!loading && !error && clients.length === 0">
+    Aucun client trouvé.
+  </p>
+
+  <!-- Liste -->
+  <ul class="list" *ngIf="!loading && clients.length > 0">
+    <li
+      class="list-item"
+      *ngFor="let client of clients"
+      (click)="selectClient(client)"
+    >
+      <span class="client-name">{{ client.prenom }} {{ client.nom }}</span>
+      <span class="client-cin">{{ client.cin }}</span>
+    </li>
+  </ul>
+
+</div>

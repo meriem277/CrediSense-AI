@@ -14,6 +14,6 @@ public interface FichierService {
     List<FichierResponse> getByCin(String cin);
     List<FichierResponse> getAll();
     void delete(UUID id);
-    FichierResponse uploadAndConvert(MultipartFile file, String cin, UUID agentId) ;
+    FichierResponse uploadAndConvert(MultipartFile file, String cin, UUID agentId,UUID dossierId) ;
 
     }

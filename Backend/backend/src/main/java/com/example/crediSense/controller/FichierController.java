@@ -23,31 +23,17 @@ public class FichierController {
 
     // ─── UPLOAD + CONVERSION PDF ──────────────────────────────────────────────
 
-    /**
-     * POST /api/fichiers/upload
-     *
-     * Reçoit un fichier (JPG, PNG, DOCX), le convertit en PDF
-     * et enregistre l'entité Fichier en base.
-     *
-     * Paramètres multipart :
-     *   - file    : le fichier à uploader
-     *   - cin     : CIN du client
-     *   - agentId : UUID de l'agent connecté
-     *
-     * Exemple frontend (fetch) :
-     *   const form = new FormData();
-     *   form.append('file', fileInput.files[0]);
-     *   form.append('cin', '12345678');
-     *   form.append('agentId', 'uuid-agent');
-     *   fetch('/api/fichiers/upload', { method: 'POST', body: form });
-     */
+
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<FichierResponse> upload(
             @RequestParam("file")    MultipartFile file,
             @RequestParam("cin")     String cin,
-            @RequestParam("agentId") UUID agentId) {
+            @RequestParam("agentId") UUID agentId ,
+            @RequestParam("dossierId") UUID dossierId
+    )
+    {
 
-        return ResponseEntity.ok(fichierService.uploadAndConvert(file, cin, agentId));
+        return ResponseEntity.ok(fichierService.uploadAndConvert(file, cin, agentId, dossierId));
     }
 
     // ─── CRUD ─────────────────────────────────────────────────────────────────

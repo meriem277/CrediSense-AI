@@ -6,8 +6,11 @@ import com.itextpdf.text.Image;
 import com.itextpdf.text.PageSize;
 import com.itextpdf.text.pdf.PdfWriter;
 import lombok.extern.slf4j.Slf4j;
-import org.docx4j.Docx4J;
-import org.docx4j.openpackaging.packages.WordprocessingMLPackage;
+import fr.opensagres.poi.xwpf.converter.pdf.PdfConverter;
+import fr.opensagres.poi.xwpf.converter.pdf.PdfOptions;
+import org.apache.poi.xwpf.usermodel.XWPFDocument;
+import java.io.FileInputStream;
+import java.io.InputStream;
 import org.springframework.stereotype.Service;
 
 import java.io.FileOutputStream;
@@ -29,6 +32,11 @@ public class PdfConversionService {
             convertImage(sourcePath, destPath);
         } else if ("docx".equals(ext)) {
             convertDocx(sourcePath, destPath);
+        } else if ("pdf".equals(ext)) {
+            // Copier le PDF sans conversion
+            log.info("Fichier déjà en PDF, copie directe : {}", sourcePath.getFileName());
+            java.nio.file.Files.copy(sourcePath, destPath);
+
         } else {
             throw new IllegalArgumentException("Type non supporté : " + ext);
         }
@@ -69,16 +77,18 @@ public class PdfConversionService {
 
     // ─── DOCX → PDF (docx4j) ─────────────────────────────────────────────────
 
+    // ✅ Nouvelle méthode convertDocx()
     private void convertDocx(Path docxPath, Path pdfPath) throws Exception {
         log.info("DOCX → PDF : {}", docxPath.getFileName());
 
-        WordprocessingMLPackage wordPackage = WordprocessingMLPackage
-                .load(docxPath.toFile());
+        try (InputStream in  = new FileInputStream(docxPath.toFile());
+             OutputStream out = new FileOutputStream(pdfPath.toFile())) {
 
-        try (OutputStream os = new FileOutputStream(pdfPath.toFile())) {
-            Docx4J.toPDF(wordPackage, os);
+            XWPFDocument document = new XWPFDocument(in);
+            PdfOptions options = PdfOptions.create();
+            PdfConverter.getInstance().convert(document, out, options);
+
+            log.info("DOCX converti → {}", pdfPath.getFileName());
         }
-
-        log.info("DOCX converti → {}", pdfPath.getFileName());
     }
 }

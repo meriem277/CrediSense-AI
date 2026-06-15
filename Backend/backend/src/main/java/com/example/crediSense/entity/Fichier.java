@@ -38,6 +38,11 @@ public class Fichier {
     @OneToMany(mappedBy = "fichier", cascade = CascadeType.ALL)
     @ToString.Exclude
     private List<JsonExtraction> jsonExtractions;
+
+    @ManyToOne
+    @JoinColumn(name = "dossier_id")
+    @ToString.Exclude
+    private Dossier dossier;
 }
     
 

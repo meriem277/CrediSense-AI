@@ -5,8 +5,10 @@ import com.example.crediSense.Service.impl.PdfConversionService;
 import com.example.crediSense.dto.request.FichierRequest;
 import com.example.crediSense.dto.response.FichierResponse;
 import com.example.crediSense.entity.Agent;
+import com.example.crediSense.entity.Dossier;
 import com.example.crediSense.entity.Fichier;
 import com.example.crediSense.repository.AgentRepository;
+import com.example.crediSense.repository.DossierRepository;
 import com.example.crediSense.repository.FichierRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,7 +31,9 @@ public class FichierServiceImpl implements FichierService {
 
     private final FichierRepository    fichierRepository;
     private final AgentRepository      agentRepository;
-    private final PdfConversionService pdfConversionService;  // P majuscule
+    private final PdfConversionService pdfConversionService;
+    private final DossierRepository dossierRepository;
+    private final EtlService etlService;
 
     @Value("${upload.base-path:uploads}")
     private String basePath;
@@ -37,7 +41,7 @@ public class FichierServiceImpl implements FichierService {
     // ─── Upload + Conversion PDF ──────────────────────────────────────────────
 
     @Override
-    public FichierResponse uploadAndConvert(MultipartFile file, String cin, UUID agentId) {
+    public FichierResponse uploadAndConvert(MultipartFile file, String cin, UUID agentId,UUID dossierId ) {
         try {
             String nomOriginal = file.getOriginalFilename();
             String extension   = getExtension(nomOriginal);
@@ -57,6 +61,9 @@ public class FichierServiceImpl implements FichierService {
 
             Agent agent = agentRepository.findById(agentId)
                     .orElseThrow(() -> new RuntimeException("Agent introuvable : " + agentId));
+// ✅ Récupérer le dossier et le lier au fichier
+            Dossier dossier = dossierRepository.findById(dossierId)
+                    .orElseThrow(() -> new RuntimeException("Dossier introuvable : " + dossierId));
 
             Fichier fichier = Fichier.builder()
                     .cin(cin)
@@ -64,10 +71,17 @@ public class FichierServiceImpl implements FichierService {
                     .typeOriginal(extension)
                     .cheminPdf(cheminPdf.toString())
                     .agent(agent)
+                    .dossier(dossier)
                     .build();
 
             Fichier saved = fichierRepository.save(fichier);
             log.info("Fichier enregistré en BDD avec id={}", saved.getId());
+            try {
+                etlService.lancerEtl(saved.getId());
+            } catch (Exception e) {
+                log.error("Erreur ETL (non bloquante) : {}", e.getMessage());
+            }
+
             return toResponse(saved);
 
         } catch (Exception e) {

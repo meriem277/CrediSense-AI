@@ -27,7 +27,7 @@ public class AuthService {
         }
 
         String token = jwtUtil.generateToken(agent);
-        return new AuthResponse(token, agent.getEmail(), agent.getNom(), agent.getRole().name());
+        return new AuthResponse(  agent.getId().toString(), token, agent.getEmail(), agent.getNom(), agent.getRole().name());
     }
     public AuthResponse register(RegisterRequest request) {
         if (agentRepository.existsByEmail(request.getEmail())) {
@@ -41,6 +41,6 @@ public class AuthService {
 
         agentRepository.save(agent);
         String token = jwtUtil.generateToken(agent);
-        return new AuthResponse(token, agent.getEmail(), agent.getNom(), agent.getRole().name());
+        return new AuthResponse(  agent.getId().toString(), token, agent.getEmail(), agent.getNom(), agent.getRole().name());
     }
 }

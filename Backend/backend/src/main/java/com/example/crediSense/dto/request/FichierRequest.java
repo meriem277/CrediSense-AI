@@ -10,5 +10,7 @@ public class FichierRequest {
     private String typeOriginal;
     private String cheminPdf;
     private UUID agentId;
-    
+    private UUID dossierId;
+
+
 }

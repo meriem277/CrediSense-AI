@@ -13,5 +13,7 @@ public class FichierResponse {
     private String cheminPdf;
     private UUID agentId;
     private LocalDateTime createdAt;
+    private UUID dossierId;
+
 
 }
