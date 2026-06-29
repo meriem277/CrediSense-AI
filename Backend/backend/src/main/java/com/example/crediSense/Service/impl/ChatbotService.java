@@ -34,12 +34,11 @@ public class ChatbotService {
     @Value("${groq.api.url:https://api.groq.com/openai/v1/chat/completions}")
     private String apiUrl;
 
-    // ─── Point d'entrée principal ─────────────────────────────────────────────
+    // ─── Point d'entrée ───────────────────────────────────────────────────────
 
     public String poserQuestion(String cin, UUID dossierId, String question) {
         log.info("Chatbot RAG — dossierId={}, question={}", dossierId, question);
 
-        // 1. Construire le contexte depuis le dossier
         String contexte = construireContexte(dossierId);
 
         if (contexte.isBlank()) {
@@ -47,80 +46,89 @@ public class ChatbotService {
                     "Veuillez d'abord uploader les documents du client.";
         }
 
-        // 2. Appeler GROQ avec le contexte + la question
-        return appelGroqChatbot(contexte, question, cin);
+        return appelGroq(contexte, question, cin);
     }
 
-    // ─── Construction du contexte par dossierId ───────────────────────────────
+    // ─── Construction contexte — RÉDUIT ──────────────────────────────────────
 
     private String construireContexte(UUID dossierId) {
         if (dossierId == null) return "";
 
         StringBuilder ctx = new StringBuilder();
 
-        // 1. JsonExtraction du dossier (données structurées GROQ)
-        jsonExtractionRepository.findByDossierId(dossierId).forEach(extraction -> {
-            if (extraction.getJsonData() != null && !extraction.getJsonData().isBlank()) {
-                ctx.append("=== DONNÉES FINANCIÈRES STRUCTURÉES ===\n");
-                ctx.append(formaterJson(extraction.getJsonData()));
-                ctx.append("\n\n");
-            }
-        });
+        // 1. JSON structuré — champs essentiels seulement
+        jsonExtractionRepository.findByDossierId(dossierId).stream()
+                .findFirst()  // ← un seul JsonExtraction suffit
+                .ifPresent(extraction -> {
+                    if (extraction.getJsonData() != null) {
+                        ctx.append("DONNÉES FINANCIÈRES:\n");
+                        ctx.append(formaterJson(extraction.getJsonData()));
+                        ctx.append("\n");
+                    }
+                });
 
-        // 2. Texte OCR nettoyé du dossier
-        ocrResultRepository.findByDossierId(dossierId).forEach(ocr -> {
-            if (ocr.getTexteNettoye() != null && !ocr.getTexteNettoye().isBlank()) {
-                ctx.append("=== TEXTE DU DOCUMENT ===\n");
-                String texte = ocr.getTexteNettoye();
-                // Limiter à 2000 chars pour ne pas dépasser le contexte GROQ
-                ctx.append(texte.length() > 2000 ? texte.substring(0, 2000) + "..." : texte);
-                ctx.append("\n\n");
-            }
-        });
+        // 2. Texte OCR — limité à 500 chars max
+        ocrResultRepository.findByDossierId(dossierId).stream()
+                .findFirst()  // ← un seul OcrResult suffit
+                .ifPresent(ocr -> {
+                    if (ocr.getTexteNettoye() != null && !ocr.getTexteNettoye().isBlank()) {
+                        String texte = ocr.getTexteNettoye();
+                        ctx.append("EXTRAIT DOCUMENT:\n");
+                        ctx.append(texte.length() > 500 ? texte.substring(0, 500) + "..." : texte);
+                        ctx.append("\n");
+                    }
+                });
 
-        log.info("Contexte RAG construit — {} caractères pour dossierId={}",
-                ctx.length(), dossierId);
+        log.info("Contexte RAG — {} caractères pour dossierId={}", ctx.length(), dossierId);
         return ctx.toString();
     }
 
-    // ─── Formatage JSON → texte lisible ──────────────────────────────────────
+    // ─── Formatage JSON — champs essentiels uniquement ────────────────────────
 
     private String formaterJson(String jsonData) {
         try {
             JsonNode node = objectMapper.readTree(jsonData);
             StringBuilder sb = new StringBuilder();
-            node.fields().forEachRemaining(entry -> {
-                if (!entry.getValue().isNull()) {
-                    sb.append("- ").append(entry.getKey())
-                            .append(": ").append(entry.getValue().asText())
-                            .append("\n");
+
+            // Seulement les champs les plus importants
+            List<String> champs = List.of(
+                    "nomClient", "prenomClient", "revenuMensuelNet",
+                    "typeContrat", "tauxEndettement", "chargesMenusuelles",
+                    "montantCredit", "dureeCredit", "typeCredit",
+                    "historiqueCredit", "incidentsPayment"
+            );
+
+            champs.forEach(key -> {
+                JsonNode val = node.get(key);
+                if (val != null && !val.isNull()) {
+                    sb.append("- ").append(key).append(": ")
+                            .append(val.asText()).append("\n");
                 }
             });
+
             return sb.toString();
+
         } catch (Exception e) {
-            log.warn("JSON non parsable, retour brut : {}", e.getMessage());
-            return jsonData;
+            return jsonData.substring(0, Math.min(jsonData.length(), 300));
         }
     }
 
-    // ─── Appel GROQ ───────────────────────────────────────────────────────────
+    // ─── Appel GROQ avec contexte réduit ─────────────────────────────────────
 
-    private String appelGroqChatbot(String contexte, String question, String cin) {
+    private String appelGroq(String contexte, String question, String cin) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setBearerAuth(apiKey);
 
-        String systemPrompt = """
-                Tu es CrediSense, un assistant IA expert en analyse de dossiers de crédit bancaire pour Attijariwafa Bank.
-                Tu réponds UNIQUEMENT en te basant sur les données du dossier fournies dans le contexte.
-                Tu es précis, professionnel et concis.
-                Si une information n'est pas dans le contexte, dis-le clairement.
-                Réponds toujours en français.
-                """;
+        // System prompt court
+        String systemPrompt =
+                "Tu es CrediSense, assistant IA pour Attijariwafa Bank. " +
+                        "Réponds uniquement en te basant sur le contexte fourni. " +
+                        "Sois concis et professionnel. Réponds en français.";
 
-        String userPrompt = "Contexte du dossier client (CIN: " + cin + ") :\n\n"
-                + contexte
-                + "\nQuestion de l'agent : " + question;
+        // User prompt avec contexte réduit
+        String userPrompt = "Contexte (CIN: " + cin + "):\n" + contexte +
+                "\nQuestion: " + question;
 
         Map<String, Object> body = Map.of(
                 "model", model,
@@ -129,7 +137,7 @@ public class ChatbotService {
                         Map.of("role", "user",   "content", userPrompt)
                 ),
                 "temperature", 0.3,
-                "max_tokens",  500
+                "max_tokens",  300    // ← réduit à 300
         );
 
         try {
@@ -140,12 +148,12 @@ public class ChatbotService {
             String   content = root.path("choices").get(0)
                     .path("message").path("content").asText();
 
-            log.info("Chatbot répondu — {} caractères", content.length());
+            log.info("Chatbot GROQ répondu — {} caractères", content.length());
             return content;
 
         } catch (Exception e) {
             log.error("Erreur chatbot GROQ : {}", e.getMessage());
-            return "Désolé, une erreur est survenue lors de la génération de la réponse.";
+            return "Désolé, une erreur est survenue. Veuillez réessayer.";
         }
     }
 }

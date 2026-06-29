@@ -2,7 +2,7 @@
    dashboard.scss — Design professionnel CrediSense
 ════════════════════════════════════════════════════ */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+/* Fonts loaded via index.html */
 
 * { box-sizing: border-box; }
 
@@ -405,7 +405,13 @@ h3 {
 }
 
 .tab-panel {
-  padding: 24px;
+  padding: 20px 0;
+}
+
+/* score tab gets more breathing room and full-width credit-result */
+.tab-panel app-credit-result {
+  display: block;
+  width: 100%;
 }
 
 /* ── Layout onglet Documents ─────────────────────── */

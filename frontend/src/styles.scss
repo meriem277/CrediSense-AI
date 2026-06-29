@@ -2,7 +2,7 @@
    dashboard.scss — Design professionnel CrediSense
 ════════════════════════════════════════════════════ */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+/* Fonts are loaded via <link> in index.html to avoid CSS inlining budgets */
 
 * { box-sizing: border-box; }
 

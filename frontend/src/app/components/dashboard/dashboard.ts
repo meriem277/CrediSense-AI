@@ -1,4 +1,6 @@
-import { Component } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Subscription } from 'rxjs';
+import { CreditStateService } from '../../services/credit-state.service';
 import { CommonModule } from '@angular/common';
 import { Sidebar }       from '../sidebar/sidebar';
 import { Header }        from '../header/header';
@@ -32,7 +34,7 @@ import { DossierService } from '../../services/dossier.service';
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.scss',
 })
-export class Dashboard {
+export class Dashboard implements OnInit, OnDestroy {
 
   // ── Modals ─────────────────────────────────────────────
   showClientModal  = false;
@@ -50,7 +52,22 @@ export class Dashboard {
   currentCin = '';
   activeTab: 'documents' | 'score' | 'assistant' | 'historique' = 'documents';
 
-  constructor(private dossierService: DossierService) {}
+  private subs = new Subscription();
+
+  constructor(private dossierService: DossierService, private creditState: CreditStateService) {}
+
+  ngOnInit(): void {
+    this.subs.add(
+      this.creditState.navigateToScore$.subscribe(trigger => {
+        if (trigger && this.selectedDossier) {
+          this.activeTab = 'score';
+          this.creditState.resetNavigateToScore();
+        }
+      })
+    );
+  }
+
+  ngOnDestroy(): void { this.subs.unsubscribe(); }
 
   // ── Sélection client ────────────────────────────────────
   onClientSelected(client: Client): void {
@@ -131,8 +148,9 @@ export class Dashboard {
     return map[statut] ?? 'pending';
   }
   get selectedDossierId(): string {
-  return this.selectedDossier?.id ?? '';
-}
+ const id = this.selectedDossier?.id ?? '';
+  console.log('selectedDossierId getter:', id);
+  return id;}
 
 
 }

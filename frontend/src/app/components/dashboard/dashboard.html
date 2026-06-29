@@ -49,7 +49,6 @@
           <!-- ─── NIVEAU 1 : client sélectionné → liste dossiers ─── -->
           <div class="client-detail" *ngIf="selectedClient && !selectedDossier">
 
-            <!-- En-tête client -->
             <div class="client-header">
               <div class="client-avatar">{{ getInitiales(selectedClient) }}</div>
               <div class="client-header-info">
@@ -65,10 +64,7 @@
               </button>
             </div>
 
-            <!-- Section dossiers -->
             <div class="dossiers-section">
-
-              <!-- Header avec bouton -->
               <div class="dossiers-header">
                 <h3>Dossiers de crédit</h3>
                 <div class="dossiers-header-actions">
@@ -86,13 +82,11 @@
                 </div>
               </div>
 
-              <!-- Loading -->
               <div class="dossiers-loading" *ngIf="loadingDossiers">
                 <span class="spinner"></span>
                 <span>Chargement...</span>
               </div>
 
-              <!-- Aucun dossier -->
               <div class="dossiers-empty" *ngIf="!loadingDossiers && dossiers.length === 0">
                 <svg width="36" height="36" viewBox="0 0 24 24" fill="none"
                      stroke="currentColor" stroke-width="1.2" stroke-linecap="round">
@@ -110,7 +104,6 @@
                 </button>
               </div>
 
-              <!-- Grille dossiers -->
               <div class="dossiers-grid" *ngIf="!loadingDossiers && dossiers.length > 0">
                 <div
                   class="dossier-card"
@@ -137,14 +130,12 @@
                   </svg>
                 </div>
               </div>
-
             </div>
           </div>
 
-          <!-- ─── NIVEAU 2 : dossier sélectionné → upload + analyse ─── -->
+          <!-- ─── NIVEAU 2 : dossier sélectionné ─── -->
           <div class="client-detail" *ngIf="selectedClient && selectedDossier">
 
-            <!-- En-tête client + dossier -->
             <div class="client-header">
               <div class="client-avatar">{{ getInitiales(selectedClient) }}</div>
               <div class="client-header-info">
@@ -177,36 +168,40 @@
             <!-- Contenu onglets -->
             <div class="tab-content">
 
+              <!-- DOCUMENTS -->
               <div class="tab-panel" *ngIf="activeTab==='documents'">
                 <div class="panel-grid">
                   <div class="panel-left">
-                    <app-upload-section [cin]="currentCin"
-                       [dossierId]="selectedDossier?.id ?? ''">
-
-                    </app-upload-section>
+                    <app-upload-section
+  [cin]="currentCin"
+  [dossierId]="selectedDossierId"
+  [dossierTypeCredit]="selectedDossier.typeCredit">
+</app-upload-section>
                   </div>
                   <div class="panel-right">
-                    <app-credit-result></app-credit-result>
-                    <app-chat-assistant></app-chat-assistant>
+                    <!-- ✅ inputs branchés -->
+                    <app-chat-assistant
+                      [cin]="currentCin"
+                      [dossierId]="selectedDossierId">
+                    </app-chat-assistant>
                   </div>
                 </div>
               </div>
 
+              <!-- SCORE -->
               <div class="tab-panel" *ngIf="activeTab==='score'">
                 <app-credit-result></app-credit-result>
               </div>
 
-          <div class="tab-panel" *ngIf="activeTab==='assistant'">
-  <ng-container *ngIf="selectedDossierId; else noDossier">
-    <app-chat-assistant
-      [cin]="currentCin"
-      [dossierId]="selectedDossierId">
-    </app-chat-assistant>
-  </ng-container>
-  <ng-template #noDossier>
-    <p>Aucun dossier sélectionné</p>
-  </ng-template>
-</div>
+              <!-- ASSISTANT IA -->
+              <div class="tab-panel" *ngIf="activeTab==='assistant'">
+                <app-chat-assistant
+                  [cin]="currentCin"
+                  [dossierId]="selectedDossierId">
+                </app-chat-assistant>
+              </div>
+
+              <!-- HISTORIQUE -->
               <div class="tab-panel" *ngIf="activeTab==='historique'">
                 <app-history-list></app-history-list>
               </div>

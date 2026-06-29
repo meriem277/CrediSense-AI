@@ -51,8 +51,6 @@ submit() {
       .subscribe({
         next: (res) => {
           this.auth.login(res.token, {
-            email: res.email,
-            nom:   res.nom,
             role:  res.role
           });
           // auth.login() redirige automatiquement vers /dashboard

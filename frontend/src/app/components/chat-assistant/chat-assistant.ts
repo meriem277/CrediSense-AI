@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { Component, Input, OnInit } from '@angular/core';
+import { Component, Input, AfterViewInit, ChangeDetectorRef } from '@angular/core';
 import { environment } from '../../../environments/environment';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -17,7 +17,7 @@ export interface ChatMessage {
   templateUrl: './chat-assistant.html',
   styleUrl: './chat-assistant.scss',
 })
-export class ChatAssistant implements OnInit {
+export class ChatAssistant implements AfterViewInit {
 
   @Input() cin:       string = '';
   @Input() dossierId: string = '';
@@ -26,9 +26,12 @@ export class ChatAssistant implements OnInit {
   question  = '';
   loading   = false;
 
-  constructor(private http: HttpClient) {}
+  constructor(
+    private http: HttpClient,
+    private cdr: ChangeDetectorRef
+  ) {}
 
-  ngOnInit(): void {
+  ngAfterViewInit(): void {
     setTimeout(() => {
       if (this.dossierId && this.messages.length === 0) {
         this.messages = [{
@@ -36,21 +39,37 @@ export class ChatAssistant implements OnInit {
           content: 'Bonjour ! Je suis CrediSense. Posez-moi une question sur ce dossier de crédit.',
           timestamp: new Date()
         }];
+        this.cdr.detectChanges();
       }
-    }, 100);
+    }, 0);
   }
 
   envoyer(): void {
     const q = this.question.trim();
     if (!q || this.loading) return;
 
+    if (!this.dossierId) {
+      this.messages.push({
+        role: 'assistant',
+        content: 'Erreur : aucun dossier sélectionné.',
+        timestamp: new Date()
+      });
+      this.cdr.detectChanges();
+      return;
+    }
+
     this.messages.push({ role: 'user', content: q, timestamp: new Date() });
     this.question = '';
     this.loading  = true;
+    this.cdr.detectChanges();
 
     this.http.post<{ reponse: string }>(
       `${environment.apiUrl}/api/chatbot/question`,
-      { cin: this.cin, dossierId: this.dossierId, question: q }
+      {
+        cin:       this.cin       || null,
+        dossierId: this.dossierId || null,
+        question:  q
+      }
     ).subscribe({
       next: (res) => {
         this.messages.push({
@@ -59,15 +78,18 @@ export class ChatAssistant implements OnInit {
           timestamp: new Date()
         });
         this.loading = false;
+        this.cdr.detectChanges();
         this.scrollToBottom();
       },
-      error: () => {
+      error: (err) => {
+        console.error('Erreur chatbot:', err);
         this.messages.push({
           role: 'assistant',
           content: 'Désolé, une erreur est survenue. Veuillez réessayer.',
           timestamp: new Date()
         });
         this.loading = false;
+        this.cdr.detectChanges();
       }
     });
   }

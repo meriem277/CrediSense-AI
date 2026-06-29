@@ -41,7 +41,7 @@ submit() {
     .subscribe({
       next: (res) => {
         this.loading = false;  // ✅ ajouté
-        this.auth.login(res.token, {   id: res.id,  email: res.email, nom: res.nom, role: res.role });
+        this.auth.login(res.token, {   id: res.id, role: res.role });
          if (res.role === 'ADMIN') {
           this.router.navigate(['/admin-dashboard']);
         } else {

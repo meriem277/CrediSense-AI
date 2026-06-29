@@ -4,7 +4,9 @@ import { Component, Input } from '@angular/core';
 import { Fichier } from '../../models/fichier.model';
 import { FichierService } from '../../services/fichier.service';
 import { AuthService } from '../../services/auth.service';
-
+import { CreditAgentService } from '../../services/credit-agent.service';
+import { CreditStateService }  from '../../services/credit-state.service';
+import { Dossier }             from '../../models/dossier.model';
 
 export interface FileEntry {
   id: number;
@@ -34,14 +36,17 @@ export class UploadSection {
   private idCounter = 0;
 
   // CIN du client — à adapter selon ton formulaire ou ta route
-@Input() cin:       string = '';
-@Input() dossierId: string = '';
+@Input() cin:             string = '';
+@Input() dossierId:       string = '';
+@Input() dossierTypeCredit: string = 'IMMOBILIER'; // ← nouveau
 
-  constructor(
-    private http: HttpClient,
-    private fichierService: FichierService,
-    private authService: AuthService
-  ) {}
+constructor(
+  private http: HttpClient,
+  private fichierService: FichierService,
+  private authService: AuthService,
+  private creditAgent: CreditAgentService,   // ← nouveau
+  private creditState: CreditStateService,   // ← nouveau
+) {}
 
   // ─── Drag & Drop ──────────────────────────────────────────────
 
@@ -153,14 +158,34 @@ if (!agentId) {
   }
 
   handleScore(): void {
-    const formData = new FormData();
-    this.files.forEach(({ file }) => formData.append('files', file));
-
-    this.http.post('/api/score', formData).subscribe({
-      next: (data) => console.log('Score :', data),
-      error: () => this.showToast('Erreur lors du calcul du score', 'error'),
-    });
+  // On prend le premier fichier uploadé avec succès
+  const entry = this.files.find(f => f.status === 'done' && f.file);
+  if (!entry) {
+    this.showToast('Aucun fichier disponible pour l\'analyse', 'error');
+    return;
   }
+
+  const type = this.dossierTypeCredit === 'CONSOMMATION'
+    ? 'consommation'
+    : 'immobilier';
+
+  this.creditState.setLoading(true);
+  this.creditState.clear();
+  // Signal dashboard to navigate to the score tab
+  this.creditState.triggerNavigateToScore();
+
+  this.creditAgent.analyse(type, entry.file, this.cin).subscribe({
+    next: result => {
+      this.creditState.setResult(result);
+      this.creditState.setLoading(false);
+      this.showToast('Analyse crédit terminée', 'success');
+    },
+    error: () => {
+      this.creditState.setLoading(false);
+      this.showToast('Erreur lors du calcul du score crédit', 'error');
+    }
+  });
+}
 
   // ─── Utilitaires ─────────────────────────────────────────────
 

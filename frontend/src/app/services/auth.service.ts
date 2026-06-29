@@ -24,15 +24,17 @@ export class AuthService {
     return this.isBrowser ? localStorage.getItem(this.TOKEN_KEY) : null;
   }
 
-  getUser(): any {
-    if (!this.isBrowser) return null;
-    const stored = localStorage.getItem(this.USER_KEY);
-    return stored ? JSON.parse(stored) : null;
-  }
-
-  isLoggedIn(): boolean {
-    return !!this.getToken();
-  }
+ getUser(): any {
+  if (!this.isBrowser) return null;
+  const stored = localStorage.getItem(this.USER_KEY);
+  console.log('getUser — stored:', stored);
+  return stored ? JSON.parse(stored) : null;
+}
+isLoggedIn(): boolean {
+  const token = this.getToken();
+  console.log('isLoggedIn — token:', token ? 'présent' : 'absent');
+  return !!token;
+}
 
   // ── Écriture ─────────────────────────────────────────
   login(token: string, user: any): void {

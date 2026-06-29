@@ -32,6 +32,35 @@ $gray-900:     #111;
   }
 }
 
+/* Inline file list inside upload box */
+.upload-box.has-files {
+  padding: 1rem 1rem;
+}
+
+.file-list-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 240px;
+  overflow: auto;
+  padding-top: 8px;
+}
+
+.file .file-actions {
+  display:flex;
+  gap:8px;
+  align-items:center;
+}
+
+.btn-add-more {
+  background: transparent;
+  border: 1px dashed $gray-200;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
 // ─── Zone de dépôt ───────────────────────────────────────────────
 
 .upload-box {
