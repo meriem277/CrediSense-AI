@@ -26,7 +26,7 @@ public class JwtUtil {
         return Jwts.builder()
                 .setSubject(agent.getEmail())
                 .claim("role", agent.getRole().name())
-
+                .claim("nom", agent.getNom())
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + expiration))
                 .signWith(Keys.hmacShaKeyFor(secret.getBytes()), SignatureAlgorithm.HS256)
@@ -57,4 +57,15 @@ public class JwtUtil {
                 .parseClaimsJws(token)
                 .getBody();
     }
+    public String generateClientToken(com.example.crediSense.entity.Client client) {
+        return Jwts.builder()
+                .setSubject(client.getEmail())
+                .claim("role", "CLIENT")
+                .claim("id",   client.getId().toString())
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(System.currentTimeMillis() + expiration))
+                .signWith(Keys.hmacShaKeyFor(secret.getBytes()), SignatureAlgorithm.HS256)
+                .compact();
+    }
+
 }

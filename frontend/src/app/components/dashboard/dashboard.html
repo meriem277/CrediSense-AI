@@ -1,27 +1,99 @@
 <!-- dashboard.html -->
 <div class="layout">
-  <app-sidebar></app-sidebar>
 
   <div class="main">
-    <app-header></app-header>
 
     <div class="content">
 
-      <!-- KPI Cards -->
-      <div class="top-bar">
-        <app-dashboard-card></app-dashboard-card>
-        <button class="btn-nouveau-client" (click)="openClientModal()">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-               stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
-            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
-            <circle cx="9" cy="7" r="4"/>
-            <line x1="19" y1="8" x2="19" y2="14"/>
-            <line x1="16" y1="11" x2="22" y2="11"/>
-          </svg>
-          Nouveau Client
-        </button>
-      </div>
+      <!-- Hero header + search bar + KPI cards (tout est dans dashboard-card) -->
+      <app-dashboard-card (onNouveauClient)="openClientModal()"></app-dashboard-card>
+<!-- ══ DOSSIERS PORTAIL CLIENT ══ -->
+<div class="portail-section">
 
+  <div class="portail-header">
+    <h3>Demandes portail client</h3>
+    <button class="btn-refresh" (click)="loadTousDossiers()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+        <polyline points="23 4 23 10 17 10"/>
+        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+      </svg>
+      Actualiser
+    </button>
+  </div>
+
+  <!-- Stats -->
+  <div class="portail-stats">
+    <div class="pstat"><span class="pstat-val">{{ totalPortail }}</span><span class="pstat-label">Total</span></div>
+    <div class="pstat warn"><span class="pstat-val">{{ enAttenteCount }}</span><span class="pstat-label">En attente</span></div>
+    <div class="pstat info"><span class="pstat-val">{{ enCoursCount }}</span><span class="pstat-label">En cours</span></div>
+    <div class="pstat ok"><span class="pstat-val">{{ approuvesCount }}</span><span class="pstat-label">Approuvés</span></div>
+    <div class="pstat ko"><span class="pstat-val">{{ refusesCount }}</span><span class="pstat-label">Refusés</span></div>
+  </div>
+
+  <!-- Filtres -->
+  <div class="portail-filtres">
+    <button [class.active]="filtreStatut==='TOUS'"       (click)="filtreStatut='TOUS'">Tous</button>
+    <button [class.active]="filtreStatut==='EN_ATTENTE'" (click)="filtreStatut='EN_ATTENTE'">En attente</button>
+    <button [class.active]="filtreStatut==='EN_COURS'"   (click)="filtreStatut='EN_COURS'">En cours</button>
+    <button [class.active]="filtreStatut==='APPROUVE'"   (click)="filtreStatut='APPROUVE'">Approuvés</button>
+    <button [class.active]="filtreStatut==='REFUSE'"     (click)="filtreStatut='REFUSE'">Refusés</button>
+  </div>
+
+  <!-- Loading -->
+  <div class="portail-loading" *ngIf="loadingTousDossiers">
+    <span class="spinner"></span> Chargement...
+  </div>
+
+  <!-- Tableau -->
+  <div class="portail-table" *ngIf="!loadingTousDossiers">
+
+    <div class="portail-empty" *ngIf="dossiersPortailFiltres.length === 0">
+      Aucun dossier trouvé
+    </div>
+
+    <table *ngIf="dossiersPortailFiltres.length > 0">
+      <thead>
+        <tr>
+          <th>Client</th>
+          <th>CIN</th>
+          <th>Email</th>
+          <th>Type</th>
+          <th>Statut</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let d of dossiersPortailFiltres">
+          <td>{{ d.clientPrenom }} {{ d.clientNom }}</td>
+          <td>{{ d.clientCin }}</td>
+          <td>{{ d.clientEmail }}</td>
+          <td>{{ d.typeCredit }}</td>
+          <td>
+            <span class="statut-pill" [class]="getStatutPortailClass(d.statut)">
+              {{ getStatutPortailLabel(d.statut) }}
+            </span>
+          </td>
+         <td class="actions-cell">
+  <!-- ✅ EN_ATTENTE et EN_COURS → Prendre en charge -->
+  <button class="btn-prendre"
+          *ngIf="d.statut === 'EN_ATTENTE' || d.statut === 'EN_COURS'"
+          (click)="prendreEnCharge(d.dossierId)">
+    Prendre en charge
+  </button>
+
+  <!-- ✅ APPROUVE ou REFUSE → Traité -->
+  <span *ngIf="d.statut === 'APPROUVE' || d.statut === 'REFUSE'" class="traite">
+    Traité
+  </span>
+</td>
+        </tr>
+      </tbody>
+    </table>
+
+  </div>
+
+</div>
       <!-- Grid principal -->
       <div class="grid">
 
@@ -172,14 +244,13 @@
               <div class="tab-panel" *ngIf="activeTab==='documents'">
                 <div class="panel-grid">
                   <div class="panel-left">
-                    <app-upload-section
-  [cin]="currentCin"
+<!-- ✅ Après -->
+<app-upload-section
   [dossierId]="selectedDossierId"
-  [dossierTypeCredit]="selectedDossier.typeCredit">
+  [cin]="currentCin">
 </app-upload-section>
                   </div>
                   <div class="panel-right">
-                    <!-- ✅ inputs branchés -->
                     <app-chat-assistant
                       [cin]="currentCin"
                       [dossierId]="selectedDossierId">
@@ -190,8 +261,10 @@
 
               <!-- SCORE -->
               <div class="tab-panel" *ngIf="activeTab==='score'">
-                <app-credit-result></app-credit-result>
-              </div>
+<app-credit-result
+  [cin]="currentCin"
+  [dossierId]="selectedDossierId">
+</app-credit-result>              </div>
 
               <!-- ASSISTANT IA -->
               <div class="tab-panel" *ngIf="activeTab==='assistant'">

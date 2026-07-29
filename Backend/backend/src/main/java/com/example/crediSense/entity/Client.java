@@ -23,6 +23,23 @@ public class Client {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
     private String cin;
+    private String nom;
+    private String prenom;
+    @Column(unique = true)
+    private String email;
+    private String password;
+    private String googleId;
+    private String photoUrl;
+    private String provider;
+    @CreationTimestamp
+    private LocalDateTime createdAt;
+    public String getPrenom() {
+        return prenom;
+    }
+
+    public void setPrenom(String prenom) {
+        this.prenom = prenom;
+    }
     public String getCin() {
         return cin;
     }
@@ -31,21 +48,6 @@ public class Client {
         this.cin = cin;
     }
 
-    private String nom;
-
-
-    private String prenom;
-
-    public String getPrenom() {
-        return prenom;
-    }
-
-    public void setPrenom(String prenom) {
-        this.prenom = prenom;
-    }
-
-    @CreationTimestamp
-    private LocalDateTime createdAt;
 
     @OneToMany(mappedBy = "client", cascade = CascadeType.ALL)
     private List<Dossier> dossiers;

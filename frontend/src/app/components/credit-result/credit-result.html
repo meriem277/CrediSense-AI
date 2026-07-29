@@ -27,11 +27,35 @@
 <!-- Result state -->
 <div class="cr-result" *ngIf="!loading && result">
 
+
   <!-- Eligibility header -->
-  <div class="cr-header">
-    <div class="cr-badge" [ngClass]="eligibilityColor">{{ result.eligibility }}</div>
-    <div class="cr-type">{{ result.creditType }}</div>
-  </div>
+<div class="cr-header">
+  <div class="cr-badge" [ngClass]="eligibilityColor">{{ result.eligibility }}</div>
+  <div class="cr-type">{{ result.creditType }}</div>
+
+  <button
+    class="cr-send-btn"
+    [class.sent]="emailSent"
+    [disabled]="sendingEmail || emailSent"
+    (click)="sendResultToClient()">
+    <svg *ngIf="!sendingEmail && !emailSent" width="15" height="15" viewBox="0 0 24 24" fill="none"
+         stroke="currentColor" stroke-width="2" stroke-linecap="round">
+      <path d="M22 2L11 13"/>
+      <path d="M22 2l-7 20-4-9-9-4 20-7z"/>
+    </svg>
+    <span class="cr-send-spinner" *ngIf="sendingEmail" aria-hidden="true"></span>
+    <svg *ngIf="emailSent" width="15" height="15" viewBox="0 0 24 24" fill="none"
+         stroke="currentColor" stroke-width="2" stroke-linecap="round">
+      <polyline points="20 6 9 17 4 12"/>
+    </svg>
+    <span>{{ sendingEmail ? 'Envoi...' : (emailSent ? 'Envoyé' : 'Envoyer la réponse au client') }}</span>
+  </button>
+</div>
+
+<!-- Message de confirmation ou d'erreur -->
+<div class="cr-send-feedback" *ngIf="sendEmailError" role="alert">
+  {{ sendEmailError }}
+</div>
 
   <!-- Score block -->
   <div class="cr-score-block">

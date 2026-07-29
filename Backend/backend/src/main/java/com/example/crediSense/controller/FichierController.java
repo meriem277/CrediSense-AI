@@ -11,6 +11,13 @@ import org.springframework.web.multipart.MultipartFile;
 import com.example.crediSense.Service.FichierService;
 import com.example.crediSense.dto.response.FichierResponse;
 
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
+import jakarta.servlet.http.HttpServletRequest;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -63,4 +70,28 @@ public class FichierController {
         fichierService.delete(id);
         return ResponseEntity.ok("Fichier supprimé avec succès");
     }
+
+    @GetMapping("/view/**")
+    public ResponseEntity<Resource> viewFile(HttpServletRequest request) throws IOException {
+        String uri = request.getRequestURI();
+        String path = uri.substring(uri.indexOf("/view/") + 6);
+
+        Path filePath = Paths.get(path).normalize();
+        Resource resource = new FileSystemResource(filePath);
+
+        if (!resource.exists()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        String contentType = Files.probeContentType(filePath);
+        if (contentType == null) contentType = "application/octet-stream";
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(contentType))
+                .body(resource);
+    }
+
+
+
+
 }

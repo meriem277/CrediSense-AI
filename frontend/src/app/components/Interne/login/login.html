@@ -1,0 +1,190 @@
+<div class="lp-wrap">
+
+  <!-- Panneau gauche — branding -->
+  <div class="lp-left">
+    <div class="brand">
+      <div class="brand-logo">
+        <svg viewBox="0 0 20 20" fill="none">
+          <path d="M10 2L13 7H17L14 11L15.5 16L10 13L4.5 16L6 11L3 7H7L10 2Z" fill="#fff"/>
+        </svg>
+      </div>
+      <span class="brand-name">CrediSense · Attijari</span>
+    </div>
+
+    <div class="lp-tagline">
+      <h2>Analyse de crédit intelligente</h2>
+      <p>Plateforme dédiée aux agents et administrateurs pour le traitement des dossiers de crédit.</p>
+    </div>
+
+    <div class="lp-badges">
+      <div class="badge-row"><div class="badge-dot"></div>Données chiffrées en temps réel</div>
+      <div class="badge-row"><div class="badge-dot"></div>Accès sécurisé par rôle</div>
+      <div class="badge-row"><div class="badge-dot"></div>Conforme aux exigences BAM</div>
+    </div>
+  </div>
+
+  <!-- Panneau droit -->
+  <div class="lp-right">
+
+    <!-- ── Sélecteur de rôle ── -->
+    <div class="role-selector" *ngIf="mode === 'login'">
+      <button class="role-btn" [class.active]="loginMode === 'agent'"
+              (click)="loginMode = 'agent'">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+          <circle cx="12" cy="7" r="4"/>
+        </svg>
+        Espace Agent
+      </button>
+      <button class="role-btn" [class.active]="loginMode === 'admin'"
+              (click)="loginMode = 'admin'">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        </svg>
+        Espace Admin
+      </button>
+    </div>
+
+    <!-- ── LOGIN AGENT ── -->
+    <ng-container *ngIf="mode === 'login' && loginMode === 'agent'">
+      <div class="login-header">
+        <div class="role-icon agent">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+            <circle cx="12" cy="7" r="4"/>
+          </svg>
+        </div>
+        <div>
+          <h1>Espace Agent</h1>
+          <p class="subtitle">Connectez-vous pour traiter les dossiers</p>
+        </div>
+      </div>
+
+      <form [formGroup]="form" (ngSubmit)="submit()">
+        <div class="form-group">
+          <label>Adresse e-mail</label>
+          <div class="input-wrap">
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
+              <rect x="2" y="4" width="16" height="13" rx="2"/>
+              <path d="M2 7l8 5 8-5"/>
+            </svg>
+            <input type="email" formControlName="email" placeholder="agent@attijari.com" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Mot de passe</label>
+          <div class="input-wrap">
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
+              <rect x="4" y="8" width="12" height="10" rx="2"/>
+              <path d="M7 8V6a3 3 0 016 0v2"/>
+            </svg>
+            <input type="password" formControlName="password" placeholder="••••••••" />
+          </div>
+        </div>
+
+        <div class="forgot">
+          <a (click)="mode='forgot'; error=''" style="cursor:pointer;">
+            Mot de passe oublié ?
+          </a>
+        </div>
+
+        <div class="error-msg" *ngIf="error">{{ error }}</div>
+
+        <button type="submit" class="btn-login" [disabled]="form.invalid || loading">
+          {{ loading ? 'Connexion...' : 'Se connecter' }}
+        </button>
+      </form>
+    </ng-container>
+
+    <!-- ── LOGIN ADMIN ── -->
+    <ng-container *ngIf="mode === 'login' && loginMode === 'admin'">
+      <div class="login-header">
+        <div class="role-icon admin">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+        </div>
+        <div>
+          <h1>Espace Admin</h1>
+          <p class="subtitle">Accès réservé aux administrateurs</p>
+        </div>
+      </div>
+
+      <form [formGroup]="form" (ngSubmit)="submit()">
+        <div class="form-group">
+          <label>Adresse e-mail</label>
+          <div class="input-wrap">
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
+              <rect x="2" y="4" width="16" height="13" rx="2"/>
+              <path d="M2 7l8 5 8-5"/>
+            </svg>
+            <input type="email" formControlName="email" placeholder="admin@attijari.com" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Mot de passe</label>
+          <div class="input-wrap">
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
+              <rect x="4" y="8" width="12" height="10" rx="2"/>
+              <path d="M7 8V6a3 3 0 016 0v2"/>
+            </svg>
+            <input type="password" formControlName="password" placeholder="••••••••" />
+          </div>
+        </div>
+
+        <div class="error-msg" *ngIf="error">{{ error }}</div>
+
+        <button type="submit" class="btn-login admin" [disabled]="form.invalid || loading">
+          {{ loading ? 'Connexion...' : 'Accéder au panneau admin' }}
+        </button>
+      </form>
+    </ng-container>
+
+    <!-- ── FORGOT PASSWORD ── -->
+    <ng-container *ngIf="mode === 'forgot'">
+      <div class="login-header">
+        <div class="role-icon agent">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <rect x="3" y="11" width="18" height="11" rx="2"/>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
+        </div>
+        <div>
+          <h1>Mot de passe oublié</h1>
+          <p class="subtitle">Nous vous enverrons un lien valable 15 minutes</p>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Adresse e-mail</label>
+        <div class="input-wrap">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="2" y="4" width="16" height="13" rx="2"/>
+            <path d="M2 7l8 5 8-5"/>
+          </svg>
+          <input type="email" [(ngModel)]="forgotEmail" placeholder="agent@attijari.com" />
+        </div>
+      </div>
+
+      <div class="error-msg"   *ngIf="error">{{ error }}</div>
+      <div class="success-msg" *ngIf="successMsg">{{ successMsg }}</div>
+
+      <button class="btn-login" (click)="onForgotPassword()"
+              [disabled]="loading || !!successMsg">
+        {{ loading ? 'Envoi...' : 'Envoyer le lien' }}
+      </button>
+
+      <button class="btn-back" (click)="mode='login'; error=''; successMsg=''">
+        ← Retour à la connexion
+      </button>
+    </ng-container>
+
+  </div>
+</div>

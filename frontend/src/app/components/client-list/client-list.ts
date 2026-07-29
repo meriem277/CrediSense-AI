@@ -10,18 +10,21 @@ export interface Client {
   prenom: string;
   createdAt: string;
 }
+
 @Component({
   selector: 'app-client-list',
   imports: [CommonModule],
   templateUrl: './client-list.html',
   styleUrl: './client-list.scss',
 })
-export class ClientList  implements OnInit {
+export class ClientList implements OnInit {
   @Output() clientSelected = new EventEmitter<Client>();
+  @Output() createClicked = new EventEmitter<void>();
 
   clients: Client[] = [];
   loading = false;
-  error   = '';
+  error = '';
+  selectedClientId: string | null = null;
 
   constructor(private http: HttpClient) {}
 
@@ -31,7 +34,7 @@ export class ClientList  implements OnInit {
 
   loadClients(): void {
     this.loading = true;
-    this.error   = '';
+    this.error = '';
 
     this.http.get<Client[]>(`${environment.apiUrl}/api/clients`).subscribe({
       next: (data) => {
@@ -39,15 +42,24 @@ export class ClientList  implements OnInit {
         this.loading = false;
       },
       error: () => {
-        this.error   = 'Impossible de charger les clients.';
+        this.error = 'Impossible de charger les clients.';
         this.loading = false;
       }
     });
   }
 
   selectClient(client: Client): void {
+    this.selectedClientId = client.id;
     this.clientSelected.emit(client);
   }
 
+  onCreateClicked(): void {
+    this.createClicked.emit();
+  }
 
+  getInitiales(client: Client): string {
+    const p = client.prenom?.[0] ?? '';
+    const n = client.nom?.[0] ?? '';
+    return (p + n).toUpperCase() || '??';
+  }
 }

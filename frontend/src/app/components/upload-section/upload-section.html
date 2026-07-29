@@ -1,79 +1,58 @@
 <div class="upload">
-  <h3>Téléchargement de Documents</h3>
+  <h3>Documents soumis par le client</h3>
 
-  <!-- Zone de dépôt (intègre la liste des fichiers) -->
-  <div
-    class="upload-box"
-    [class.drag-over]="isDragging"
-    (click)="fileInput.click()"
-    (dragover)="onDragOver($event)"
-    (dragleave)="onDragLeave($event)"
-    (drop)="onDrop($event)">
-
-    <ng-container *ngIf="files.length === 0">
-      <p>Glissez-déposez vos fichiers ici<br>PDF, PNG, JPG, TIFF · max 50 MB</p>
-      <button (click)="fileInput.click(); $event.stopPropagation()">
-        Sélectionner des fichiers
-      </button>
-    </ng-container>
-
-    <div class="file-list-inner" *ngIf="files.length > 0">
-      <div class="file" *ngFor="let entry of files">
-        <span class="file-icon">{{ getIcon(entry.file.name) }}</span>
-
-        <div class="file-info">
-          <span class="file-name">{{ entry.file.name }}</span>
-          <span class="file-size">{{ formatSize(entry.file.size) }}</span>
-
-          <div class="progress-bar">
-            <div class="progress-fill" [style.width.%]="entry.progress"></div>
-          </div>
-
-          <span
-            class="file-status"
-            [class.status-done]="entry.status === 'done'"
-            [class.status-error]="entry.status === 'error'"
-          >
-            {{ getStatusLabel(entry.status) }}
-          </span>
-        </div>
-
-        <div class="file-actions">
-          <button class="btn-add-more" (click)="fileInput.click(); $event.stopPropagation()">Ajouter</button>
-          <button class="btn-remove" (click)="removeFile(entry.id)">✕</button>
-        </div>
-      </div>
-    </div>
-
-    <input
-      #fileInput
-      type="file"
-      multiple
-      accept=".pdf,.png,.jpg,.jpeg,.docx"
-      style="display:none"
-      (change)="onFileSelected($event)"
-    />
+  <!-- Loading -->
+  <div class="loading-state" *ngIf="loading">
+    <div class="spinner"></div>
+    <p>Chargement des documents...</p>
   </div>
 
-  <!-- Toast notifications (fixed, not part of the upload box) -->
-  <div class="toast-area">
-    <div
-      class="toast"
-      *ngFor="let toast of toasts"
-      [class.toast-success]="toast.type === 'success'"
-      [class.toast-error]="toast.type === 'error'"
-    >
-      {{ toast.message }}
+  <!-- Aucun document -->
+  <div class="empty-state" *ngIf="!loading && fichiers.length === 0">
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none"
+         stroke="#ddd" stroke-width="1.5" stroke-linecap="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+      <polyline points="14 2 14 8 20 8"/>
+    </svg>
+    <p>Aucun document soumis pour ce dossier</p>
+  </div>
+
+  <!-- Liste des fichiers -->
+  <div class="fichiers-list" *ngIf="!loading && fichiers.length > 0">
+    <div class="fichier-item" *ngFor="let f of fichiers">
+
+      <div class="fichier-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+        </svg>
+      </div>
+
+      <div class="fichier-info">
+        <span class="fichier-nom">{{ f.nomOriginal }}</span>
+        <span class="fichier-type">{{ f.typeDocument }}</span>
+        <span class="fichier-date">{{ f.createdAt | slice:0:10 }}</span>
+      </div>
+
+      <div class="fichier-actions">
+        <a [href]="getFileUrl(f.cheminPdf)" target="_blank"
+           class="btn-voir" *ngIf="f.cheminPdf">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+          Voir
+        </a>
+      </div>
+
     </div>
   </div>
 
   <!-- Actions -->
-  <div class="actions" *ngIf="files.length > 0">
-    <button class="secondary" [disabled]="!allDone" (click)="handleAnalyse()">
-      Analyser
-    </button>
-    <button class="primary" [disabled]="!allDone" (click)="handleScore()">
-      Score Crédit
-    </button>
+  <div class="actions" *ngIf="fichiers.length > 0">
+    <button class="secondary" (click)="handleAnalyse()">Analyser</button>
+    <button class="primary"   (click)="handleScore()">Score Crédit</button>
   </div>
 </div>

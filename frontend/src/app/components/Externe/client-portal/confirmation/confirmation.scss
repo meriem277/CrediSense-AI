@@ -1,0 +1,192 @@
+/* confirmation.scss */
+
+.confirmation-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #1A1A2E 0%, #16213E 50%, #dfe4ea 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.confirmation-card {
+  background: #fff;
+  border-radius: 20px;
+  padding: 48px 40px;
+  width: 100%;
+  max-width: 560px;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.3);
+  text-align: center;
+}
+
+/* ── Icône succès ── */
+.success-icon {
+  margin-bottom: 24px;
+}.dossier-id {
+  background: #fff7ed;
+  border: 1.5px solid #fed7aa;
+  border-radius: 8px;
+  padding: 10px 14px;
+}
+
+.dossier-num {
+  color: #f47920;
+  font-family: monospace;
+  font-size: 14px;
+  letter-spacing: 0.5px;
+}
+
+.success-circle {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #1e8449, #27ae60);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+  box-shadow: 0 8px 24px rgba(30,132,73,0.35);
+  animation: popIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes popIn {
+  0%   { transform: scale(0); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* ── Titre ── */
+.confirmation-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1a1a2e;
+  margin: 0 0 10px;
+}
+
+.confirmation-subtitle {
+  font-size: 15px;
+  color: #666;
+  margin: 0 0 28px;
+  line-height: 1.6;
+
+  strong { color: #1a1a2e; }
+}
+
+/* ── Info box ── */
+.info-box {
+  background: #fff8f3;
+  border: 1px solid #ffd8bc;
+  border-radius: 12px;
+  padding: 18px 20px;
+  margin-bottom: 28px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.info-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13.5px;
+  color: #555;
+  line-height: 1.5;
+
+  svg { flex-shrink: 0; margin-top: 1px; }
+  strong { color: #1a1a2e; }
+}
+
+/* ── Étapes ── */
+.next-steps {
+  text-align: left;
+  margin-bottom: 32px;
+
+  h3 {
+    font-size: 14px;
+    font-weight: 700;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin: 0 0 16px;
+  }
+}
+
+.steps-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.step-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.step-num {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #f47920;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.step-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+
+  strong { font-size: 14px; color: #1a1a2e; }
+  span   { font-size: 12.5px; color: #888; }
+}
+
+/* ── Boutons ── */
+.confirmation-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.btn-secondary {
+  flex: 1;
+  padding: 12px;
+  background: #f5f5f5;
+  border: 1px solid #e0e0e0;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #666;
+  cursor: pointer;
+  transition: background 0.15s;
+
+  &:hover { background: #ebebeb; }
+}
+
+.btn-primary {
+  flex: 1;
+  padding: 12px;
+  background: #f47920;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(244,121,32,0.3);
+  transition: background 0.15s;
+
+  &:hover { background: #d96b18; }
+}
+
+/* ── Footer ── */
+.footer-text {
+  color: rgba(255,255,255,0.4);
+  font-size: 12px;
+  margin-top: 24px;
+}

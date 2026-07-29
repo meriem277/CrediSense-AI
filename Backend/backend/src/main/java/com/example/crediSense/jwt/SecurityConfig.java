@@ -7,6 +7,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -17,14 +18,13 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+
 import java.util.List;
 
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
 @RequiredArgsConstructor
-
 public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
@@ -36,20 +36,50 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+
+                        // ── OPTIONS (CORS preflight) ──────────────────────────
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+                        // ── Swagger ───────────────────────────────────────────
+                        .requestMatchers(
+                                "/swagger-ui/**",
+                                "/v3/api-docs/**",
+                                "/swagger-ui.html"
+                        ).permitAll()
+
+                        // ── Auth agents / admins ──────────────────────────────
                         .requestMatchers("/api/auth/login").permitAll()
                         .requestMatchers("/api/auth/init-admin").permitAll()
-                        .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
-                        .requestMatchers("/api/fichiers/**").permitAll()
-                        .requestMatchers("/api/dossiers/**").permitAll()
-                        .requestMatchers("/api/chatbot/**").permitAll()  // ← ajouter
+                        .requestMatchers("/api/auth/register").hasRole("ADMIN")
+                        .requestMatchers("/api/auth/forgot-password").permitAll()
+                        .requestMatchers("/api/auth/reset-password").permitAll()
 
+                        // ── Auth clients (portail) ────────────────────────────
+                        .requestMatchers("/api/client-auth/**").permitAll()
+
+                        // ── Portail client (public) ───────────────────────────
+                        .requestMatchers("/api/public/**").permitAll()
+                        .requestMatchers("/api/clients/historique").permitAll()
+                        .requestMatchers("/api/clients/**").permitAll()
+
+                        // ── Fichiers & chatbot ────────────────────────────────
+                        .requestMatchers("/api/fichiers/**").permitAll()
+                        .requestMatchers("/api/fichiers/view/**").permitAll()  // ✅ ajoutez
+                        .requestMatchers("/api/chatbot/**").permitAll()
+
+                        // ── Dossiers → agents et admins seulement ────────────
+                        .requestMatchers("/api/dossiers/**").authenticated()
+                        // ── Admin ─────────────────────────────────────────────
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
+
+                        // ── Tout le reste → authentifié ───────────────────────
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+
         return http.build();
     }
+
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
@@ -67,11 +97,11 @@ public class SecurityConfig {
         source.registerCorsConfiguration("/**", config);
         return source;
     }
+
     @Bean
     public UserDetailsService userDetailsService() {
         return username -> {
             throw new UsernameNotFoundException("Use JWT authentication");
-        };}}
-
-
-
+        };
+    }
+}

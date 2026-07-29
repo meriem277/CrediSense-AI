@@ -144,6 +144,7 @@ public class FichierServiceImpl implements FichierService {
         FichierResponse response = new FichierResponse();
         response.setId(f.getId());
         response.setCin(f.getCin());
+        response.setTypeDocument(f.getTypeDocument());
         response.setNomOriginal(f.getNomOriginal());
         response.setTypeOriginal(f.getTypeOriginal());
         response.setCheminPdf(f.getCheminPdf());

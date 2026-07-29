@@ -2,59 +2,65 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Subscription } from 'rxjs';
 import { CreditStateService } from '../../services/credit-state.service';
 import { CommonModule } from '@angular/common';
-import { Sidebar }       from '../sidebar/sidebar';
-import { Header }        from '../header/header';
 import { UploadSection } from '../upload-section/upload-section';
-import { HistoryList }   from '../history-list/history-list';
+import { HistoryList }   from '../Interne/history-list/history-list';
 import { CreditResult }  from '../credit-result/credit-result';
-import { ChatAssistant } from '../chat-assistant/chat-assistant';
-import { ExportButton }  from '../export-button/export-button';
+import { ChatAssistant } from '../Interne/chat-assistant/chat-assistant';
+import { ExportButton }  from '../Interne/export-button/export-button';
 import { DashboardCard } from '../dashboard-card/dashboard-card';
 import { ClientModal, ClientResponse } from '../client-modal/client-modal';
 import { ClientList, Client }          from '../client-list/client-list';
-
-// ✅ Import du composant avec alias pour éviter le conflit de nom
-import { Dossier as DossierComponent } from '../dossier/dossier';
-
-// ✅ Import du type depuis le model
+import { Dossier as DossierComponent } from '../Interne/dossier/dossier';
 import { Dossier as DossierModel }     from '../../models/dossier.model';
-
-import { DossierService } from '../../services/dossier.service';
+import { DossierService } from '../../services/Interne/dossier.service';
+import { HttpClient } from '@angular/common/http';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
   imports: [
     CommonModule,
-    Sidebar, Header, UploadSection, HistoryList,
+    UploadSection, HistoryList,
     CreditResult, ChatAssistant, ExportButton, DashboardCard,
     ClientModal, ClientList,
-    DossierComponent,   // ✅ le composant avec son alias
+    DossierComponent,
   ],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.scss',
 })
 export class Dashboard implements OnInit, OnDestroy {
 
-  // ── Modals ─────────────────────────────────────────────
+  today = new Date();
+
+  // ── Modals ──────────────────────────────────────────────
   showClientModal  = false;
   showDossierModal = false;
 
-  // ── Niveau 1 : Client sélectionné ──────────────────────
+  // ── Niveau 1 : Client sélectionné ───────────────────────
   selectedClient: Client | null = null;
 
-  // ── Niveau 2 : Dossiers du client ──────────────────────
-  dossiers: DossierModel[] = [];           // ✅ type DossierModel
+  // ── Niveau 2 : Dossiers du client ───────────────────────
+  dossiers: DossierModel[] = [];
   loadingDossiers = false;
 
-  // ── Niveau 3 : Dossier sélectionné ─────────────────────
-  selectedDossier: DossierModel | null = null;  // ✅ type DossierModel
+  // ── Niveau 3 : Dossier sélectionné ──────────────────────
+  selectedDossier: DossierModel | null = null;
   currentCin = '';
   activeTab: 'documents' | 'score' | 'assistant' | 'historique' = 'documents';
 
+  // ✅ Nouveaux — dossiers clients portail
+  tousLesDossiers: any[] = [];
+  loadingTousDossiers = false;
+  filtreStatut = 'TOUS';
+
   private subs = new Subscription();
 
-  constructor(private dossierService: DossierService, private creditState: CreditStateService) {}
+  constructor(
+    private dossierService: DossierService,
+    private creditState: CreditStateService,
+      private http: HttpClient
+  ) {}
 
   ngOnInit(): void {
     this.subs.add(
@@ -65,11 +71,13 @@ export class Dashboard implements OnInit, OnDestroy {
         }
       })
     );
+    // ✅ Charge les dossiers portail client au démarrage
+    this.loadTousDossiers();
   }
 
   ngOnDestroy(): void { this.subs.unsubscribe(); }
 
-  // ── Sélection client ────────────────────────────────────
+  // ── Sélection client ─────────────────────────────────────
   onClientSelected(client: Client): void {
     this.selectedClient  = client;
     this.currentCin      = client.cin;
@@ -78,7 +86,7 @@ export class Dashboard implements OnInit, OnDestroy {
     this.loadDossiers(client.id);
   }
 
-  // ── Chargement dossiers ─────────────────────────────────
+  // ── Chargement dossiers agent ────────────────────────────
   loadDossiers(clientId: string): void {
     this.loadingDossiers = true;
     this.dossierService.getByClientId(clientId).subscribe({
@@ -87,13 +95,124 @@ export class Dashboard implements OnInit, OnDestroy {
     });
   }
 
-  // ── Sélection dossier ───────────────────────────────────
- selectDossier(dossier: DossierModel): void {
-  this.selectedDossier = dossier;
-  this.activeTab       = 'documents';
-  console.log('Dossier sélectionné :', dossier.id);
+  // ✅ Chargement dossiers portail client (soumis par les clients)
+  loadTousDossiers(): void {
+    this.loadingTousDossiers = true;
+    this.dossierService.getAllPortail().subscribe({
+      next:  (data) => { this.tousLesDossiers = data; this.loadingTousDossiers = false; },
+      error: ()     => { this.loadingTousDossiers = false; }
+    });
+  }
+
+  // ✅ Dossiers filtrés par statut
+  get dossiersPortailFiltres(): any[] {
+    if (this.filtreStatut === 'TOUS') return this.tousLesDossiers;
+    return this.tousLesDossiers.filter(d => d.statut === this.filtreStatut);
+  }
+
+  // ✅ Stats dossiers portail
+  get totalPortail()    { return this.tousLesDossiers.length; }
+  get enAttenteCount()  { return this.tousLesDossiers.filter(d => d.statut === 'EN_ATTENTE').length; }
+  get enCoursCount()    { return this.tousLesDossiers.filter(d => d.statut === 'EN_COURS').length; }
+  get approuvesCount()  { return this.tousLesDossiers.filter(d => d.statut === 'APPROUVE').length; }
+  get refusesCount()    { return this.tousLesDossiers.filter(d => d.statut === 'REFUSE').length; }
+
+  // ✅ Actions agent sur dossiers portail
+ prendreEnCharge(dossierId: string): void {
+  this.dossierService.updateStatut(dossierId, 'EN_COURS').subscribe({
+    next: () => {
+      this.loadTousDossiers();
+
+      const dossierPortail = this.tousLesDossiers.find(d => d.dossierId === dossierId);
+      if (!dossierPortail) return;
+
+      // ✅ Sélectionne le client
+      const client: Client = {
+        id:        dossierPortail.clientId || '',
+        cin:       dossierPortail.clientCin,
+        nom:       dossierPortail.clientNom,
+        prenom:    dossierPortail.clientPrenom,
+        createdAt: ''
+      };
+      this.selectedClient = client;
+      this.currentCin     = dossierPortail.clientCin;
+
+      // ✅ Sélectionne directement le dossier
+      const dossierModel: DossierModel = {
+        id:         dossierId,
+        typeCredit: dossierPortail.typeCredit,
+        statut:     'EN_COURS',
+       createdAt:  '',
+        clientId:   dossierPortail.clientId || ''  // ✅ clientId au lieu de client
+      };
+      this.selectedDossier = dossierModel;
+      this.activeTab       = 'documents';  // ✅ ouvre l'onglet documents
+    }
+  });
 }
-  // ── Retours navigation ──────────────────────────────────
+
+// ✅ Nouvelle méthode — charge les dossiers par email client
+loadDossiersByEmail(email: string): void {
+  this.loadingDossiers = true;
+  this.http.get<any[]>(
+    `${environment.apiUrl}/api/clients/historique?email=${email}`
+  ).subscribe({
+    next: (data) => {
+      // ✅ Convertit les dossiers portail en DossierModel
+      this.dossiers = data.map(d => ({
+        id:         d.dossierId,
+        clientId:   d.clientId ?? d.client_id ?? '',
+        typeCredit: d.typeCredit,
+        statut:     d.statut,
+        createdAt:  d.createdAt ?? null,
+        client:     null
+      }));
+      this.loadingDossiers = false;
+    },
+    error: () => { this.loadingDossiers = false; }
+  });
+}
+
+  approuverDossier(id: string): void {
+    this.dossierService.updateStatut(id, 'APPROUVE').subscribe({
+      next: () => this.loadTousDossiers()
+    });
+  }
+
+  refuserDossier(id: string): void {
+    this.dossierService.updateStatut(id, 'REFUSE').subscribe({
+      next: () => this.loadTousDossiers()
+    });
+  }
+
+  getStatutPortailClass(statut: string): string {
+    switch (statut) {
+      case 'EN_ATTENTE': return 'statut-attente';
+      case 'EN_COURS':   return 'statut-cours';
+      case 'APPROUVE':   return 'statut-approuve';
+      case 'REFUSE':     return 'statut-refuse';
+      default:           return '';
+    }
+  }
+
+  getStatutPortailLabel(statut: string): string {
+    switch (statut) {
+      case 'EN_ATTENTE': return 'En attente';
+      case 'EN_COURS':   return 'En cours';
+      case 'APPROUVE':   return 'Approuvé';
+      case 'REFUSE':     return 'Refusé';
+      default:           return statut;
+    }
+  }
+
+  // ── Sélection dossier ─────────────────────────────────────
+  selectDossier(dossier: DossierModel): void {
+    this.selectedDossier = dossier;
+    this.activeTab       = 'documents';
+    console.log('Dossier sélectionné :', dossier.id);
+  }
+
+  // ── Retours navigation ────────────────────────────────────
   backToDossiers(): void { this.selectedDossier = null; }
 
   backToClients(): void {
@@ -102,7 +221,7 @@ export class Dashboard implements OnInit, OnDestroy {
     this.dossiers        = [];
   }
 
-  // ── Modal client ────────────────────────────────────────
+  // ── Modal client ──────────────────────────────────────────
   openClientModal():  void { this.showClientModal = true;  }
   closeClientModal(): void { this.showClientModal = false; }
 
@@ -117,16 +236,16 @@ export class Dashboard implements OnInit, OnDestroy {
     this.loadDossiers(client.id);
   }
 
-  // ── Modal dossier ───────────────────────────────────────
+  // ── Modal dossier ─────────────────────────────────────────
   openDossierModal():  void { this.showDossierModal = true;  }
   closeDossierModal(): void { this.showDossierModal = false; }
 
-  onDossierCreated(dossier: DossierModel): void {  // ✅ type DossierModel
+  onDossierCreated(dossier: DossierModel): void {
     this.dossiers.unshift(dossier);
     this.selectDossier(dossier);
   }
 
-  // ── Helpers ─────────────────────────────────────────────
+  // ── Helpers ──────────────────────────────────────────────
   getInitiales(client: Client): string {
     return (client.prenom?.[0] ?? '') + (client.nom?.[0] ?? '');
   }
@@ -147,10 +266,10 @@ export class Dashboard implements OnInit, OnDestroy {
     };
     return map[statut] ?? 'pending';
   }
+
   get selectedDossierId(): string {
- const id = this.selectedDossier?.id ?? '';
-  console.log('selectedDossierId getter:', id);
-  return id;}
-
-
+    const id = this.selectedDossier?.id ?? '';
+    console.log('selectedDossierId getter:', id);
+    return id;
+  }
 }

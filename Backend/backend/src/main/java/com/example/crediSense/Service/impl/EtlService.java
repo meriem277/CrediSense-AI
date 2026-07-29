@@ -27,7 +27,8 @@ public class EtlService {
     private final Textcleaningservice textCleaningService;
     private final OcrResultService    ocrResultService;
     private final Doctrclientservice  doctrClientService;
-    private final GroqService         groqService;         // ← AJOUT
+    private final GroqService         groqService;
+    private final NlpClientService    nlpClientService;   // ← AJOUT
 
     private static final Set<String> IMAGE_TYPES = Set.of("jpg", "jpeg", "png");
 
@@ -64,12 +65,21 @@ public class EtlService {
         OcrResultResponse result = ocrResultService.create(request);
         log.info("LOAD OcrResult terminé — id={}", result.getId());
 
+        // ── NLP — Classification du document ─────────────────────────────────
+        try {
+            String typeDocument = nlpClientService.classifierDocument(texteNettoye);
+            fichier.setTypeDocument(typeDocument);
+            fichierRepository.save(fichier);
+            log.info("NLP Classification → typeDocument={}", typeDocument);
+        } catch (Exception e) {
+            log.error("Erreur NLP (non bloquante) : {}", e.getMessage());
+        }
+
         // ── GROQ — Extraction JSON ────────────────────────────────────────────
         try {
             groqService.extraireJson(fichierId);
             log.info("GROQ extraction terminée pour fichierId={}", fichierId);
         } catch (Exception e) {
-            // GROQ ne bloque pas le pipeline — on log et on continue
             log.error("Erreur GROQ (non bloquante) : {}", e.getMessage());
         }
 

@@ -1,16 +1,82 @@
-<div class="cards">
-  <div class="card">
-    <h4>Dossiers traités</h4>
-    <p class="value">128</p>
+<div class="hero-header">
+
+  <div class="hero-top">
+    <div>
+      <h1>Tableau de bord</h1>
+      <p class="subtitle">Aperçu de l'activité crédit · {{ today | date:'d MMMM yyyy' }}</p>
+    </div>
+    <div class="header-actions">
+      <button class="icon-btn">
+        🔔<span class="ping"></span>
+      </button>
+      <button class="icon-btn">⚙️</button>
+      <button class="btn-nouveau-client" (click)="onNouveauClient.emit()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <line x1="19" y1="8" x2="19" y2="14"/>
+          <line x1="16" y1="11" x2="22" y2="11"/>
+        </svg>
+        Nouveau Client
+      </button>
+    </div>
   </div>
 
-  <div class="card">
-    <h4>Taux d'approbation</h4>
-    <p class="value">74%</p>
+  <!-- SEARCH BAR -->
+  <div class="search-wrap">
+    <div class="search-bar">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+        <circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>
+      </svg>
+      <input type="text" placeholder="Rechercher un dossier, un client, une référence...">
+      <button class="search-btn">Rechercher</button>
+    </div>
   </div>
 
-  <div class="card">
-    <h4>Dossiers refusés</h4>
-    <p class="value">33</p>
+  <!-- KPI CARDS -->
+  <div class="cards">
+
+    <div class="card">
+      <div class="card-top">
+        <h4>Dossiers traités</h4>
+        <span class="trend up">+12%</span>
+      </div>
+      <p class="value">{{ dossiersTraites }}</p>
+      <svg class="sparkline" viewBox="0 0 120 36" preserveAspectRatio="none">
+        <polyline
+          points="0,28 15,24 30,26 45,18 60,20 75,12 90,14 105,6 120,8"
+          fill="none" stroke="#fff" stroke-width="2.5"
+          stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+    </div>
+
+    <div class="card">
+      <h4>Taux d'approbation</h4>
+      <div class="donut-row">
+        <svg viewBox="0 0 80 80" width="78" height="78">
+          <circle cx="40" cy="40" r="32" fill="none" stroke="rgba(255,255,255,.2)" stroke-width="10"/>
+          <circle #donutCircle cx="40" cy="40" r="32" fill="none"
+            stroke="#fff" stroke-width="10" stroke-linecap="round"
+            stroke-dasharray="201" stroke-dashoffset="201"
+            transform="rotate(-90 40 40)" class="donut-progress"/>
+        </svg>
+        <div class="donut-value">{{ tauxApprobation }}%</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-top">
+        <h4>Dossiers refusés</h4>
+        <span class="trend down">-4%</span>
+      </div>
+      <p class="value">{{ dossiersRefuses }}</p>
+      <div class="compare-bar">
+        <div #barFill class="bar-fill"></div>
+      </div>
+      <span class="compare-label">26% du total des dossiers</span>
+    </div>
+
   </div>
+
 </div>

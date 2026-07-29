@@ -1,0 +1,96 @@
+<div class="confirmation-page">
+
+  <div class="confirmation-card">
+
+    <!-- Icône succès animée -->
+    <div class="success-icon">
+      <div class="success-circle">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none"
+             stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+      </div>
+    </div>
+
+    <!-- Titre -->
+
+
+    <h1 class="confirmation-title">Votre dossier numéro: <strong class="dossier-num">{{ dossierId }}</strong>soumis avec succès !</h1>
+    <p class="confirmation-subtitle">
+      Merci <strong>{{ client.prenom }} {{ client.nom }}</strong>, votre demande de crédit consommation
+      a bien été enregistrée.
+    </p>
+
+
+    <!-- Infos dossier -->
+    <div class="info-box">
+      <div class="info-row">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+             stroke="#f47920" stroke-width="2" stroke-linecap="round">
+          <circle cx="12" cy="12" r="10"/>
+          <polyline points="12 6 12 12 16 14"/>
+        </svg>
+        <span>Un agent AttijariBank vous contactera <strong>sous 48 heures ouvrables</strong></span>
+      </div>
+      <div class="info-row">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+             stroke="#f47920" stroke-width="2" stroke-linecap="round">
+          <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07"/>
+          <path d="M11 11a5 5 0 0 0-7.08 7.08l1.41 1.41"/>
+        </svg>
+        <span>Vous serez contacté par email ou téléphone pour la suite</span>
+      </div>
+      <div class="info-row">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+             stroke="#f47920" stroke-width="2" stroke-linecap="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+        </svg>
+        <span>Conservez vos documents originaux — ils peuvent être demandés en agence</span>
+      </div>
+    </div>
+
+    <!-- Étapes suivantes -->
+    <div class="next-steps">
+      <h3>Prochaines étapes</h3>
+      <div class="steps-list">
+        <div class="step-item">
+          <div class="step-num">1</div>
+          <div class="step-text">
+            <strong>Analyse de votre dossier</strong>
+            <span>Nos agents IA vérifient vos documents sous 24h</span>
+          </div>
+        </div>
+        <div class="step-item">
+          <div class="step-num">2</div>
+          <div class="step-text">
+            <strong>Score de crédit calculé</strong>
+            <span>Évaluation de votre capacité de remboursement</span>
+          </div>
+        </div>
+        <div class="step-item">
+          <div class="step-num">3</div>
+          <div class="step-text">
+            <strong>Décision et notification</strong>
+            <span>Vous recevez la décision par email sous 48h</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Boutons -->
+    <div class="confirmation-actions">
+      <button class="btn-secondary" (click)="retourAccueil()">
+        Retour à l'accueil
+      </button>
+      <button class="btn-primary" (click)="nouvelleDemandeOuSuivi()">
+        Nouvelle demande
+      </button>
+    </div>
+
+  </div>
+
+  <!-- Footer -->
+  <p class="footer-text">Attijariwafa Bank — Crédit Consommation en ligne</p>
+
+</div>

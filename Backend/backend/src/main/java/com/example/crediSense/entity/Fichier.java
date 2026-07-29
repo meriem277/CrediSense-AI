@@ -21,6 +21,8 @@ public class Fichier {
     private String cin;
     private String nomOriginal;
     private String typeOriginal;
+    private String typeDocument;
+
     private String cheminPdf;
 
     @CreationTimestamp

@@ -8,4 +8,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import com.example.crediSense.entity.Client;
 public interface ClientRepository extends JpaRepository<Client, UUID> {
     Optional<Client> findByCin(String cin);
+    Optional<Client> findByEmail(String email);
+    Optional<Client> findByGoogleId(String googleId);
+    boolean existsByEmail(String email);
+    // ✅ Utilisez findByEmail qui retourne Optional — normalement déjà le cas
 }

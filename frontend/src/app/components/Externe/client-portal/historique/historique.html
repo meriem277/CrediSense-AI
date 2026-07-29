@@ -1,0 +1,86 @@
+<div class="historique-page">
+
+  <div class="hist-header">
+    <div class="brand-block">
+      <img src="images/logo-attijaribank.png" alt="Attijari Logo" class="logo-img" />
+      <div>
+        <div class="brand-sub">Portail client</div>
+      </div>
+    </div>
+
+    <div class="header-right">
+      <div class="client-info">
+        <span class="client-nom">{{ clientNom }}</span>
+        <span class="client-role">Client particulier</span>
+      </div>
+      <div class="client-avatar">{{ clientInitiales }}</div>
+      <button class="btn-logout" (click)="logout()">Déconnexion</button>
+    </div>
+  </div>
+
+  <div class="hist-content">
+
+    <div class="page-head">
+      <div>
+        <h1>Mes demandes</h1>
+        <p>Suivez l'état de vos dossiers de crédit</p>
+      </div>
+      <button class="btn-nouvelle" (click)="nouvelleDemande()">
+        + Nouvelle demande
+      </button>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-row" *ngIf="!loading && dossiers.length > 0">
+      <div class="stat-card">
+        <div class="stat-label">Total dossiers</div>
+    <div class="stat-value orange">{{ totalDossiers }}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">En attente</div>
+      <div class="stat-value">{{ enAttente }}</div>
+ </div>
+      <div class="stat-card">
+        <div class="stat-label">Approuvés</div>
+<div class="stat-value">{{ approuves }}</div>
+
+      </div>
+    </div>
+
+    <div *ngIf="loading" class="hist-loading">
+      <div class="spinner-lg"></div>
+      <p>Chargement de vos dossiers...</p>
+    </div>
+
+    <div *ngIf="errorMsg" class="alert-error">{{ errorMsg }}</div>
+
+    <div *ngIf="!loading && dossiers.length === 0" class="hist-empty">
+      <p>Aucune demande trouvée</p>
+      <button class="btn-nouvelle" (click)="nouvelleDemande()">
+        Faire une première demande
+      </button>
+    </div>
+
+    <div *ngIf="!loading && dossiers.length > 0" class="dossiers-grid">
+      <div *ngFor="let d of dossiers" class="dossier-card">
+        <div class="card-top">
+          <div class="card-icon">📄</div>
+          <span class="statut-badge" [class]="getStatutClass(d.statut)">
+            {{ getStatutLabel(d.statut) }}
+          </span>
+        </div>
+        <div class="card-mid">
+          <div class="card-title">Crédit {{ d.typeCredit }}</div>
+          <div class="card-id">N° {{ d.dossierId | slice:0:8 }}...</div>
+        </div>
+        <div class="card-bot">
+          <span class="card-date">Dossier soumis</span>
+          <span class="card-link">Voir détails →</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <p class="hist-footer">Attijari Bank — Crédit Consommation en ligne</p>
+</div>

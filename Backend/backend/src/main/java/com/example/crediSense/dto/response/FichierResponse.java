@@ -10,6 +10,8 @@ public class FichierResponse {
     private String cin;
     private String nomOriginal;
     private String typeOriginal;
+    private String typeDocument;
+
     private String cheminPdf;
     private UUID agentId;
     private LocalDateTime createdAt;

@@ -8,6 +8,7 @@ public class FichierRequest {
      private String cin;
     private String nomOriginal;
     private String typeOriginal;
+    private String typeDocument;
     private String cheminPdf;
     private UUID agentId;
     private UUID dossierId;

@@ -1,0 +1,87 @@
+<div class="page">
+  <div class="card">
+    <h1>Créer un compte agent</h1>
+    <p class="sub">Réservé aux administrateurs</p>
+
+    <div class="alert-success" *ngIf="success">{{ success }}</div>
+    <div class="alert-error"   *ngIf="error">{{ error }}</div>
+
+    <form [formGroup]="form" (ngSubmit)="submit()">
+
+      <div class="field">
+        <label>Nom complet</label>
+        <input type="text" formControlName="nom" placeholder="Jean Dupont" />
+        <span class="err" *ngIf="form.get('nom')?.invalid && form.get('nom')?.touched">
+          Champ requis
+        </span>
+      </div>
+
+      <div class="field">
+        <label>Email</label>
+        <input type="email" formControlName="email" placeholder="agent@attijari.com" />
+        <span class="err" *ngIf="form.get('email')?.invalid && form.get('email')?.touched">
+          Email invalide
+        </span>
+      </div>
+
+      <div class="field">
+        <label>Mot de passe</label>
+        <input type="password" formControlName="password" placeholder="Min. 8 caractères" />
+
+        <!-- ✅ Barre de force -->
+        <div class="pwd-strength" *ngIf="form.get('password')?.value">
+          <div class="pwd-bar">
+            <div class="pwd-fill"
+                 [style.width.%]="passwordStrength.percent"
+                 [style.background]="passwordStrength.color">
+            </div>
+          </div>
+          <span class="pwd-label" [style.color]="passwordStrength.color">
+            {{ passwordStrength.label }}
+          </span>
+        </div>
+
+        <!-- ✅ Règles -->
+        <div class="pwd-rules" *ngIf="pwdTouched && form.get('password')?.value">
+          <div class="pwd-rule" [class.ok]="!pwdErrors['minLength']">
+            <span>{{ !pwdErrors['minLength'] ? '✓' : '✗' }}</span> 8 caractères minimum
+          </div>
+          <div class="pwd-rule" [class.ok]="!pwdErrors['uppercase']">
+            <span>{{ !pwdErrors['uppercase'] ? '✓' : '✗' }}</span> Une majuscule
+          </div>
+          <div class="pwd-rule" [class.ok]="!pwdErrors['digit']">
+            <span>{{ !pwdErrors['digit'] ? '✓' : '✗' }}</span> Un chiffre
+          </div>
+          <div class="pwd-rule" [class.ok]="!pwdErrors['special']">
+            <span>{{ !pwdErrors['special'] ? '✓' : '✗' }}</span> Un caractère spécial
+          </div>
+        </div>
+      </div>
+      <div class="field">
+  <label>Confirmer le mot de passe</label>
+  <input type="password" formControlName="confirmPassword" placeholder="••••••••" />
+  <span class="err" *ngIf="form.get('confirmPassword')?.touched && form.get('confirmPassword')?.value !== form.get('password')?.value">
+    Les mots de passe ne correspondent pas
+  </span>
+</div>
+
+      <div class="field">
+        <label>Rôle</label>
+        <select formControlName="role">
+          <option value="AGENT">Agent</option>
+          <option value="ADMIN">Admin</option>
+        </select>
+      </div>
+
+      <button type="submit" [disabled]="loading || form.invalid">
+        {{ loading ? 'Création...' : 'Créer le compte' }}
+      </button>
+
+    </form>
+
+    <p class="switch">
+      Déjà un compte ?
+      <a routerLink="/login">Se connecter</a>
+    </p>
+  </div>
+</div>

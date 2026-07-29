@@ -1,8 +1,10 @@
-import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef, Input } from '@angular/core';
 import { CommonModule }                  from '@angular/common';
+import { HttpClient }                    from '@angular/common/http';
 import { Subscription, combineLatest }   from 'rxjs';
 import { CreditAnalysisResult }          from '../../models/credit-analysis-result.model';
 import { CreditStateService }            from '../../services/credit-state.service';
+import { environment }                   from '../../../environments/environment';
 
 @Component({
   selector: 'app-credit-result',
@@ -12,11 +14,23 @@ import { CreditStateService }            from '../../services/credit-state.servi
   styleUrl:    './credit-result.scss',
 })
 export class CreditResult implements OnInit, OnDestroy {
+  @Input() dossierId: string | null = null;
+  @Input() cin: string | null = null;
+
   result:  CreditAnalysisResult | null = null;
   loading  = false;
   private subs = new Subscription();
 
-  constructor(private creditState: CreditStateService, private cdr: ChangeDetectorRef) {}
+  // ── Envoi du résultat au client ──
+  sendingEmail = false;
+  emailSent = false;
+  sendEmailError = '';
+
+  constructor(
+    private creditState: CreditStateService,
+    private cdr: ChangeDetectorRef,
+    private http: HttpClient
+  ) {}
 
   ngOnInit() {
     this.subs.add(
@@ -26,6 +40,11 @@ export class CreditResult implements OnInit, OnDestroy {
       ]).subscribe(([result, loading]) => {
         this.result  = result;
         this.loading = loading;
+        // Réinitialise l'état d'envoi si un nouveau résultat arrive
+        if (result) {
+          this.emailSent = false;
+          this.sendEmailError = '';
+        }
         this.cdr.detectChanges();
       })
     );
@@ -146,7 +165,6 @@ export class CreditResult implements OnInit, OnDestroy {
     return p.priority ?? (idx + 1);
   }
 
-
   getPlanAction(p: any): string {
     if (!p) return '';
     if (typeof p === 'string') {
@@ -170,5 +188,44 @@ export class CreditResult implements OnInit, OnDestroy {
     if (!p) return null;
     if (typeof p === 'string') return null;
     return p.source ?? p['source'] ?? null;
+  }
+
+  // ── Envoi du résultat au client par email ──
+  sendResultToClient(): void {
+    if (!this.result || this.sendingEmail || this.emailSent) return;
+
+    if (!this.dossierId) {
+      this.sendEmailError = 'Identifiant du dossier manquant.';
+      return;
+    }
+
+    this.sendingEmail = true;
+    this.sendEmailError = '';
+
+    const payload = {
+      dossierId: this.dossierId,
+      cin: this.cin,
+      eligibility: this.result.eligibility,
+      eligibilityScore: this.result.eligibilityScore,
+      creditType: this.result.creditType,
+      risks: this.result.risks,
+      recommendedPlan: this.result.recommendedPlan,
+      rawExplanation: this.result.rawExplanation
+    };
+
+    this.http.post(`${environment.apiUrl}/api/dossiers/${this.dossierId}/send-result-email`, payload)
+      .subscribe({
+        next: () => {
+          this.sendingEmail = false;
+          this.emailSent = true;
+          this.cdr.detectChanges();
+        },
+        error: (err) => {
+          this.sendingEmail = false;
+          this.sendEmailError = "Échec de l'envoi. Veuillez réessayer.";
+          console.error('Erreur envoi email résultat:', err);
+          this.cdr.detectChanges();
+        }
+      });
   }
 }
