@@ -32,12 +32,11 @@ logger = logging.getLogger(__name__)
 
 # ── Paramètres RAG ────────────────────────────────────────────────────────────
 EMBEDDING_MODEL  = "paraphrase-multilingual-MiniLM-L12-v2"  # FR + AR
-MAX_TOKENS_CHUNK = 300    # tokens max par chunk
-EXPAND_BACK      = 1      # paragraphes contexte avant
-EXPAND_FORWARD   = 2      # paragraphes contexte après
-TOP_K            = 4      # chunks récupérés par question
-MAX_RESPONSE_TOKENS = 400
-
+MAX_TOKENS_CHUNK = 500    # ✅ augmenté (plus de contenu par chunk)
+EXPAND_BACK      = 2      # ✅ augmenté (plus de contexte avant)
+EXPAND_FORWARD   = 3      # ✅ augmenté (plus de contexte après)
+TOP_K            = 10     # ✅ augmenté (plus de chunks récupérés)
+MAX_RESPONSE_TOKENS = 800 # ✅ augmenté (réponses plus complètes)
 # ── Ancres financières (adaptées de CVE/TTP → données bancaires) ──────────────
 ANCHOR_PATTERNS = {
     "revenu":      re.compile(r"\b(?:salaire|revenu|net|brut|rémunération|راتب|دخل)\b", re.I),
@@ -50,10 +49,26 @@ ANCHOR_PATTERNS = {
 }
 
 # ── System prompt ─────────────────────────────────────────────────────────────
-SYSTEM_PROMPT = """Tu es CrediSense, assistant IA expert en analyse de dossiers de crédit pour Attijariwafa Bank.
-Tu réponds UNIQUEMENT en te basant sur le contexte fourni ci-dessous.
-Si l'information n'est pas dans le contexte, dis-le clairement.
-Sois précis, professionnel et concis. Réponds en français."""
+SYSTEM_PROMPT = """Tu es CrediSense, assistant IA expert en analyse de dossiers de crédit bancaire pour Attijariwafa Bank Tunisie.
+
+ROLE :
+- Tu analyses les documents financiers d'un client (fiche de paie, relevé bancaire, CIN, attestation emploi, justificatif domicile)
+- Tu aides l'agent bancaire à évaluer la solvabilité et l'éligibilité au crédit
+
+REGLES :
+- Réponds en te basant sur le contexte fourni
+- Si une information est présente sous une autre formulation (ex: "NET A PAYER" = salaire net), utilise-la
+- Si une information est absente du contexte, dis-le clairement
+- Donne des réponses précises avec les montants en DT
+- Sois professionnel et concis
+- Réponds toujours en français
+
+CAPACITES :
+- Lire les fiches de paie (salaire brut, net, retenues, primes)
+- Analyser les relevés bancaires (solde, mouvements, régularité des virements)
+- Vérifier l'identité (CIN, adresse)
+- Confirmer l'emploi (poste, ancienneté, type de contrat)
+- Calculer le taux d'endettement et la capacité de remboursement"""
 
 
 class ChatbotService:
@@ -411,6 +426,44 @@ class ChatbotService:
 
         return response.json()["choices"][0]["message"]["content"]
 
+
+# ── Invalidation et réindexation ──────────────────────────────────────────
+    def _invalider_et_reindexer(self, dossier_id: str, textes: list):
+        """Force la création d'un nouvel index FAISS avec tous les textes."""
+        if dossier_id in self._indexes:
+            del self._indexes[dossier_id]
+
+        texte_complet = "\n\n".join([
+            f"=== Document {i+1} ===\n{t}"
+            for i, t in enumerate(textes)
+            if t and t.strip()
+        ])
+
+        if not texte_complet.strip():
+            logger.warning(f"Aucun texte a indexer pour {dossier_id}")
+            return
+
+        index_data = self._creer_index(texte_complet)
+        self._indexes[dossier_id] = index_data
+
+        logger.info(f"Index cree pour {dossier_id} — {len(textes)} documents, "
+                    f"{len(texte_complet)} chars, "
+                    f"{index_data['nb_chunks']} chunks FAISS")
+        
+    # ── Invalidation et réindexation ──────────────────────────────────────────
+
+    def invalider_index(self, dossier_id: str):
+        """Supprime l'index d'un dossier (après nouveau upload)."""
+        if dossier_id in self._indexes:
+            del self._indexes[dossier_id]
+            logger.info("Index FAISS invalide — dossier=%s", dossier_id)
+
+    def stats(self) -> dict:
+        return {
+            "dossiers_indexes": len(self._indexes),
+            "model":            EMBEDDING_MODEL,
+            "top_k":            TOP_K
+        }
     # ── Invalidation cache ────────────────────────────────────────────────────
 
     def invalider_index(self, dossier_id: str):

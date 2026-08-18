@@ -46,7 +46,7 @@ public class SecurityConfig {
                                 "/v3/api-docs/**",
                                 "/swagger-ui.html"
                         ).permitAll()
-
+//
                         // ── Auth agents / admins ──────────────────────────────
                         .requestMatchers("/api/auth/login").permitAll()
                         .requestMatchers("/api/auth/init-admin").permitAll()
@@ -56,9 +56,11 @@ public class SecurityConfig {
 
                         // ── Auth clients (portail) ────────────────────────────
                         .requestMatchers("/api/client-auth/**").permitAll()
+                                .requestMatchers("/api/dossiers/*/send-result-email").permitAll()
 
                         // ── Portail client (public) ───────────────────────────
                         .requestMatchers("/api/public/**").permitAll()
+                        .requestMatchers("/api/public/upload/**").permitAll()  // ✅
                         .requestMatchers("/api/clients/historique").permitAll()
                         .requestMatchers("/api/clients/**").permitAll()
 
@@ -66,6 +68,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/fichiers/**").permitAll()
                         .requestMatchers("/api/fichiers/view/**").permitAll()  // ✅ ajoutez
                         .requestMatchers("/api/chatbot/**").permitAll()
+                        .requestMatchers("/api/fichiers/analyser-dossier/**").permitAll()
 
                         // ── Dossiers → agents et admins seulement ────────────
                         .requestMatchers("/api/dossiers/**").authenticated()

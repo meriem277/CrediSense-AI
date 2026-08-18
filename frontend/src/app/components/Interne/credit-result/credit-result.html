@@ -1,0 +1,177 @@
+<!-- Empty state -->
+<div class="cr-empty" *ngIf="!loading && !result">
+  <svg width="60" height="60" viewBox="0 0 24 24" fill="none"
+       stroke="currentColor" stroke-width="1.2" stroke-linecap="round">
+    <circle cx="12" cy="12" r="10"/>
+    <path d="M8 12h8"/>
+    <path d="M12 8v8"/>
+  </svg>
+  <p>Uploadez un document puis cliquez sur <strong>Score Crédit</strong></p>
+</div>
+
+<!-- Loading state -->
+<div class="cr-loading" *ngIf="loading">
+  <div class="cr-spinner" aria-hidden="true"></div>
+  <div class="cr-loading-text">
+    <div class="title">Analyse en cours...</div>
+    <div class="subtitle">Les agents IA analysent votre dossier</div>
+  </div>
+  <div class="cr-steps">
+    <div class="cr-step"
+         *ngFor="let s of ['Lecture du document','Extraction des données','Évaluation des risques','Génération du rapport']; let i = index">
+      <div class="step-index">{{ i + 1 }}</div>
+      <div class="step-text">{{ s }}</div>
+    </div>
+  </div>
+</div>
+
+<!-- Result state -->
+<div class="cr-result" *ngIf="!loading && result">
+
+  <!-- ── En-tête éligibilité ── -->
+  <div class="cr-header">
+    <div class="cr-badge" [ngClass]="eligibilityColor">{{ result.eligibility }}</div>
+    <div class="cr-type">{{ result.creditType }}</div>
+
+    <div class="cr-header-actions">
+      <button class="cr-send-btn"
+              [class.sent]="emailSent"
+              [disabled]="sendingEmail || emailSent"
+              (click)="sendResultToClient()">
+        <svg *ngIf="!sendingEmail && !emailSent" width="15" height="15"
+             viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round">
+          <path d="M22 2L11 13"/>
+          <path d="M22 2l-7 20-4-9-9-4 20-7z"/>
+        </svg>
+        <span class="cr-send-spinner" *ngIf="sendingEmail" aria-hidden="true"></span>
+        <svg *ngIf="emailSent" width="15" height="15" viewBox="0 0 24 24"
+             fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+        <span>{{ sendingEmail ? 'Envoi...' : (emailSent ? 'Envoyé' : 'Envoyer la réponse au client') }}</span>
+      </button>
+
+       <app-export-button></app-export-button>
+
+    </div>
+  </div>
+
+  <!-- Message erreur envoi -->
+  <div class="cr-send-feedback" *ngIf="sendEmailError" role="alert">
+    {{ sendEmailError }}
+  </div>
+
+  <!-- ── Score ── -->
+  <div class="cr-score-block">
+    <div class="cr-score-label">
+      <span>Score de crédit</span>
+      <strong>{{ result.eligibilityScore }} / 100</strong>
+    </div>
+    <div class="cr-score-bar">
+      <div class="cr-score-fill"
+           [style.width.%]="result.eligibilityScore"
+           [class.fill-green]="result.eligibilityScore >= 70"
+           [class.fill-amber]="result.eligibilityScore >= 40 && result.eligibilityScore < 70"
+           [class.fill-red]="result.eligibilityScore < 40">
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Métriques financières ── -->
+  <div class="cr-metrics">
+    <div class="cr-metric" *ngFor="let m of result.financialMetrics | keyvalue">
+      <div *ngIf="m.value !== null && m.value !== undefined">
+        <div class="cr-metric-key">{{ formatMetricKey(m.key) }}</div>
+        <div class="cr-metric-val">{{ formatValue(m.key, m.value) }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Risques identifiés ── -->
+  <div class="cr-section" *ngIf="result.risks && result.risks.length > 0">
+    <h4 class="cr-section-title cr-title-risk">
+      Risques identifiés
+      <span class="cr-count">{{ result.risks.length }}</span>
+    </h4>
+    <div class="cr-risk-list">
+      <div class="cr-risk-card"
+           [ngClass]="getRiskClass(getRiskLevel(r))"
+           *ngFor="let r of result.risks">
+        <div class="risk-level-badge">{{ getRiskLevel(r) }}</div>
+        <div class="risk-body">
+          <div class="risk-desc">{{ getRiskDescription(r) }}</div>
+          <div class="risk-source" *ngIf="getRiskSource(r)">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586
+                       a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+            {{ getRiskSource(r) }}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Plan recommandé ── -->
+  <div class="cr-section"
+       *ngIf="result.recommendedPlan && result.recommendedPlan.length > 0">
+    <h4 class="cr-section-title cr-title-plan">Plan recommandé</h4>
+    <div class="cr-plan-list">
+      <div class="cr-plan-item"
+           *ngFor="let p of result.recommendedPlan; let idx = index">
+        <div class="cr-priority-badge">{{ getPlanPriority(p, idx) }}</div>
+        <div class="cr-plan-body">
+          <div class="plan-action">{{ getPlanAction(p) }}</div>
+          <div class="plan-rationale" *ngIf="getPlanRationale(p)">
+            {{ getPlanRationale(p) }}
+          </div>
+          <div class="plan-source" *ngIf="getPlanSource(p)">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586
+                       a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+            {{ getPlanSource(p) }}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Sources extraites ── -->
+  <div class="cr-section cr-sources-section"
+       *ngIf="result.documentSources && result.documentSources.length > 0">
+    <h4 class="cr-section-title">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+      </svg>
+      Sources extraites
+      <span class="cr-count">{{ result.documentSources.length }}</span>
+    </h4>
+    <div class="cr-sources-grid">
+      <div class="cr-source-item" *ngFor="let s of result.documentSources">
+        <span class="source-field">{{ s.field || s['field'] }}</span>
+        <span class="source-value">{{ s.value || s['value'] }}</span>
+        <span class="source-doc">{{ s.foundIn || s['foundIn'] }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Analyse détaillée ── -->
+  <div class="cr-section cr-explication-section" *ngIf="result.rawExplanation">
+    <h4 class="cr-section-title">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <circle cx="12" cy="12" r="10"/>
+        <path d="M12 16v-4M12 8h.01"/>
+      </svg>
+      Analyse détaillée
+    </h4>
+    <p class="cr-explanation-text">{{ result.rawExplanation }}</p>
+  </div>
+
+</div>

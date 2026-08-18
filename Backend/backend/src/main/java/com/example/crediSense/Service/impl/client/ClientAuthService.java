@@ -130,6 +130,7 @@ public class ClientAuthService {
                 "token",    token,
                 "id",       client.getId().toString(),
                 "email",    client.getEmail() != null    ? client.getEmail()    : "",
+                "cin",      client.getCin() != null       ? client.getCin()      : "",
                 "nom",      client.getNom() != null      ? client.getNom()      : "",
                 "prenom",   client.getPrenom() != null   ? client.getPrenom()   : "",
                 "photoUrl", client.getPhotoUrl() != null ? client.getPhotoUrl() : "",

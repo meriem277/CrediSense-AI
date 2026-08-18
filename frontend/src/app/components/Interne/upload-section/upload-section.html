@@ -1,0 +1,93 @@
+<div class="upload">
+  <h3>Documents soumis par le client</h3>
+
+  <!-- Loading -->
+  <div class="loading-state" *ngIf="loading">
+    <div class="spinner"></div>
+    <p>Chargement des documents...</p>
+  </div>
+
+  <!-- Aucun document -->
+  <div class="empty-state" *ngIf="!loading && fichiers.length === 0">
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none"
+         stroke="#ddd" stroke-width="1.5" stroke-linecap="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+      <polyline points="14 2 14 8 20 8"/>
+    </svg>
+    <p>Aucun document soumis pour ce dossier</p>
+  </div>
+
+  <!-- Liste des fichiers -->
+  <div class="fichiers-list" *ngIf="!loading && fichiers.length > 0">
+    <div class="fichier-bloc" *ngFor="let f of fichiers">
+
+      <!-- ✅ Message de vérification au-dessus du fichier -->
+      <div class="verification-badge"
+           [class.verification-ok]="estVerifie(f)"
+           [class.verification-warn]="!estVerifie(f)">
+        <svg *ngIf="estVerifie(f)" width="14" height="14" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+        <svg *ngIf="!estVerifie(f)" width="14" height="14" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        {{ getMessageVerification(f) }}
+      </div>
+
+      <div class="fichier-item">
+
+        <div class="fichier-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+          </svg>
+        </div>
+
+        <div class="fichier-info">
+          <span class="fichier-nom">{{ f.nomOriginal }}</span>
+          <span class="fichier-type">{{ f.typeDocument }}</span>
+          <span class="fichier-date">{{ f.createdAt | slice:0:10 }}</span>
+        </div>
+
+        <div class="fichier-actions">
+          <a [href]="getFileUrl(f.cheminPdf)" target="_blank"
+             class="btn-voir" *ngIf="f.cheminPdf">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+            Voir
+          </a>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+<!-- Messages -->
+<div class="analyse-success" *ngIf="analyseSuccess">
+  ✅ {{ analyseSuccess }}
+</div>
+<div class="analyse-error" *ngIf="analyseError">
+  ❌ {{ analyseError }}
+</div>
+
+<!-- Actions -->
+<div class="actions" *ngIf="fichiers.length > 0">
+  <button class="secondary"
+          (click)="handleAnalyse()"
+          [disabled]="analyseLoading">
+    <span *ngIf="analyseLoading" class="spinner-sm"></span>
+    {{ analyseLoading ? 'Analyse en cours...' : 'Analyser' }}
+  </button>
+  <button class="primary" (click)="handleScore()">
+    Score Crédit
+  </button>
+</div>
+</div>

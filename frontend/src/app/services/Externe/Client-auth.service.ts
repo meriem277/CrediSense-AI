@@ -9,6 +9,7 @@ export interface ClientUser {
   id:       string;
   email:    string;
   nom:      string;
+  cin:      string;
   prenom:   string;
   photoUrl: string;
   provider: string;
@@ -19,6 +20,7 @@ export interface ClientAuthResponse {
   id:       string;
   email:    string;
   nom:      string;
+  cin:      string;
   prenom:   string;
   photoUrl: string;
   provider: string;
@@ -71,6 +73,8 @@ export class ClientAuthService {
       id:       res.id,
       email:    res.email,
       nom:      res.nom,
+       cin: res.cin,
+
       prenom:   res.prenom,
       photoUrl: res.photoUrl,
       provider: res.provider

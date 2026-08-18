@@ -11,6 +11,7 @@ import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -23,6 +24,8 @@ public class ChatbotService {
     private final RestTemplate             restTemplate;
     private final JsonExtractionRepository jsonExtractionRepository;
     private final OcrResultRepository      ocrResultRepository;
+    private final NlpClientService      nlpClientService;
+
     private final ObjectMapper             objectMapper;
 
     @Value("${groq.api.key}")
@@ -33,24 +36,39 @@ public class ChatbotService {
 
     @Value("${groq.api.url:https://api.groq.com/openai/v1/chat/completions}")
     private String apiUrl;
+    @Value("${nlp.service.url}")  // ✅ ajoutez
+    private String nlpServiceUrl;
 
     // ─── Point d'entrée ───────────────────────────────────────────────────────
 
+
     public String poserQuestion(String cin, UUID dossierId, String question) {
-        log.info("Chatbot RAG — dossierId={}, question={}", dossierId, question);
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
 
-        String contexte = construireContexte(dossierId);
+            Map<String, Object> body = new HashMap<>();
+            body.put("question",   question);
+            body.put("dossier_id", dossierId != null ? dossierId.toString() : "");  // ✅ UUID → String
+            body.put("cin",        cin != null ? cin : "");
 
-        if (contexte.isBlank()) {
-            return "Je n'ai pas encore de données analysées pour ce dossier. " +
-                    "Veuillez d'abord uploader les documents du client.";
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+
+            Map response = restTemplate.postForObject(
+                    nlpServiceUrl + "/ai/chat",
+                    request, Map.class
+            );
+
+            if (response != null && response.containsKey("reponse")) {
+                return response.get("reponse").toString();
+            }
+            return "Aucune réponse disponible.";
+
+        } catch (Exception e) {
+            log.error("Erreur chatbot: {}", e.getMessage());
+            return "Erreur lors de la communication avec le chatbot IA.";
         }
-
-        return appelGroq(contexte, question, cin);
     }
-
-    // ─── Construction contexte — RÉDUIT ──────────────────────────────────────
-
     private String construireContexte(UUID dossierId) {
         if (dossierId == null) return "";
 

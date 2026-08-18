@@ -2,29 +2,40 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Subscription } from 'rxjs';
 import { CreditStateService } from '../../services/credit-state.service';
 import { CommonModule } from '@angular/common';
-import { UploadSection } from '../upload-section/upload-section';
-import { HistoryList }   from '../Interne/history-list/history-list';
-import { CreditResult }  from '../credit-result/credit-result';
+import { UploadSection } from '../Interne/upload-section/upload-section';
+import { CreditResult }  from '../Interne/credit-result/credit-result';
 import { ChatAssistant } from '../Interne/chat-assistant/chat-assistant';
 import { ExportButton }  from '../Interne/export-button/export-button';
 import { DashboardCard } from '../dashboard-card/dashboard-card';
-import { ClientModal, ClientResponse } from '../client-modal/client-modal';
-import { ClientList, Client }          from '../client-list/client-list';
-import { Dossier as DossierComponent } from '../Interne/dossier/dossier';
 import { Dossier as DossierModel }     from '../../models/dossier.model';
 import { DossierService } from '../../services/Interne/dossier.service';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
+import { FormsModule } from '@angular/forms';
+import { AuthService } from '../../services/Interne/auth.service';
+import { jwtDecode } from 'jwt-decode';
+import { DecodedToken } from '../../models/auth.model';
+
+// ✅ Client n'est plus fourni par ClientList (supprimé) — on le redéfinit ici.
+// Si tu as un fichier dédié (ex. models/client.model.ts), remplace cette
+// interface par : import { Client } from '../../models/client.model';
+interface Client {
+  id: string;
+  cin: string;
+  nom: string;
+  prenom: string;
+  createdAt: string;
+}
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
   imports: [
     CommonModule,
-    UploadSection, HistoryList,
-    CreditResult, ChatAssistant, ExportButton, DashboardCard,
-    ClientModal, ClientList,
-    DossierComponent,
+    UploadSection,
+    CreditResult, ChatAssistant, DashboardCard,
+
+    FormsModule
   ],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.scss',
@@ -38,6 +49,7 @@ export class Dashboard implements OnInit, OnDestroy {
   showDossierModal = false;
 
   // ── Niveau 1 : Client sélectionné ───────────────────────
+  // ✅ Restaurée — utilisée dans prendreEnCharge, backToClients, onClientCreated, getInitiales
   selectedClient: Client | null = null;
 
   // ── Niveau 2 : Dossiers du client ───────────────────────
@@ -59,10 +71,14 @@ export class Dashboard implements OnInit, OnDestroy {
   constructor(
     private dossierService: DossierService,
     private creditState: CreditStateService,
-      private http: HttpClient
+    private http: HttpClient,
+    private authService: AuthService
+
   ) {}
 
   ngOnInit(): void {
+    this.loadAgentInfo();
+
     this.subs.add(
       this.creditState.navigateToScore$.subscribe(trigger => {
         if (trigger && this.selectedDossier) {
@@ -71,7 +87,7 @@ export class Dashboard implements OnInit, OnDestroy {
         }
       })
     );
-    // ✅ Charge les dossiers portail client au démarrage
+
     this.loadTousDossiers();
   }
 
@@ -104,12 +120,6 @@ export class Dashboard implements OnInit, OnDestroy {
     });
   }
 
-  // ✅ Dossiers filtrés par statut
-  get dossiersPortailFiltres(): any[] {
-    if (this.filtreStatut === 'TOUS') return this.tousLesDossiers;
-    return this.tousLesDossiers.filter(d => d.statut === this.filtreStatut);
-  }
-
   // ✅ Stats dossiers portail
   get totalPortail()    { return this.tousLesDossiers.length; }
   get enAttenteCount()  { return this.tousLesDossiers.filter(d => d.statut === 'EN_ATTENTE').length; }
@@ -118,60 +128,57 @@ export class Dashboard implements OnInit, OnDestroy {
   get refusesCount()    { return this.tousLesDossiers.filter(d => d.statut === 'REFUSE').length; }
 
   // ✅ Actions agent sur dossiers portail
- prendreEnCharge(dossierId: string): void {
-  this.dossierService.updateStatut(dossierId, 'EN_COURS').subscribe({
-    next: () => {
-      this.loadTousDossiers();
+  prendreEnCharge(dossierId: string): void {
+    this.dossierService.updateStatut(dossierId, 'EN_COURS').subscribe({
+      next: () => {
+        this.loadTousDossiers();
 
-      const dossierPortail = this.tousLesDossiers.find(d => d.dossierId === dossierId);
-      if (!dossierPortail) return;
+        const dossierPortail = this.tousLesDossiers.find(d => d.dossierId === dossierId);
+        if (!dossierPortail) return;
 
-      // ✅ Sélectionne le client
-      const client: Client = {
-        id:        dossierPortail.clientId || '',
-        cin:       dossierPortail.clientCin,
-        nom:       dossierPortail.clientNom,
-        prenom:    dossierPortail.clientPrenom,
-        createdAt: ''
-      };
-      this.selectedClient = client;
-      this.currentCin     = dossierPortail.clientCin;
+        const client: Client = {
+          id:        dossierPortail.clientId || '',
+          cin:       dossierPortail.clientCin,
+          nom:       dossierPortail.clientNom,
+          prenom:    dossierPortail.clientPrenom,
+          createdAt: ''
+        };
+        this.selectedClient = client;
+        this.currentCin     = dossierPortail.clientCin;
 
-      // ✅ Sélectionne directement le dossier
-      const dossierModel: DossierModel = {
-        id:         dossierId,
-        typeCredit: dossierPortail.typeCredit,
-        statut:     'EN_COURS',
-       createdAt:  '',
-        clientId:   dossierPortail.clientId || ''  // ✅ clientId au lieu de client
-      };
-      this.selectedDossier = dossierModel;
-      this.activeTab       = 'documents';  // ✅ ouvre l'onglet documents
-    }
-  });
-}
+        const dossierModel: DossierModel = {
+          id:         dossierId,
+          typeCredit: dossierPortail.typeCredit,
+          statut:     'EN_COURS',
+          createdAt:  '',
+          clientId:   dossierPortail.clientId || ''
+        };
+        this.selectedDossier = dossierModel;
+        this.activeTab       = 'documents';
+      }
+    });
+  }
 
-// ✅ Nouvelle méthode — charge les dossiers par email client
-loadDossiersByEmail(email: string): void {
-  this.loadingDossiers = true;
-  this.http.get<any[]>(
-    `${environment.apiUrl}/api/clients/historique?email=${email}`
-  ).subscribe({
-    next: (data) => {
-      // ✅ Convertit les dossiers portail en DossierModel
-      this.dossiers = data.map(d => ({
-        id:         d.dossierId,
-        clientId:   d.clientId ?? d.client_id ?? '',
-        typeCredit: d.typeCredit,
-        statut:     d.statut,
-        createdAt:  d.createdAt ?? null,
-        client:     null
-      }));
-      this.loadingDossiers = false;
-    },
-    error: () => { this.loadingDossiers = false; }
-  });
-}
+  // ✅ Chargement des dossiers par email client
+  loadDossiersByEmail(email: string): void {
+    this.loadingDossiers = true;
+    this.http.get<any[]>(
+      `${environment.apiUrl}/api/clients/historique?email=${email}`
+    ).subscribe({
+      next: (data) => {
+        this.dossiers = data.map(d => ({
+          id:         d.dossierId,
+          clientId:   d.clientId ?? d.client_id ?? '',
+          typeCredit: d.typeCredit,
+          statut:     d.statut,
+          createdAt:  d.createdAt ?? null,
+          client:     null
+        }));
+        this.loadingDossiers = false;
+      },
+      error: () => { this.loadingDossiers = false; }
+    });
+  }
 
   approuverDossier(id: string): void {
     this.dossierService.updateStatut(id, 'APPROUVE').subscribe({
@@ -225,16 +232,7 @@ loadDossiersByEmail(email: string): void {
   openClientModal():  void { this.showClientModal = true;  }
   closeClientModal(): void { this.showClientModal = false; }
 
-  onClientCreated(client: ClientResponse): void {
-    this.selectedClient = {
-      id: client.id, cin: client.cin,
-      nom: client.nom, prenom: client.prenom, createdAt: client.createdAt,
-    };
-    this.currentCin      = client.cin;
-    this.selectedDossier = null;
-    this.dossiers        = [];
-    this.loadDossiers(client.id);
-  }
+
 
   // ── Modal dossier ─────────────────────────────────────────
   openDossierModal():  void { this.showDossierModal = true;  }
@@ -272,4 +270,94 @@ loadDossiersByEmail(email: string): void {
     console.log('selectedDossierId getter:', id);
     return id;
   }
+
+  onAnalysisComplete(): void {
+    this.loadingTousDossiers = true;
+    this.dossierService.getAllPortail().subscribe({
+      next: (data) => {
+        this.tousLesDossiers = data;
+        this.loadingTousDossiers = false;
+      },
+      error: () => { this.loadingTousDossiers = false; }
+    });
+  }
+
+  // ── Pagination portail ─────────────────────────────────────
+  pageSize    = 5;
+  currentPage = 1;
+
+  get dossiersPortailFiltres(): any[] {
+    let list = this.filtreStatut === 'TOUS'
+      ? this.tousLesDossiers
+      : this.tousLesDossiers.filter(d => d.statut === this.filtreStatut);
+
+    if (this.searchPortail) {
+      const q = this.searchPortail.toLowerCase();
+      list = list.filter(d =>
+        d.clientNom?.toLowerCase().includes(q)    ||
+        d.clientPrenom?.toLowerCase().includes(q) ||
+        d.clientCin?.toLowerCase().includes(q)    ||
+        d.clientEmail?.toLowerCase().includes(q)
+      );
+    }
+
+    return [...list].sort((a, b) =>
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+  }
+
+  get dossiersPage(): any[] {
+    const start = (this.currentPage - 1) * this.pageSize;
+    return this.dossiersPortailFiltres.slice(start, start + this.pageSize);
+  }
+
+  get totalPages(): number {
+    return Math.ceil(this.dossiersPortailFiltres.length / this.pageSize);
+  }
+
+  get pages(): number[] {
+    return Array.from({ length: this.totalPages }, (_, i) => i + 1);
+  }
+
+  goToPage(p: number): void {
+    if (p < 1 || p > this.totalPages) return;
+    this.currentPage = p;
+  }
+
+  searchPortail = '';
+
+  onSearchPortail(): void {
+    this.currentPage = 1;
+  }
+
+  setFiltreStatut(statut: string): void {
+    this.filtreStatut  = statut;
+    this.currentPage   = 1;
+  }
+
+  agentNom: string = '';
+  agentPrenom: string = '';
+private loadAgentInfo(): void {
+  const token = this.authService.getToken();
+  if (!token) {
+    this.agentNom = 'Agent';
+    this.agentPrenom = '';
+    return;
+  }
+
+  try {
+    const decoded = jwtDecode<DecodedToken>(token);
+    const parts = (decoded.nom || '').trim().split(' ');
+    this.agentPrenom = this.capitalize(parts[0] ?? '');
+    this.agentNom = this.capitalize(parts.slice(1).join(' ') || parts[0] || 'Agent');
+  } catch (e) {
+    console.error('Erreur décodage token:', e);
+    this.agentNom = 'Agent';
+    this.agentPrenom = '';
+  }
+}
+
+private capitalize(s: string): string {
+  return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+}
 }

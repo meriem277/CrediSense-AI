@@ -6,8 +6,11 @@ import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import com.example.crediSense.entity.Fichier;
+import org.springframework.stereotype.Repository;
 
+@Repository
 public interface FichierRepository extends JpaRepository<Fichier, UUID> {
     List<Fichier> findByCin(String cin);
     List<Fichier> findByAgentId(UUID agentId);
+    List<Fichier> findByDossierId(UUID dossierId);
 }

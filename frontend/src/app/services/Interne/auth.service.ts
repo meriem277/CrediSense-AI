@@ -32,10 +32,11 @@ export class AuthService {
 }
 isLoggedIn(): boolean {
   const token = this.getToken();
-  console.log('isLoggedIn — token:', token ? 'présent' : 'absent');
+  if (this.isBrowser) {
+    console.log('isLoggedIn — token:', token ? 'présent' : 'absent');
+  }
   return !!token;
 }
-
   // ── Écriture ─────────────────────────────────────────
   login(token: string, user: any): void {
     if (this.isBrowser) {

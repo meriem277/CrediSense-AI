@@ -6,14 +6,22 @@
     <div class="content">
 
       <!-- Hero header + search bar + KPI cards (tout est dans dashboard-card) -->
-      <app-dashboard-card (onNouveauClient)="openClientModal()"></app-dashboard-card>
-<!-- ══ DOSSIERS PORTAIL CLIENT ══ -->
+<app-dashboard-card
+  [agentNom]="agentNom"
+  [agentPrenom]="agentPrenom"
+  [dossiers]="tousLesDossiers"
+  >
+</app-dashboard-card><!-- ══ DEMANDES PORTAIL CLIENT ══ -->
 <div class="portail-section">
 
+  <!-- Header -->
   <div class="portail-header">
-    <h3>Demandes portail client</h3>
+    <div class="portail-header-left">
+      <h3>Demandes portail client</h3>
+      <span class="portail-total-badge">{{ totalPortail }}</span>
+    </div>
     <button class="btn-refresh" (click)="loadTousDossiers()">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
            stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
         <polyline points="23 4 23 10 17 10"/>
         <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
@@ -24,20 +32,58 @@
 
   <!-- Stats -->
   <div class="portail-stats">
-    <div class="pstat"><span class="pstat-val">{{ totalPortail }}</span><span class="pstat-label">Total</span></div>
-    <div class="pstat warn"><span class="pstat-val">{{ enAttenteCount }}</span><span class="pstat-label">En attente</span></div>
-    <div class="pstat info"><span class="pstat-val">{{ enCoursCount }}</span><span class="pstat-label">En cours</span></div>
-    <div class="pstat ok"><span class="pstat-val">{{ approuvesCount }}</span><span class="pstat-label">Approuvés</span></div>
-    <div class="pstat ko"><span class="pstat-val">{{ refusesCount }}</span><span class="pstat-label">Refusés</span></div>
+    <div class="pstat">
+      <span class="pstat-val">{{ totalPortail }}</span>
+      <span class="pstat-label">Total</span>
+    </div>
+    <div class="pstat warn">
+      <span class="pstat-val">{{ enAttenteCount }}</span>
+      <span class="pstat-label">En attente</span>
+    </div>
+    <div class="pstat info">
+      <span class="pstat-val">{{ enCoursCount }}</span>
+      <span class="pstat-label">En cours</span>
+    </div>
+    <div class="pstat ok">
+      <span class="pstat-val">{{ approuvesCount }}</span>
+      <span class="pstat-label">Approuvés</span>
+    </div>
+    <div class="pstat ko">
+      <span class="pstat-val">{{ refusesCount }}</span>
+      <span class="pstat-label">Refusés</span>
+    </div>
   </div>
 
-  <!-- Filtres -->
-  <div class="portail-filtres">
-    <button [class.active]="filtreStatut==='TOUS'"       (click)="filtreStatut='TOUS'">Tous</button>
-    <button [class.active]="filtreStatut==='EN_ATTENTE'" (click)="filtreStatut='EN_ATTENTE'">En attente</button>
-    <button [class.active]="filtreStatut==='EN_COURS'"   (click)="filtreStatut='EN_COURS'">En cours</button>
-    <button [class.active]="filtreStatut==='APPROUVE'"   (click)="filtreStatut='APPROUVE'">Approuvés</button>
-    <button [class.active]="filtreStatut==='REFUSE'"     (click)="filtreStatut='REFUSE'">Refusés</button>
+  <!-- Recherche + Filtres -->
+  <div class="portail-toolbar">
+    <div class="portail-search-wrap">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <circle cx="11" cy="11" r="8"/>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <input type="text"
+             class="portail-search"
+             placeholder="Rechercher par nom, CIN, email..."
+             [(ngModel)]="searchPortail"
+             (input)="onSearchPortail()"/>
+      <button class="portail-search-clear"
+              *ngIf="searchPortail"
+              (click)="searchPortail=''; onSearchPortail()">✕</button>
+    </div>
+
+    <div class="portail-filtres">
+      <button [class.active]="filtreStatut==='TOUS'"
+              (click)="setFiltreStatut('TOUS')">Tous</button>
+      <button [class.active]="filtreStatut==='EN_ATTENTE'"
+              (click)="setFiltreStatut('EN_ATTENTE')">En attente</button>
+      <button [class.active]="filtreStatut==='EN_COURS'"
+              (click)="setFiltreStatut('EN_COURS')">En cours</button>
+      <button [class.active]="filtreStatut==='APPROUVE'"
+              (click)="setFiltreStatut('APPROUVE')">Approuvés</button>
+      <button [class.active]="filtreStatut==='REFUSE'"
+              (click)="setFiltreStatut('REFUSE')">Refusés</button>
+    </div>
   </div>
 
   <!-- Loading -->
@@ -49,7 +95,12 @@
   <div class="portail-table" *ngIf="!loadingTousDossiers">
 
     <div class="portail-empty" *ngIf="dossiersPortailFiltres.length === 0">
-      Aucun dossier trouvé
+      <svg width="36" height="36" viewBox="0 0 24 24" fill="none"
+           stroke="#ddd" stroke-width="1.5" stroke-linecap="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+      </svg>
+      <p>Aucun dossier trouvé</p>
     </div>
 
     <table *ngIf="dossiersPortailFiltres.length > 0">
@@ -64,46 +115,113 @@
         </tr>
       </thead>
       <tbody>
-        <tr *ngFor="let d of dossiersPortailFiltres">
-          <td>{{ d.clientPrenom }} {{ d.clientNom }}</td>
-          <td>{{ d.clientCin }}</td>
-          <td>{{ d.clientEmail }}</td>
-          <td>{{ d.typeCredit }}</td>
+        <tr *ngFor="let d of dossiersPage">
+          <td>
+            <div class="client-cell">
+              <div class="client-cell-avatar">
+                {{ (d.clientPrenom?.[0] || '') + (d.clientNom?.[0] || '') }}
+              </div>
+              <span>{{ d.clientPrenom }} {{ d.clientNom }}</span>
+            </div>
+          </td>
+          <td><span class="cin-badge">{{ d.clientCin }}</span></td>
+          <td class="email-cell">{{ d.clientEmail }}</td>
+          <td><span class="type-badge">{{ d.typeCredit }}</span></td>
           <td>
             <span class="statut-pill" [class]="getStatutPortailClass(d.statut)">
               {{ getStatutPortailLabel(d.statut) }}
             </span>
           </td>
-         <td class="actions-cell">
-  <!-- ✅ EN_ATTENTE et EN_COURS → Prendre en charge -->
-  <button class="btn-prendre"
-          *ngIf="d.statut === 'EN_ATTENTE' || d.statut === 'EN_COURS'"
-          (click)="prendreEnCharge(d.dossierId)">
-    Prendre en charge
-  </button>
+          <td class="actions-cell">
+            <!-- EN_ATTENTE -->
+            <button class="btn-prendre"
+                    *ngIf="d.statut === 'EN_ATTENTE'"
+                    (click)="prendreEnCharge(d.dossierId)">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+                   stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                <polyline points="9 11 12 14 22 4"/>
+                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+              </svg>
+              Prendre en charge
+            </button>
 
-  <!-- ✅ APPROUVE ou REFUSE → Traité -->
-  <span *ngIf="d.statut === 'APPROUVE' || d.statut === 'REFUSE'" class="traite">
-    Traité
-  </span>
-</td>
+            <!-- EN_COURS -->
+            <button class="btn-consulter"
+                    *ngIf="d.statut === 'EN_COURS'"
+                    (click)="prendreEnCharge(d.dossierId)">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+                   stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+              Consulter
+            </button>
+
+            <!-- APPROUVE -->
+            <span class="traite traite-ok" *ngIf="d.statut === 'APPROUVE'">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+                   stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+              Approuvé
+            </span>
+
+            <!-- REFUSE -->
+            <span class="traite traite-ko" *ngIf="d.statut === 'REFUSE'">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+                   stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+              Refusé
+            </span>
+          </td>
         </tr>
       </tbody>
     </table>
 
-  </div>
+    <!-- Pagination -->
+    <div class="portail-pagination" *ngIf="totalPages > 1">
+      <span class="portail-page-info">
+        Page {{ currentPage }} / {{ totalPages }}
+        ({{ dossiersPortailFiltres.length }} dossiers)
+      </span>
+      <div class="portail-page-btns">
+        <button class="page-btn"
+                [disabled]="currentPage === 1"
+                (click)="goToPage(currentPage - 1)">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <polyline points="15 18 9 12 15 6"/>
+          </svg>
+        </button>
 
+        <button class="page-btn page-num"
+                *ngFor="let p of pages"
+                [class.active]="p === currentPage"
+                (click)="goToPage(p)">
+          {{ p }}
+        </button>
+
+        <button class="page-btn"
+                [disabled]="currentPage === totalPages"
+                (click)="goToPage(currentPage + 1)">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <polyline points="9 18 15 12 9 6"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+  </div>
 </div>
       <!-- Grid principal -->
       <div class="grid">
 
         <!-- ══ COLONNE GAUCHE : liste clients ══ -->
-        <div class="left">
-          <app-client-list
-            (clientSelected)="onClientSelected($event)"
-            (createClicked)="openClientModal()">
-          </app-client-list>
-        </div>
+
+<div class="left">
 
         <!-- ══ COLONNE DROITE ══ -->
         <div class="right">
@@ -136,45 +254,7 @@
               </button>
             </div>
 
-            <div class="dossiers-section">
-              <div class="dossiers-header">
-                <h3>Dossiers de crédit</h3>
-                <div class="dossiers-header-actions">
-                  <span class="dossiers-count" *ngIf="dossiers.length > 0">
-                    {{ dossiers.length }} dossier{{ dossiers.length > 1 ? 's' : '' }}
-                  </span>
-                  <button class="btn-add-dossier" (click)="openDossierModal()">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
-                         stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
-                      <line x1="12" y1="5" x2="12" y2="19"/>
-                      <line x1="5" y1="12" x2="19" y2="12"/>
-                    </svg>
-                    Nouveau dossier
-                  </button>
-                </div>
-              </div>
 
-              <div class="dossiers-loading" *ngIf="loadingDossiers">
-                <span class="spinner"></span>
-                <span>Chargement...</span>
-              </div>
-
-              <div class="dossiers-empty" *ngIf="!loadingDossiers && dossiers.length === 0">
-                <svg width="36" height="36" viewBox="0 0 24 24" fill="none"
-                     stroke="currentColor" stroke-width="1.2" stroke-linecap="round">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                  <polyline points="14 2 14 8 20 8"/>
-                </svg>
-                <p>Aucun dossier pour ce client</p>
-                <button class="btn-add-dossier-empty" (click)="openDossierModal()">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
-                       stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
-                    <line x1="12" y1="5" x2="12" y2="19"/>
-                    <line x1="5" y1="12" x2="19" y2="12"/>
-                  </svg>
-                  Créer un dossier
-                </button>
-              </div>
 
               <div class="dossiers-grid" *ngIf="!loadingDossiers && dossiers.length > 0">
                 <div
@@ -248,6 +328,8 @@
 <app-upload-section
   [dossierId]="selectedDossierId"
   [cin]="currentCin">
+   (analysisComplete)="loadTousDossiers()">
+
 </app-upload-section>
                   </div>
                   <div class="panel-right">
@@ -276,7 +358,6 @@
 
               <!-- HISTORIQUE -->
               <div class="tab-panel" *ngIf="activeTab==='historique'">
-                <app-history-list></app-history-list>
               </div>
 
             </div>
@@ -285,23 +366,8 @@
         </div>
       </div>
 
-      <app-export-button></app-export-button>
 
     </div>
   </div>
 </div>
 
-<!-- Modal création client -->
-<app-client-modal
-  *ngIf="showClientModal"
-  (closed)="closeClientModal()"
-  (clientCreated)="onClientCreated($event)">
-</app-client-modal>
-
-<!-- Modal création dossier -->
-<app-dossier
-  *ngIf="showDossierModal && selectedClient"
-  [clientId]="selectedClient.id"
-  (closed)="closeDossierModal()"
-  (dossierCreated)="onDossierCreated($event)">
-</app-dossier>

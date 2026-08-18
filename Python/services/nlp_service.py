@@ -1,55 +1,83 @@
 # services/nlp_service.py
 """
-Classification NLP des documents bancaires
-avec sentence-transformers (paraphrase-multilingual-MiniLM-L12-v2)
-Supporte le français ET l'arabe
+Service de classification NLP CrediSense — par embeddings sémantiques
+(sentence-transformers, zero-shot).
+
+Améliorations par rapport à la v1 :
+1. Similarité MAX par phrase de référence (au lieu de la moyenne des
+   embeddings d'une catégorie) — plus précis, et on sait QUELLE phrase
+   de référence a matché (utile pour l'audit).
+2. Seuils de confiance PAR CATÉGORIE (au lieu d'un seuil global unique).
+3. Cache disque des embeddings de labels — évite de recalculer à chaque
+   redémarrage du service.
+4. Vérification hybride : un pattern structurel fort (regex CIN) qui
+   contredit la classification sémantique lève une alerte.
+5. Logging structuré (dossier_id, confiance, durée) pour l'audit.
 """
 
-from sentence_transformers import SentenceTransformer, util
+import time
+import pickle
 import logging
+import re
+from pathlib import Path
+
+from sentence_transformers import SentenceTransformer, util
+import torch
 
 logger = logging.getLogger(__name__)
 
 MODEL_NAME = "paraphrase-multilingual-MiniLM-L12-v2"
+DEVICE = "cpu"
+MAX_CHARS_TEXTE = 2000
+CACHE_PATH = Path("cache/label_embeddings.pkl")
 
-# ── Types de documents avec phrases FR + AR ───────────────────────────────────
-DOCUMENT_LABELS = {
+SEUIL_CONFIANCE_DEFAUT = 0.35
+
+SEUILS_PAR_LABEL = {
+    "CIN": 0.40,
+    "FICHE_PAIE": 0.35,
+    "RELEVE_BANCAIRE": 0.35,
+    "ATTESTATION_EMPLOI": 0.32,
+    "CONTRAT_TRAVAIL": 0.32,
+    "ASSURANCE_VIE": 0.35,
+    "BILAN_COMPTABLE": 0.35,
+    "DECLARATION_FISCALE": 0.35,
+    "JUSTIFICATIF_DOMICILE": 0.32,
+    "TITRE_SEJOUR": 0.35,
+    "AUTRE": 0.0,
+}
+
+DOCUMENT_LABELS: dict[str, list[str]] = {
     "CIN": [
-        # Français
         "carte d'identité nationale",
         "identité nationale tunisie",
         "numéro CIN pièce d'identité",
         "date de naissance lieu de naissance",
         "carte nationale d'identité",
-        # Arabe
         "بطاقة التعريف الوطنية",
         "رقم بطاقة الهوية الوطنية",
         "تاريخ الميلاد مكان الميلاد",
         "الهوية الوطنية تونس",
     ],
     "FICHE_PAIE": [
-        # Français
         "bulletin de paie salaire net",
         "fiche de paie mensuelle",
         "salaire brut cotisations sociales",
         "net à payer employé employeur",
         "rémunération mensuelle",
         "CNSS retenue salariale",
-        # Arabe
         "كشف الراتب الشهري",
         "الراتب الصافي الراتب الخام",
         "الاشتراكات الاجتماعية",
         "صاحب العمل الموظف الأجر",
     ],
     "RELEVE_BANCAIRE": [
-        # Français
         "relevé de compte bancaire",
         "solde créditeur débiteur",
         "opérations bancaires extrait de compte",
         "virement dépôt retrait solde",
         "historique des transactions",
         "RIB numéro de compte",
-        # Arabe
         "كشف الحساب البنكي",
         "الرصيد الدائن المدين",
         "العمليات البنكية",
@@ -57,78 +85,66 @@ DOCUMENT_LABELS = {
         "رقم الحساب البنكي",
     ],
     "ATTESTATION_EMPLOI": [
-        # Français
         "attestation de travail emploi",
         "certifie que monsieur madame est employé",
         "attestation employeur poste occupé",
         "confirmation d'emploi CDI",
         "attestation de service",
-        # Arabe
         "شهادة عمل",
         "يشهد بأن السيد يعمل لدى",
         "شهادة في العمل الوظيفة",
         "صاحب العمل يؤكد التوظيف",
     ],
     "CONTRAT_TRAVAIL": [
-        # Français
         "contrat de travail à durée indéterminée CDI",
         "contrat de travail CDD durée déterminée",
         "convention entre employeur et employé",
         "conditions d'emploi poste salaire",
         "article du contrat travail",
-        # Arabe
         "عقد عمل لأجل غير محدد",
         "عقد عمل محدد المدة",
         "اتفاقية بين صاحب العمل والموظف",
         "شروط العمل الراتب الوظيفة",
     ],
     "ASSURANCE_VIE": [
-        # Français
         "police d'assurance vie décès invalidité",
         "assurance décès toutes causes",
         "bénéficiaire assurance capital garanti",
         "prime d'assurance mensuelle annuelle",
         "contrat assurance vie",
-        # Arabe
         "وثيقة التأمين على الحياة",
         "تأمين الوفاة والعجز",
         "قسط التأمين الشهري السنوي",
         "عقد التأمين على الحياة",
     ],
     "BILAN_COMPTABLE": [
-        # Français
         "bilan comptable actif passif",
         "résultat net exercice comptable",
         "chiffre d'affaires bénéfice perte",
         "bilan annuel entreprise",
         "compte de résultat charges produits",
-        # Arabe
         "الميزانية المحاسبية الأصول الخصوم",
         "النتيجة الصافية للسنة المحاسبية",
         "رقم المعاملات الربح الخسارة",
         "الميزانية السنوية للمؤسسة",
     ],
     "DECLARATION_FISCALE": [
-        # Français
         "déclaration fiscale impôt revenus",
         "déclaration annuelle des revenus",
         "impôt sur le revenu déclaration",
         "ministère des finances déclaration",
         "avis d'imposition revenu imposable",
-        # Arabe
         "التصريح الجبائي ضريبة الدخل",
         "التصريح السنوي بالدخل",
         "الضريبة على الدخل",
         "وزارة المالية التصريح الضريبي",
     ],
     "JUSTIFICATIF_DOMICILE": [
-        # Français
         "justificatif de domicile adresse",
         "facture électricité eau téléphone",
         "quittance de loyer résidence",
         "adresse domicile attestation",
         "certificat de résidence",
-        # Arabe
         "وثيقة إقامة العنوان",
         "فاتورة الكهرباء الماء الهاتف",
         "إيصال الإيجار",
@@ -141,73 +157,150 @@ DOCUMENT_LABELS = {
     ],
 }
 
+REGEX_CIN_NUMERO = re.compile(r"\b\d{8}\b")
+MOTS_CLES_IDENTITE = ("identité", "identite", "هوية", "التعريف")
+
 
 class NLPClassifier:
 
     def __init__(self):
-        logger.info(f"Chargement du modèle {MODEL_NAME}...")
-        self.model = SentenceTransformer(MODEL_NAME)
+        logger.info("Chargement du modèle %s (device=%s)...", MODEL_NAME, DEVICE)
+        t0 = time.time()
+        self.model = SentenceTransformer(MODEL_NAME, device=DEVICE)
+        self.label_embeddings: dict[str, torch.Tensor] = {}
         self._build_label_embeddings()
-        logger.info("Modèle NLP chargé — FR + AR opérationnel.")
+        logger.info(
+            "Modèle NLP prêt en %.2fs — FR + AR opérationnel (%d catégories).",
+            time.time() - t0, len(DOCUMENT_LABELS)
+        )
 
-    def _build_label_embeddings(self):
-        """Précalcule les embeddings moyens des phrases de référence."""
-        self.label_embeddings = {}
+    def _build_label_embeddings(self) -> None:
+        if CACHE_PATH.exists():
+            try:
+                with open(CACHE_PATH, "rb") as f:
+                    cached = pickle.load(f)
+                if cached.get("labels_hash") == self._hash_labels():
+                    self.label_embeddings = cached["embeddings"]
+                    logger.info("Embeddings de labels chargés depuis le cache.")
+                    return
+                logger.info("Cache obsolète (labels modifiés) — recalcul.")
+            except Exception as e:
+                logger.warning("Cache illisible (%s) — recalcul.", e)
+
         for label, phrases in DOCUMENT_LABELS.items():
-            embeddings = self.model.encode(phrases, convert_to_tensor=True)
-            self.label_embeddings[label] = embeddings.mean(dim=0)
+            embeddings = self.model.encode(
+                phrases, convert_to_tensor=True, normalize_embeddings=True
+            )
+            self.label_embeddings[label] = embeddings
 
-    def classify(self, texte: str, seuil_confiance: float = 0.35) -> dict:
-        """
-        Classifie un texte et retourne le type de document + score de confiance.
-        """
+        CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with open(CACHE_PATH, "wb") as f:
+            pickle.dump({
+                "embeddings": self.label_embeddings,
+                "labels_hash": self._hash_labels(),
+            }, f)
+        logger.info("Embeddings de labels calculés et mis en cache.")
+
+    @staticmethod
+    def _hash_labels() -> int:
+        return hash(tuple(
+            (label, tuple(phrases)) for label, phrases in DOCUMENT_LABELS.items()
+        ))
+
+    def classify(self, texte: str, dossier_id: str | None = None) -> dict:
+        t0 = time.time()
+
         if not texte or len(texte.strip()) < 20:
             return {
                 "type_document": "AUTRE",
                 "confiance": 0.0,
+                "seuil_applique": SEUIL_CONFIANCE_DEFAUT,
                 "top3": [],
-                "message": "Texte trop court pour classification"
+                "alertes": ["Texte trop court pour classification (< 20 caractères)"],
+                "duree_ms": round((time.time() - t0) * 1000, 1),
+                "modele": MODEL_NAME,
             }
 
-        # Limiter à 2000 chars pour la performance
-        texte_tronque = texte[:2000]
-        texte_embedding = self.model.encode(texte_tronque, convert_to_tensor=True)
+        texte_tronque = texte[:MAX_CHARS_TEXTE]
+        texte_embedding = self.model.encode(
+            texte_tronque, convert_to_tensor=True, normalize_embeddings=True
+        )
 
-        # Similarité cosinus avec chaque label
-        scores = {}
-        for label, ref_embedding in self.label_embeddings.items():
-            score = util.cos_sim(texte_embedding, ref_embedding).item()
-            scores[label] = round(score, 4)
+        scores = []
+        for label, ref_embeddings in self.label_embeddings.items():
+            similarites = util.cos_sim(texte_embedding, ref_embeddings)[0]
+            meilleur_idx = int(similarites.argmax())
+            scores.append({
+                "label": label,
+                "score": round(similarites[meilleur_idx].item(), 4),
+                "phrase_matchee": DOCUMENT_LABELS[label][meilleur_idx],
+            })
 
-        sorted_scores = sorted(scores.items(), key=lambda x: x[1], reverse=True)
-        best_label, best_score = sorted_scores[0]
+        scores.sort(key=lambda s: s["score"], reverse=True)
+        best = scores[0]
 
-        if best_score < seuil_confiance:
-            best_label = "AUTRE"
+        seuil_applique = SEUILS_PAR_LABEL.get(best["label"], SEUIL_CONFIANCE_DEFAUT)
+        type_final = best["label"] if best["score"] >= seuil_applique else "AUTRE"
 
-        top3 = [{"label": l, "score": s} for l, s in sorted_scores[:3]]
+        alertes = self._verifier_coherence_cin(texte_tronque, type_final)
 
-        logger.info(f"Classification → {best_label} (confiance={best_score})")
+        duree_ms = round((time.time() - t0) * 1000, 1)
+
+        logger.info(
+            "classification_effectuee",
+            extra={
+                "dossier_id": dossier_id,
+                "type_document_predit": type_final,
+                "confiance": best["score"],
+                "seuil_applique": seuil_applique,
+                "duree_ms": duree_ms,
+            }
+        )
 
         return {
-            "type_document": best_label,
-            "confiance":     best_score,
-            "top3":          top3
+            "type_document": type_final,
+            "confiance": best["score"],
+            "seuil_applique": seuil_applique,
+            "top3": scores[:3],
+            "alertes": alertes,
+            "duree_ms": duree_ms,
+            "modele": MODEL_NAME,
+        }
+
+    @staticmethod
+    def _verifier_coherence_cin(texte: str, type_predit: str) -> list[str]:
+        alertes = []
+        texte_lower = texte.lower()
+
+        pattern_cin_detecte = (
+            REGEX_CIN_NUMERO.search(texte) is not None
+            and any(mot in texte_lower or mot in texte for mot in MOTS_CLES_IDENTITE)
+        )
+
+        if pattern_cin_detecte and type_predit != "CIN":
+            alertes.append(
+                f"Pattern structurel de CIN détecté (numéro 8 chiffres + mot-clé "
+                f"identité) mais classification = '{type_predit}'. Vérification "
+                f"manuelle recommandée."
+            )
+
+        return alertes
+
+    def stats(self) -> dict:
+        return {
+            "modele": MODEL_NAME,
+            "device": DEVICE,
+            "nb_categories": len(DOCUMENT_LABELS),
+            "cache_utilise": CACHE_PATH.exists(),
         }
 
 
-# ── Règles métier — checklist documents ───────────────────────────────────────
-
 def verifier_documents_requis(
-    documents_fournis: list,
-    age_client: int = None,
-    type_contrat: str = None,
-    nationalite: str = "TN"
+    documents_fournis: list[str],
+    age_client: int | None = None,
+    type_contrat: str | None = None,
+    nationalite: str = "TN",
 ) -> dict:
-    """
-    Vérifie la complétude du dossier selon les règles métier Attijariwafa.
-    """
-    # Documents toujours obligatoires
     requis = {
         "CIN",
         "FICHE_PAIE",
@@ -218,14 +311,10 @@ def verifier_documents_requis(
 
     regles_appliquees = []
 
-    # Règle 1 : âge > 60 → assurance vie
     if age_client and age_client > 60:
         requis.add("ASSURANCE_VIE")
-        regles_appliquees.append(
-            f"Âge {age_client} > 60 ans → assurance vie obligatoire"
-        )
+        regles_appliquees.append(f"Âge {age_client} > 60 ans → assurance vie obligatoire")
 
-    # Règle 2 : indépendant/gérant → bilan + déclaration fiscale
     if type_contrat and type_contrat.upper() in ("INDEPENDANT", "GERANT"):
         requis.add("BILAN_COMPTABLE")
         requis.add("DECLARATION_FISCALE")
@@ -233,25 +322,23 @@ def verifier_documents_requis(
             f"Statut {type_contrat} → bilan comptable + déclaration fiscale"
         )
 
-    # Règle 3 : CDD → contrat de travail
     if type_contrat and type_contrat.upper() == "CDD":
         requis.add("CONTRAT_TRAVAIL")
         regles_appliquees.append("Contrat CDD → contrat de travail requis")
 
-    # Règle 4 : étranger → titre de séjour
     if nationalite and nationalite.upper() != "TN":
         requis.add("TITRE_SEJOUR")
         regles_appliquees.append("Demandeur étranger → titre de séjour requis")
 
     fournis_set = set(documents_fournis)
-    manquants   = sorted(requis - fournis_set)
-    complet     = len(manquants) == 0
+    manquants = sorted(requis - fournis_set)
+    complet = len(manquants) == 0
 
     return {
-        "complet":           complet,
-        "manquants":         manquants,
-        "requis":            sorted(requis),
-        "fournis":           sorted(fournis_set),
+        "complet": complet,
+        "manquants": manquants,
+        "requis": sorted(requis),
+        "fournis": sorted(fournis_set),
         "regles_appliquees": regles_appliquees,
-        "taux_completion":   round(len(fournis_set & requis) / len(requis) * 100, 1)
+        "taux_completion": round(len(fournis_set & requis) / len(requis) * 100, 1),
     }

@@ -1,5 +1,6 @@
 package com.example.crediSense.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -18,7 +19,10 @@ public class Dossier {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
+    private Double  montantCredit;
+    private Integer dureeCredit;
     private String typeCredit;
+    private String  typeContrat;
     private String statut;
 
     @CreationTimestamp
@@ -29,11 +33,13 @@ public class Dossier {
     @ToString.Exclude
     private Client client;
 
-    @OneToOne(mappedBy = "dossier", cascade = CascadeType.ALL)
+    @OneToOne(mappedBy = "dossier", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnoreProperties({"dossier"})
     @ToString.Exclude
     private AgentAnalysis agentAnalysis;
 
-    @OneToOne(mappedBy = "dossier", cascade = CascadeType.ALL)
+    @OneToOne(mappedBy = "dossier", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnoreProperties({"dossier"})
     @ToString.Exclude
     private DecisionFinale decisionFinale;
 
