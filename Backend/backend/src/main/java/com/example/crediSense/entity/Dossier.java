@@ -50,4 +50,9 @@ public class Dossier {
     @OneToMany(mappedBy = "dossier", cascade = CascadeType.ALL)
     @ToString.Exclude
     private List<Fichier> fichiers;
+
+    @ManyToOne
+    @JoinColumn(name = "agent_traitant_id")
+    @ToString.Exclude
+    private Agent agentTraitant;
 }

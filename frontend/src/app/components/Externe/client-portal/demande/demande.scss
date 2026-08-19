@@ -1,36 +1,35 @@
 /* demande.scss */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 * { box-sizing: border-box; }
 
 .demande-page {
   min-height: 100vh;
-  background: #f0f2f7;
+  background: #f4f5f9;
   font-family: 'Inter', sans-serif;
 }
 
 /* ── Header ──────────────────────────────────────────────────────────── */
 .demande-header {
   background: #ffffff;
-  border-bottom: 1px solid #eaedf3;
+  border-bottom: 1px solid #eef0f5;
   padding: 0 40px;
-  height: 68px;
+  height: 72px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  box-shadow: 0 1px 12px rgba(0,0,0,0.06);
+  box-shadow: 0 1px 16px rgba(0,0,0,0.05);
   position: sticky;
   top: 0;
   z-index: 50;
 }
 
 .logo-img {
-  width: 90px;
-  height: 60px;
+  width: 92px;
+  height: 62px;
   object-fit: contain;
   display: block;
-  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.08));
   transition: transform 0.2s;
 
   &:hover { transform: scale(1.03); }
@@ -40,9 +39,6 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 18px;
-  font-weight: 700;
-  color: #1a1a2e;
 }
 
 /* ── Header right ────────────────────────────────────────────────────── */
@@ -53,16 +49,16 @@
   position: relative;
 }
 
-/* ── Bouton historique ───────────────────────────────────────────────── */
+/* ── Bouton historique (pill, style Attijari) ───────────────────────── */
 .btn-historique {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 16px;
-  border: 1.5px solid #f47920;
-  border-radius: 20px;
+  padding: 9px 18px;
+  border: 1.5px solid #e8302a;
+  border-radius: 999px;
   background: transparent;
-  color: #f47920;
+  color: #e8302a;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -70,8 +66,10 @@
   white-space: nowrap;
 
   &:hover {
-    background: #f47920;
+    background: linear-gradient(135deg, #e8302a, #f47920);
     color: #fff;
+    border-color: transparent;
+    box-shadow: 0 4px 14px rgba(232,48,42,0.3);
   }
 }
 
@@ -82,20 +80,20 @@
   position: relative;
   width: 40px;
   height: 40px;
-  border: 1.5px solid #eaedf3;
+  border: 1.5px solid #eef0f5;
   border-radius: 50%;
   background: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: #666;
+  color: #777;
   transition: all 0.2s;
 
   &:hover {
-    border-color: #f47920;
-    color: #f47920;
-    background: #fff8f3;
+    border-color: #e8302a;
+    color: #e8302a;
+    background: #fff5f4;
   }
 }
 
@@ -105,7 +103,7 @@
   right: -3px;
   width: 18px;
   height: 18px;
-  background: #f47920;
+  background: linear-gradient(135deg, #e8302a, #f47920);
   color: #fff;
   border-radius: 50%;
   font-size: 10px;
@@ -122,9 +120,9 @@
   right: 0;
   width: 320px;
   background: #fff;
-  border: 1px solid #eaedf3;
-  border-radius: 16px;
-  box-shadow: 0 12px 40px rgba(0,0,0,0.12);
+  border: 1px solid #eef0f5;
+  border-radius: 18px;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.12);
   z-index: 100;
   overflow: hidden;
 }
@@ -134,7 +132,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 14px 18px;
-  border-bottom: 1px solid #f5f5f5;
+  border-bottom: 1px solid #f5f5f7;
 
   span {
     font-size: 14px;
@@ -144,11 +142,11 @@
 
   button {
     font-size: 12px;
-    color: #f47920;
+    color: #e8302a;
     background: none;
     border: none;
     cursor: pointer;
-    font-weight: 500;
+    font-weight: 600;
     &:hover { text-decoration: underline; }
   }
 }
@@ -159,21 +157,21 @@
   display: flex;
   gap: 12px;
   padding: 14px 18px;
-  border-bottom: 1px solid #f8f8f8;
+  border-bottom: 1px solid #f8f8fa;
   transition: background 0.1s;
   cursor: pointer;
 
   &:last-child { border-bottom: none; }
   &:hover { background: #fafafa; }
-  &.notif-unread { background: #fff9f5; }
+  &.notif-unread { background: #fff6f5; }
 }
 
 .notif-icon {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #fff4ed, #ffe4cc);
-  color: #f47920;
+  background: linear-gradient(135deg, #ffe9e7, #ffe4cc);
+  color: #e8302a;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -204,18 +202,18 @@
   align-items: center;
   gap: 10px;
   position: relative;
-  padding: 6px 12px;
-  border: 1.5px solid #eaedf3;
-  border-radius: 24px;
+  padding: 6px 14px 6px 6px;
+  border: 1.5px solid #eef0f5;
+  border-radius: 999px;
   cursor: pointer;
   transition: all 0.2s;
 
-  &:hover { border-color: #f47920; background: #fff9f5; }
+  &:hover { border-color: #e8302a; background: #fff6f5; }
 }
 
 .client-avatar {
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   overflow: hidden;
   flex-shrink: 0;
@@ -229,7 +227,7 @@
   .avatar-initiales {
     width: 100%;
     height: 100%;
-    background: linear-gradient(135deg, #f47920, #ff9a4d);
+    background: linear-gradient(135deg, #e8302a, #f47920);
     color: #fff;
     font-size: 12px;
     font-weight: 700;
@@ -254,7 +252,7 @@
 
   .client-nom {
     font-size: 13px;
-    font-weight: 600;
+    font-weight: 700;
     color: #111;
     line-height: 1.4;
   }
@@ -273,7 +271,7 @@
   padding: 0;
   transition: color 0.15s;
 
-  &:hover { color: #f47920; }
+  &:hover { color: #e8302a; }
 }
 
 .client-menu { position: relative; }
@@ -283,9 +281,9 @@
   top: calc(100% + 10px);
   right: 0;
   background: #fff;
-  border: 1px solid #eaedf3;
-  border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+  border: 1px solid #eef0f5;
+  border-radius: 14px;
+  box-shadow: 0 12px 36px rgba(0,0,0,0.1);
   z-index: 100;
   overflow: hidden;
   min-width: 160px;
@@ -306,13 +304,13 @@
     transition: all 0.15s;
 
     &:hover {
-      background: #fff9f5;
-      color: #f47920;
+      background: #fff6f5;
+      color: #e8302a;
     }
   }
 }
 
-/* ── Steps indicator ─────────────────────────────────────────────────── */
+/* ── Steps indicator (dégradé rouge→orange sur l'étape active) ───────── */
 .steps-indicator {
   display: flex;
   align-items: center;
@@ -322,15 +320,15 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
 
   .step-circle {
-    width: 36px;
-    height: 36px;
+    width: 38px;
+    height: 38px;
     border-radius: 50%;
-    border: 2px solid #dde1eb;
+    border: 2px solid #e2e5ee;
     background: #fff;
-    color: #bbb;
+    color: #b8bcc8;
     font-size: 13px;
     font-weight: 700;
     display: flex;
@@ -341,24 +339,24 @@
 
   .step-label {
     font-size: 11px;
-    color: #bbb;
-    font-weight: 500;
+    color: #b8bcc8;
+    font-weight: 600;
     letter-spacing: 0.3px;
   }
 
   &.active {
     .step-circle {
-      border-color: #f47920;
-      background: #f47920;
+      border-color: transparent;
+      background: linear-gradient(135deg, #e8302a, #f47920);
       color: #fff;
-      box-shadow: 0 4px 12px rgba(244,121,32,0.35);
+      box-shadow: 0 4px 14px rgba(232,48,42,0.35);
     }
-    .step-label { color: #f47920; font-weight: 700; }
+    .step-label { color: #e8302a; font-weight: 700; }
   }
 
   &.done {
     .step-circle {
-      border-color: #1e8449;
+      border-color: transparent;
       background: #1e8449;
       color: #fff;
       box-shadow: 0 4px 12px rgba(30,132,73,0.25);
@@ -370,40 +368,107 @@
 .step-line {
   width: 80px;
   height: 2px;
-  background: #dde1eb;
-  margin: 0 10px 20px;
+  background: #e2e5ee;
+  margin: 0 12px 22px;
   transition: background 0.25s;
   &.done { background: #1e8449; }
 }
 
+/* ── Bandeau de bienvenue ────────────────────────────────────────────── */
+.welcome-band {
+  background: linear-gradient(135deg, #1a1a2e 0%, #2a1512 100%);
+  padding: 32px 20px;
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: -60px; right: -40px;
+    width: 240px; height: 240px;
+    background: radial-gradient(circle, rgba(232,48,42,0.2) 0%, transparent 70%);
+  }
+}
+
+.welcome-content {
+  max-width: 780px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 1;
+
+  h1 {
+    font-size: 22px;
+    font-weight: 800;
+    color: #fff;
+    margin: 0 0 8px;
+    letter-spacing: -0.3px;
+  }
+
+  p {
+    font-size: 13.5px;
+    color: rgba(255,255,255,0.65);
+    margin: 0;
+    line-height: 1.6;
+    max-width: 560px;
+  }
+}
+
 /* ── Contenu ─────────────────────────────────────────────────────────── */
 .demande-content {
-  max-width: 760px;
-  margin: 36px auto;
+  max-width: 780px;
+  margin: 40px auto;
   padding: 0 20px;
 }
 
 .step-panel {
   background: #fff;
-  border-radius: 20px;
-  padding: 40px 44px;
-  box-shadow: 0 4px 24px rgba(0,0,0,0.06);
-  border: 1px solid #eaedf3;
+  border-radius: 24px;
+  padding: 44px 48px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.05);
+  border: 1px solid #f0f1f5;
 }
 
 .step-title {
-  font-size: 24px;
-  font-weight: 700;
+  font-size: 26px;
+  font-weight: 800;
   color: #111827;
   margin: 0 0 6px;
-  letter-spacing: -0.4px;
+  letter-spacing: -0.5px;
 }
 
 .step-subtitle {
   font-size: 14px;
-  color: #9ca3af;
+  color: #9aa0ac;
   margin: 0 0 32px;
   line-height: 1.6;
+}
+
+/* ── Ligne titre + estimation temps ─────────────────────────────────── */
+.step-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 32px;
+  gap: 16px;
+}
+
+.step-title-row .step-title,
+.step-title-row .step-subtitle {
+  margin-bottom: 0;
+}
+
+.time-estimate {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: #fdeceb;
+  color: #e8302a;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 999px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 /* ── Formulaire ──────────────────────────────────────────────────────── */
@@ -423,47 +488,47 @@
 
   label {
     font-size: 12px;
-    font-weight: 600;
+    font-weight: 700;
     color: #374151;
     text-transform: uppercase;
     letter-spacing: 0.6px;
 
-    .req { color: #f47920; }
+    .req { color: #e8302a; }
   }
 }
 
 .section-title {
   font-size: 12px;
-  font-weight: 700;
-  color: #f47920;
+  font-weight: 800;
+  color: #e8302a;
   text-transform: uppercase;
   letter-spacing: 0.8px;
   padding: 16px 0 4px;
-  border-top: 1px solid #f0f2f7;
+  border-top: 1px solid #f2f3f7;
   margin-top: 4px;
 }
 
 .form-input {
-  padding: 11px 16px;
-  border: 1.5px solid #e5e7eb;
-  border-radius: 10px;
+  padding: 12px 16px;
+  border: 1.5px solid #e7e9ef;
+  border-radius: 12px;
   font-size: 14px;
   color: #111827;
   outline: none;
-  background: #fafbfc;
+  background: #fbfbfd;
   transition: all 0.2s;
   font-family: 'Inter', sans-serif;
 
   &:focus {
-    border-color: #f47920;
+    border-color: #e8302a;
     background: #fff;
-    box-shadow: 0 0 0 3px rgba(244,121,32,0.08);
+    box-shadow: 0 0 0 3px rgba(232,48,42,0.08);
   }
 
   &::placeholder { color: #d1d5db; }
 }
 
-.form-hint { font-size: 11.5px; color: #9ca3af; }
+.form-hint { font-size: 11.5px; color: #9aa0ac; }
 
 .age-badge {
   display: flex;
@@ -477,7 +542,7 @@
     background: #fffbeb;
     color: #92400e;
     padding: 3px 10px;
-    border-radius: 20px;
+    border-radius: 999px;
     font-size: 11px;
     font-weight: 600;
     border: 1px solid #fcd34d;
@@ -486,10 +551,10 @@
 
 /* ── Alertes ─────────────────────────────────────────────────────────── */
 .alert-error {
-  background: #fef2f2;
-  color: #991b1b;
-  border: 1px solid #fecaca;
-  border-radius: 10px;
+  background: #fdf0ef;
+  color: #9b2c26;
+  border: 1px solid #f7c8c4;
+  border-radius: 12px;
   padding: 12px 16px;
   font-size: 13px;
   margin-bottom: 20px;
@@ -503,7 +568,7 @@
   background: #fffbeb;
   color: #92400e;
   border: 1px solid #fcd34d;
-  border-radius: 10px;
+  border-radius: 12px;
   padding: 12px 16px;
   font-size: 13px;
   margin-bottom: 20px;
@@ -514,25 +579,25 @@
   background: #f0fdf4;
   color: #14532d;
   border: 1px solid #bbf7d0;
-  border-radius: 10px;
+  border-radius: 12px;
   padding: 12px 16px;
   font-size: 13px;
   margin-bottom: 20px;
   font-weight: 500;
 }
 
-/* ── Bouton suivant ──────────────────────────────────────────────────── */
+/* ── Bouton suivant (pill, dégradé rouge→orange) ────────────────────── */
 .btn-next {
   width: 100%;
-  padding: 14px;
-  background: linear-gradient(135deg, #f47920, #ff9a4d);
+  padding: 15px;
+  background: linear-gradient(135deg, #e8302a, #f47920);
   color: #fff;
   border: none;
-  border-radius: 12px;
+  border-radius: 999px;
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
-  box-shadow: 0 6px 20px rgba(244,121,32,0.35);
+  box-shadow: 0 8px 24px rgba(232,48,42,0.35);
   transition: all 0.2s;
   display: flex;
   align-items: center;
@@ -542,7 +607,7 @@
 
   &:hover:not(:disabled) {
     transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(244,121,32,0.45);
+    box-shadow: 0 10px 28px rgba(232,48,42,0.45);
   }
   &:active:not(:disabled) { transform: translateY(0); }
   &:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -551,22 +616,22 @@
 /* ── Barre progression ───────────────────────────────────────────────── */
 .progress-bar {
   height: 6px;
-  background: #f3f4f6;
-  border-radius: 99px;
+  background: #f1f2f6;
+  border-radius: 999px;
   overflow: hidden;
   margin-bottom: 6px;
 
   .progress-fill {
     height: 100%;
-    background: linear-gradient(90deg, #f47920, #ff9a4d);
-    border-radius: 99px;
+    background: linear-gradient(90deg, #e8302a, #f47920);
+    border-radius: 999px;
     transition: width 0.4s ease;
   }
 }
 
 .progress-label {
   font-size: 12px;
-  color: #9ca3af;
+  color: #9aa0ac;
   margin: 0 0 24px;
   text-align: right;
   font-weight: 500;
@@ -585,14 +650,14 @@
   align-items: center;
   gap: 14px;
   padding: 16px 18px;
-  background: #fafbfc;
-  border: 1.5px solid #e5e7eb;
-  border-radius: 14px;
+  background: #fbfbfd;
+  border: 1.5px solid #e7e9ef;
+  border-radius: 16px;
   transition: all 0.2s;
 
-  &:hover { border-color: #d1d5db; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+  &:hover { border-color: #d6d9e2; box-shadow: 0 4px 12px rgba(0,0,0,0.04); }
   &.doc-done  { border-color: #86efac; background: #f0fdf4; }
-  &.doc-error { border-color: #fca5a5; background: #fef2f2; }
+  &.doc-error { border-color: #f3aba6; background: #fdf0ef; }
 }
 
 .doc-status-icon { flex-shrink: 0; width: 28px; }
@@ -607,7 +672,7 @@
 
 .doc-label {
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 700;
   color: #111827;
   display: flex;
   align-items: center;
@@ -616,13 +681,13 @@
 }
 
 .badge-obligatoire {
-  background: #fff7ed;
-  color: #c2410c;
+  background: #fdf0ef;
+  color: #c02b23;
   font-size: 10px;
   font-weight: 700;
-  padding: 2px 8px;
-  border-radius: 20px;
-  border: 1px solid #fed7aa;
+  padding: 2px 9px;
+  border-radius: 999px;
+  border: 1px solid #f3c5c1;
   text-transform: uppercase;
   letter-spacing: 0.4px;
 }
@@ -631,25 +696,27 @@
 .doc-condition { font-size: 11.5px; color: #b45309; font-weight: 500; }
 .doc-filename  { font-size: 12px; color: #374151; font-weight: 500; }
 
-/* ── Bouton upload ───────────────────────────────────────────────────── */
+/* ── Bouton upload (pill) ────────────────────────────────────────────── */
 .btn-upload {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 9px 18px;
-  background: #f47920;
+  padding: 9px 20px;
+  background: linear-gradient(135deg, #e8302a, #f47920);
   color: #fff;
-  border-radius: 10px;
+  border-radius: 999px;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
   white-space: nowrap;
   transition: all 0.2s;
   flex-shrink: 0;
+  box-shadow: 0 4px 14px rgba(232,48,42,0.25);
 
-  &:hover { background: #d96b18; transform: translateY(-1px); }
+  &:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(232,48,42,0.35); }
   &.btn-done {
     background: #15803d;
+    box-shadow: none;
     cursor: default;
     transform: none;
   }
@@ -663,35 +730,35 @@
 }
 
 .btn-back {
-  padding: 13px 24px;
+  padding: 14px 26px;
   background: #f9fafb;
-  border: 1.5px solid #e5e7eb;
-  border-radius: 12px;
+  border: 1.5px solid #e7e9ef;
+  border-radius: 999px;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 700;
   color: #6b7280;
   cursor: pointer;
   transition: all 0.2s;
   font-family: 'Inter', sans-serif;
 
   &:hover {
-    background: #f3f4f6;
+    background: #f2f3f7;
     color: #374151;
-    border-color: #d1d5db;
+    border-color: #d6d9e2;
   }
 }
 
 .btn-submit {
   flex: 1;
-  padding: 13px;
+  padding: 14px;
   background: linear-gradient(135deg, #15803d, #16a34a);
   color: #fff;
   border: none;
-  border-radius: 12px;
+  border-radius: 999px;
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
-  box-shadow: 0 6px 20px rgba(21,128,61,0.3);
+  box-shadow: 0 8px 24px rgba(21,128,61,0.3);
   transition: all 0.2s;
   display: flex;
   align-items: center;
@@ -701,7 +768,7 @@
 
   &:hover:not(:disabled) {
     transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(21,128,61,0.4);
+    box-shadow: 0 10px 28px rgba(21,128,61,0.4);
   }
   &:disabled { opacity: 0.5; cursor: not-allowed; }
 }
@@ -729,3 +796,136 @@
 }
 
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Bande de réassurance ────────────────────────────────────────────── */
+.trust-band {
+  max-width: 780px;
+  margin: 0 auto 40px;
+  padding: 0 20px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.trust-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 18px;
+  background: #fff;
+  border: 1px solid #f0f1f5;
+  border-radius: 16px;
+  transition: all 0.2s;
+
+  &:hover {
+    border-color: #f3c5c1;
+    box-shadow: 0 4px 16px rgba(232,48,42,0.08);
+  }
+}
+
+.trust-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #fdeceb, #fff0e2);
+  color: #e8302a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.trust-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+
+  strong {
+    font-size: 13px;
+    font-weight: 700;
+    color: #111827;
+  }
+  span {
+    font-size: 11.5px;
+    color: #9aa0ac;
+    line-height: 1.4;
+  }
+}
+
+@media (max-width: 900px) {
+  .trust-band { grid-template-columns: repeat(2, 1fr); }
+  .step-title-row { flex-direction: column; }
+}
+/* ── Bandeau de bienvenue chaleureux ─────────────────────────────────── */
+.welcome-warm {
+  text-align: center;
+  padding: 36px 20px 26px;
+  background: linear-gradient(180deg, #fff6f0 0%, #f4f5f9 100%);
+}
+
+.welcome-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #e8302a, #f47920);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  margin: 0 auto 14px;
+  box-shadow: 0 8px 24px rgba(232,48,42,0.25);
+}
+
+.welcome-warm h1 {
+  font-size: 22px;
+  font-weight: 800;
+  color: #111827;
+  margin: 0 0 8px;
+}
+
+.welcome-warm p {
+  font-size: 13.5px;
+  color: #6b7280;
+  max-width: 440px;
+  margin: 0 auto;
+  line-height: 1.6;
+}
+
+/* ── Steps en pills (remplace steps-indicator) ──────────────────────── */
+.steps-pills {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.step-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  border-radius: 999px;
+  background: #f4f5f9;
+  color: #9aa0ac;
+  font-size: 12px;
+  font-weight: 700;
+  transition: all 0.25s;
+
+  &.active {
+    background: linear-gradient(135deg, #e8302a, #f47920);
+    color: #fff;
+    box-shadow: 0 4px 14px rgba(232,48,42,0.3);
+  }
+
+  &.done {
+    background: #e6f7ec;
+    color: #1e8449;
+  }
+}
+
+.pill-line {
+  width: 24px;
+  height: 2px;
+  background: #e2e5ee;
+  border-radius: 2px;
+  &.done { background: #1e8449; }
+}

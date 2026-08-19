@@ -11,13 +11,13 @@
   [agentPrenom]="agentPrenom"
   [dossiers]="tousLesDossiers"
   >
-</app-dashboard-card><!-- ══ DEMANDES PORTAIL CLIENT ══ -->
+</app-dashboard-card><
 <div class="portail-section">
 
   <!-- Header -->
   <div class="portail-header">
     <div class="portail-header-left">
-      <h3>Demandes portail client</h3>
+      <h3> portail des dossiers </h3>
       <span class="portail-total-badge">{{ totalPortail }}</span>
     </div>
     <button class="btn-refresh" (click)="loadTousDossiers()">
@@ -108,10 +108,14 @@
         <tr>
           <th>Client</th>
           <th>CIN</th>
+          <th>Date de création</th>
+
           <th>Email</th>
           <th>Type</th>
           <th>Statut</th>
+
           <th>Actions</th>
+          <th>Traité par</th>
         </tr>
       </thead>
       <tbody>
@@ -125,6 +129,8 @@
             </div>
           </td>
           <td><span class="cin-badge">{{ d.clientCin }}</span></td>
+              <td class="date-cell">{{ d.createdAt | date:'dd/MM/yyyy' }}</td>
+
           <td class="email-cell">{{ d.clientEmail }}</td>
           <td><span class="type-badge">{{ d.typeCredit }}</span></td>
           <td>
@@ -132,6 +138,7 @@
               {{ getStatutPortailLabel(d.statut) }}
             </span>
           </td>
+
           <td class="actions-cell">
             <!-- EN_ATTENTE -->
             <button class="btn-prendre"
@@ -176,6 +183,13 @@
               Refusé
             </span>
           </td>
+           <td class="agent-cell">
+      <span *ngIf="['EN_COURS','APPROUVE','REFUSE'].includes(d.statut)">
+        {{ d.agentNom || '—' }}
+      </span>
+      <span *ngIf="d.statut === 'EN_ATTENTE'" class="agent-empty">—</span>
+    </td>
+    <td>
         </tr>
       </tbody>
     </table>

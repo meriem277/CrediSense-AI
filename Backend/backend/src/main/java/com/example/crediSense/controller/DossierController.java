@@ -7,6 +7,7 @@ import java.util.stream.Collectors;
 
 import com.example.crediSense.entity.Client;
 import com.example.crediSense.entity.Dossier;
+import com.example.crediSense.repository.AgentRepository;
 import com.example.crediSense.repository.DecisionFinaleRepository;
 import com.example.crediSense.repository.DossierRepository;
 import lombok.extern.slf4j.Slf4j;
@@ -31,6 +32,8 @@ public class DossierController {
 
     private final DossierService dossierService;
     private final DossierRepository dossierRepository;
+    private final AgentRepository agentRepository;
+
     private final DecisionFinaleRepository decisionFinaleRepository;
     private final JavaMailSender mailSender;
 
@@ -96,12 +99,17 @@ public class DossierController {
         String nouveauStatut = body.get("statut");
         String commentaire   = body.getOrDefault("commentaire", "");
 
-        // ✅ Statuts valides
         if (!List.of("EN_ATTENTE", "EN_COURS", "APPROUVE", "REFUSE").contains(nouveauStatut)) {
             throw new RuntimeException("Statut invalide : " + nouveauStatut);
         }
 
         d.setStatut(nouveauStatut);
+
+        // ✅ Capture l'agent connecté qui effectue le changement
+        String email = org.springframework.security.core.context.SecurityContextHolder
+                .getContext().getAuthentication().getName();
+        agentRepository.findByEmail(email).ifPresent(d::setAgentTraitant);
+
         if (d.getClass().getDeclaredFields().length > 0) {
             try {
                 var f = d.getClass().getDeclaredField("commentaire");
@@ -111,7 +119,7 @@ public class DossierController {
         }
 
         dossierRepository.save(d);
-        log.info("Dossier {} → statut {}", id, nouveauStatut);
+        log.info("Dossier {} → statut {} (agent: {})", id, nouveauStatut, email);
 
         return ResponseEntity.ok(Map.of(
                 "dossierId", id.toString(),
@@ -119,31 +127,30 @@ public class DossierController {
                 "message",   "Statut mis à jour"
         ));
     }
-
     // ── Helpers ──────────────────────────────────────────────────────
     private List<Map<String, Object>> buildResponse(List<Dossier> dossiers) {
         return dossiers.stream().map(this::buildSingle).collect(Collectors.toList());
     }
 
     private Map<String, Object> buildSingle(Dossier d) {
-        return Map.of(
-                "dossierId",    d.getId().toString(),
-                "typeCredit",   d.getTypeCredit() != null ? d.getTypeCredit() : "",
-                "statut",       d.getStatut() != null ? d.getStatut() : "",
-                "clientId",     d.getClient() != null ? d.getClient().getId().toString() : "",  // ✅ ajoutez
-                "clientNom",    d.getClient() != null && d.getClient().getNom() != null
-                        ? d.getClient().getNom() : "",
-                "clientPrenom", d.getClient() != null && d.getClient().getPrenom() != null
-                        ? d.getClient().getPrenom() : "",
-                "clientEmail",  d.getClient() != null && d.getClient().getEmail() != null
-                        ? d.getClient().getEmail() : "",
-                "clientCin",    d.getClient() != null && d.getClient().getCin() != null
-                        ? d.getClient().getCin() : ""
+        return Map.ofEntries(
+                Map.entry("dossierId",    d.getId().toString()),
+                Map.entry("typeCredit",   d.getTypeCredit() != null ? d.getTypeCredit() : ""),
+                Map.entry("statut",       d.getStatut() != null ? d.getStatut() : ""),
+                Map.entry("createdAt",    d.getCreatedAt() != null ? d.getCreatedAt().toString() : ""),
+                Map.entry("clientId",     d.getClient() != null ? d.getClient().getId().toString() : ""),
+                Map.entry("clientNom",    d.getClient() != null && d.getClient().getNom() != null
+                        ? d.getClient().getNom() : ""),
+                Map.entry("clientPrenom", d.getClient() != null && d.getClient().getPrenom() != null
+                        ? d.getClient().getPrenom() : ""),
+                Map.entry("clientEmail",  d.getClient() != null && d.getClient().getEmail() != null
+                        ? d.getClient().getEmail() : ""),
+                Map.entry("clientCin",    d.getClient() != null && d.getClient().getCin() != null
+                        ? d.getClient().getCin() : ""),
+                Map.entry("agentNom",     d.getAgentTraitant() != null && d.getAgentTraitant().getNom() != null
+                        ? d.getAgentTraitant().getNom() : "")
         );
-
-
     }
-
     @GetMapping("/{id}/fichiers")
     public ResponseEntity<List<Map<String, Object>>> getFichiersByDossier(
             @PathVariable UUID id) {
@@ -158,7 +165,9 @@ public class DossierController {
                         "typeDocument", f.getTypeDocument() != null ? f.getTypeDocument() : "",
                         "typeOriginal", f.getTypeOriginal() != null ? f.getTypeOriginal() : "",
                         "cheminPdf",    f.getCheminPdf() != null ? f.getCheminPdf() : "",
-                        "createdAt",    f.getCreatedAt() != null ? f.getCreatedAt().toString() : ""
+                        "createdAt",    f.getCreatedAt() != null ? f.getCreatedAt().toString() : "",
+                        "verifie",      f.getOcrResult() != null
+                                && "SUCCESS".equals(f.getOcrResult().getStatut())
                 ))
                 .collect(Collectors.toList());
 

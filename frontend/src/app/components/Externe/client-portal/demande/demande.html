@@ -27,7 +27,6 @@
     <!-- Section client droite -->
     <div class="header-right">
 
-      <!-- Bouton historique -->
       <button class="btn-historique" (click)="voirHistorique()">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
              stroke="currentColor" stroke-width="2" stroke-linecap="round">
@@ -37,46 +36,8 @@
         Historique
       </button>
 
-      <!-- Notification -->
-      <div class="notif-wrap">
-        <button class="btn-notif" (click)="toggleNotifs()">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-               stroke="currentColor" stroke-width="2" stroke-linecap="round">
-            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-          </svg>
-          <span class="notif-badge" *ngIf="notifCount > 0">{{ notifCount }}</span>
-        </button>
 
-        <div class="notif-dropdown" *ngIf="showNotifs">
-          <div class="notif-header">
-            <span>Notifications</span>
-            <button (click)="marquerToutesLues()">Tout marquer lu</button>
-          </div>
-          <div class="notif-list">
-            <div *ngFor="let n of notifications"
-                 class="notif-item" [class.notif-unread]="!n.lue">
-              <div class="notif-icon">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-                     stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                  <circle cx="12" cy="12" r="10"/>
-                  <line x1="12" y1="8" x2="12" y2="12"/>
-                  <line x1="12" y1="16" x2="12.01" y2="16"/>
-                </svg>
-              </div>
-              <div class="notif-content">
-                <p>{{ n.message }}</p>
-                <span>{{ n.date }}</span>
-              </div>
-            </div>
-            <div *ngIf="notifications.length === 0" class="notif-empty">
-              Aucune notification
-            </div>
-          </div>
-        </div>
-      </div>
 
-      <!-- Avatar client -->
       <div class="client-info">
         <div class="client-avatar">
           <img *ngIf="clientPhotoUrl" [src]="clientPhotoUrl" alt="Photo" class="avatar-img"/>
@@ -110,14 +71,32 @@
     </div>
   </div>
 
+  <!-- ✅ Bandeau de bienvenue professionnel, mentionnant le système CrediSense -->
+  <div class="welcome-band">
+    <div class="welcome-content">
+      <h1>Bonjour {{ clientPrenom || clientNom }}, bienvenue sur CrediSense</h1>
+      <p>Déposez votre demande de crédit et notre système d'analyse intelligent traite votre dossier en quelques heures. Un conseiller dédié valide ensuite votre réponse avant transmission.</p>
+    </div>
+  </div>
+
   <!-- ✅ Contenu principal -->
   <div class="demande-content">
 
     <!-- ════ STEP 1 : Informations personnelles ════ -->
     <div *ngIf="currentStep === 1" class="step-panel">
 
-      <h2 class="step-title">Vos informations personnelles</h2>
-      <p class="step-subtitle">Renseignez vos coordonnées pour votre demande de crédit consommation</p>
+      <div class="step-title-row">
+        <div>
+          <h2 class="step-title">Vos informations personnelles</h2>
+          <p class="step-subtitle">Renseignez vos coordonnées pour votre demande de crédit consommation</p>
+        </div>
+        <span class="time-estimate">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+          </svg>
+        </span>
+      </div>
 
       <div class="alert-error" *ngIf="errorMsg">{{ errorMsg }}</div>
 
@@ -209,6 +188,8 @@
       <h2 class="step-title">Vos documents</h2>
       <p class="step-subtitle">
         Uploadez les documents requis · {{ documentsUploades }}/{{ documents.length }} documents
+       <span *ngIf="dossierCreatedAt"> · Dossier créé le {{ dossierCreatedAt | date:'dd/MM/yyyy à HH:mm' }}</span>
+
       </p>
 
       <div class="progress-bar">
@@ -277,6 +258,60 @@
 
     </div>
 
+  </div>
+
+  <!-- ✅ Bande de réassurance -->
+  <div class="trust-band">
+    <div class="trust-item">
+      <div class="trust-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+          <rect x="2" y="7" width="20" height="14" rx="2"/>
+          <path d="M16 3v4M8 3v4M2 11h20"/>
+        </svg>
+      </div>
+      <div class="trust-text">
+        <strong>Traitement rapide</strong>
+        <span>Analyse de votre dossier sous 48h ouvrées</span>
+      </div>
+    </div>
+
+    <div class="trust-item">
+      <div class="trust-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        </svg>
+      </div>
+      <div class="trust-text">
+        <strong>Données sécurisées</strong>
+        <span>Vos documents sont chiffrés et confidentiels</span>
+      </div>
+    </div>
+
+    <div class="trust-item">
+      <div class="trust-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+          <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+        </svg>
+      </div>
+      <div class="trust-text">
+        <strong>Suivi en temps réel</strong>
+        <span>Notifications à chaque étape de votre dossier</span>
+      </div>
+    </div>
+
+    <div class="trust-item">
+      <div class="trust-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+          <circle cx="12" cy="7" r="4"/>
+        </svg>
+      </div>
+      <div class="trust-text">
+        <strong>Un conseiller dédié</strong>
+        <span>Un agent humain valide votre demande</span>
+      </div>
+    </div>
   </div>
 
 </div>

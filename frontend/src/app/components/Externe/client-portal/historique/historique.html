@@ -3,8 +3,9 @@
   <div class="hist-header">
     <div class="brand-block">
       <img src="images/logo-attijaribank.png" alt="Attijari Logo" class="logo-img" />
-      <div>
-        <div class="brand-sub">Portail client</div>
+      <div class="brand-text">
+        <span class="brand-name">CrediSense</span>
+        <span class="brand-sub">Portail client</span>
       </div>
     </div>
 
@@ -26,24 +27,44 @@
         <p>Suivez l'état de vos dossiers de crédit</p>
       </div>
       <button class="btn-nouvelle" (click)="nouvelleDemande()">
-        + Nouvelle demande
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+          <line x1="12" y1="5" x2="12" y2="19"/>
+          <line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        Nouvelle demande
       </button>
     </div>
 
     <!-- Stats -->
     <div class="stats-row" *ngIf="!loading && dossiers.length > 0">
       <div class="stat-card">
+        <div class="stat-icon stat-icon-total">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+          </svg>
+        </div>
         <div class="stat-label">Total dossiers</div>
-    <div class="stat-value orange">{{ totalDossiers }}</div>
+        <div class="stat-value orange">{{ totalDossiers }}</div>
       </div>
       <div class="stat-card">
+        <div class="stat-icon stat-icon-attente">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+          </svg>
+        </div>
         <div class="stat-label">En attente</div>
-      <div class="stat-value">{{ enAttente }}</div>
- </div>
+        <div class="stat-value">{{ enAttente }}</div>
+      </div>
       <div class="stat-card">
+        <div class="stat-icon stat-icon-approuve">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        </div>
         <div class="stat-label">Approuvés</div>
-<div class="stat-value">{{ approuves }}</div>
-
+        <div class="stat-value">{{ approuves }}</div>
       </div>
     </div>
 
@@ -61,26 +82,77 @@
       </button>
     </div>
 
-    <div *ngIf="!loading && dossiers.length > 0" class="dossiers-grid">
-      <div *ngFor="let d of dossiers" class="dossier-card">
-        <div class="card-top">
-          <div class="card-icon">📄</div>
-          <span class="statut-badge" [class]="getStatutClass(d.statut)">
-            {{ getStatutLabel(d.statut) }}
-          </span>
-        </div>
-        <div class="card-mid">
-          <div class="card-title">Crédit {{ d.typeCredit }}</div>
-          <div class="card-id">N° {{ d.dossierId | slice:0:8 }}...</div>
-        </div>
-        <div class="card-bot">
-          <span class="card-date">Dossier soumis</span>
-          <span class="card-link">Voir détails →</span>
-        </div>
-      </div>
+    <!-- ✅ Tableau des dossiers (remplace dossiers-grid) -->
+    <div *ngIf="!loading && dossiers.length > 0" class="dossiers-table-wrap">
+      <table class="dossiers-table">
+        <thead>
+          <tr>
+            <th>Type de crédit</th>
+            <th>N° dossier</th>
+           <th class="th-sortable" (click)="toggleSortDate()">
+            Date de création
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+       [style.transform]="sortDateAsc ? 'rotate(180deg)' : 'none'">
+    <polyline points="6 9 12 15 18 9"/>
+  </svg>
+            </th>
+            <th>Statut</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let d of dossiers">
+            <td>
+              <div class="td-type">
+                <div class="td-icon">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                  </svg>
+                </div>
+                Crédit {{ d.typeCredit }}
+              </div>
+            </td>
+            <td class="td-id">{{ d.dossierId | slice:0:8 }}...</td>
+<td class="td-date">{{ formatDate(d.createdAt) }}</td>            <td>
+              <span class="statut-badge" [class]="getStatutClass(d.statut)">
+                {{ getStatutLabel(d.statut) }}
+              </span>
+            </td>
+            <td class="td-action">
+              <span class="card-link" (click)="voirDetails(d)">Voir détails →</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
 
   </div>
 
-  <p class="hist-footer">Attijari Bank — Crédit Consommation en ligne</p>
+  <p class="hist-footer">CrediSense — Attijari Bank · Crédit Consommation en ligne</p>
+
+  <!-- ✅ Modal détails dossier -->
+  <div class="modal-overlay" *ngIf="selectedDossier" (click)="fermerDetails()">
+    <div class="modal-box" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Crédit {{ selectedDossier.typeCredit }}</h3>
+        <button class="modal-close" (click)="fermerDetails()">✕</button>
+      </div>
+      <div class="modal-loading" *ngIf="loadingFichiers">
+        <div class="spinner-lg"></div>
+      </div>
+      <div class="modal-files" *ngIf="!loadingFichiers && fichiers.length > 0">
+        <div class="file-row" *ngFor="let f of fichiers">
+          <span class="file-name">{{ f.nomFichier || f.typeDocument }}</span>
+          <span class="statut-badge" [class]="getStatutClass(f.statut)">{{ getStatutLabel(f.statut) }}</span>
+           <a class="btn-voir" [href]="getFileUrl(f.id)" target="_blank">Voir</a>
+
+        </div>
+      </div>
+      <div class="modal-empty" *ngIf="!loadingFichiers && fichiers.length === 0">
+        Aucun fichier trouvé pour ce dossier.
+      </div>
+    </div>
+  </div>
+
 </div>

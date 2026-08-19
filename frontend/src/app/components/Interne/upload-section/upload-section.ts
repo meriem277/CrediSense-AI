@@ -71,13 +71,13 @@ export class UploadSection implements OnChanges {
 
   // ✅ Est-ce que ce fichier a été identifié avec succès par le pipeline IA ?
   estVerifie(fichier: any): boolean {
-    return !!fichier.typeDocument && fichier.typeDocument !== 'AUTRE';
+    return fichier.verifie === true;
   }
 
   // ✅ Message affiché au-dessus du fichier — "CIN vérifié et validé", etc.
   getMessageVerification(fichier: any): string {
-    if (!fichier.typeDocument) {
-      return 'Vérification en cours...';
+    if (!this.estVerifie(fichier)) {
+      return 'En attente de vérification';
     }
     if (fichier.typeDocument === 'AUTRE') {
       return 'Type de document non reconnu';
@@ -85,7 +85,6 @@ export class UploadSection implements OnChanges {
     const libelle = LABELS_TYPE_DOCUMENT[fichier.typeDocument] || fichier.typeDocument;
     return `${libelle} vérifié et validé`;
   }
-
   // ── Analyser ───────────────────────────────────────────────────────────────
   handleAnalyse(): void {
     if (!this.dossierId) return;
@@ -172,4 +171,6 @@ export class UploadSection implements OnChanges {
       rawExplanation:   score.rawExplanation   || score.explanation        || ''
     });
   }
+
+
 }

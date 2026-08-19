@@ -17,6 +17,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -63,6 +64,7 @@ public class DemandeCreditController {
                 "clientId",  client.getId().toString(),
                 "dossierId", saved.getId().toString(),
                 "statut",    "EN_ATTENTE",
+                "createdAt", saved.getCreatedAt().toString(),
                 "message",   "Dossier créé avec succès"
         ));
     }
@@ -116,11 +118,35 @@ public class DemandeCreditController {
 
     // ─── Étape 3 : Liste fichiers d'un dossier ───────────────────────────────
     @GetMapping("/demande/{dossierId}/fichiers")
-    public ResponseEntity<?> getFichiersDossier(
-            @PathVariable String dossierId) {
-        return ResponseEntity.ok(
-                fichierRepository.findByDossierId(
-                        UUID.fromString(dossierId))
-        );
+    public ResponseEntity<?> getFichiersDossier(@PathVariable String dossierId) {
+        List<Map<String, Object>> result = fichierRepository
+                .findByDossierId(UUID.fromString(dossierId))
+                .stream()
+                .map(f -> {
+                    Map<String, Object> m = new java.util.HashMap<>();
+                    m.put("id", f.getId().toString());
+                    m.put("nomOriginal", f.getNomOriginal());
+                    m.put("typeDocument", f.getTypeDocument());
+                    return m;
+                })
+                .collect(java.util.stream.Collectors.toList());
+
+        return ResponseEntity.ok(result);
+    }
+    @GetMapping("/fichiers/{fichierId}/download")
+    public ResponseEntity<org.springframework.core.io.Resource> downloadFichier(
+            @PathVariable UUID fichierId) throws java.io.IOException {
+
+        Fichier fichier = fichierRepository.findById(fichierId)
+                .orElseThrow(() -> new RuntimeException("Fichier introuvable"));
+
+        java.nio.file.Path path = Paths.get(fichier.getCheminPdf());
+        org.springframework.core.io.Resource resource =
+                new org.springframework.core.io.UrlResource(path.toUri());
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .header("Content-Disposition", "inline; filename=\"" + fichier.getNomOriginal() + "\"")
+                .body(resource);
     }
 }

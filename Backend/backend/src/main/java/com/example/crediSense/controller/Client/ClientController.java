@@ -79,7 +79,9 @@ public class ClientController {
                 .map(d -> Map.<String, Object>of(
                         "dossierId",  d.getId().toString(),
                         "typeCredit", d.getTypeCredit() != null ? d.getTypeCredit() : "",
-                        "statut",     d.getStatut() != null ? d.getStatut() : ""))
+                        "statut",     d.getStatut() != null ? d.getStatut() : "",
+                        "createdAt",  d.getCreatedAt() != null ? d.getCreatedAt().toString() : ""))
+
                 .collect(Collectors.toList());
 
         return ResponseEntity.ok(result);

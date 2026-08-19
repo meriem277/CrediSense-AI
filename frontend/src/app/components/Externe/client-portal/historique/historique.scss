@@ -1,17 +1,18 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 * { box-sizing: border-box; }
 
 .historique-page {
   min-height: 100vh;
-  background: #f8f9fc;
+  background: #fafafa;
   font-family: 'Inter', sans-serif;
 }
 
+/* ── Header ──────────────────────────────────────────────────────────── */
 .hist-header {
-  background: #fff;
-  border-bottom: 1px solid #eaedf3;
-  padding: 0 32px;
+  background: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 0 40px;
   height: 64px;
   display: flex;
   align-items: center;
@@ -19,31 +20,42 @@
   position: sticky;
   top: 0;
   z-index: 50;
-  box-shadow: 0 1px 0 #eaedf3;
 }
 
-.logo-img { width: 60px; height: auto; object-fit: contain; }
+.logo-img {
+  width: 56px;
+  height: auto;
+  object-fit: contain;
+}
 
 .brand-block {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
+}
+
+.brand-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding-left: 12px;
+  border-left: 1px solid #e5e7eb;
 
   .brand-name {
     font-size: 14px;
-    font-weight: 600;
+    font-weight: 700;
     color: #111827;
   }
   .brand-sub {
-    font-size: 11px;
-    color: #9ca3af;
+    font-size: 11.5px;
+    color: #6b7280;
   }
 }
 
 .header-right {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 16px;
 }
 
 .client-info {
@@ -59,17 +71,17 @@
 }
 
 .client-role {
-  font-size: 11px;
-  color: #9ca3af;
+  font-size: 11.5px;
+  color: #6b7280;
 }
 
 .client-avatar {
-  width: 36px;
-  height: 36px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
-  background: #f47920;
+  background: #111827;
   color: #fff;
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 600;
   display: flex;
   align-items: center;
@@ -78,43 +90,45 @@
 
 .btn-logout {
   padding: 7px 14px;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
   background: transparent;
-  color: #6b7280;
-  font-size: 12px;
+  color: #374151;
+  font-size: 12.5px;
   font-weight: 500;
   cursor: pointer;
   font-family: 'Inter', sans-serif;
   transition: all 0.15s;
 
-  &:hover { border-color: #f47920; color: #f47920; }
+  &:hover { border-color: #9ca3af; background: #f9fafb; }
 }
 
-/* ── Contenu ── */
+/* ── Contenu ─────────────────────────────────────────────────────────── */
 .hist-content {
-  max-width: 960px;
+  max-width: 1000px;
   margin: 0 auto;
-  padding: 32px 24px;
+  padding: 40px 24px;
 }
 
 .page-head {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 28px;
+  align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #e5e7eb;
 
   h1 {
-    font-size: 22px;
+    font-size: 20px;
     font-weight: 700;
     color: #111827;
     margin: 0 0 4px;
-    letter-spacing: -0.4px;
+    letter-spacing: -0.2px;
   }
 
   p {
     font-size: 13px;
-    color: #9ca3af;
+    color: #6b7280;
     margin: 0;
   }
 }
@@ -122,39 +136,43 @@
 .btn-nouvelle {
   display: flex;
   align-items: center;
-  gap: 7px;
-  padding: 10px 18px;
-  background: #f47920;
+  gap: 6px;
+  padding: 9px 16px;
+  background: #e8302a;
   color: #fff;
   border: none;
-  border-radius: 10px;
+  border-radius: 6px;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   font-family: 'Inter', sans-serif;
-  transition: all 0.2s;
-  box-shadow: 0 2px 12px rgba(244,121,32,0.25);
+  transition: background 0.15s;
+  white-space: nowrap;
 
-  &:hover { background: #d96b18; transform: translateY(-1px); }
+  &:hover { background: #cc2721; }
 }
 
-/* ── Stats ── */
+/* ── Stats ───────────────────────────────────────────────────────────── */
 .stats-row {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  margin-bottom: 24px;
+  gap: 1px;
+  background: #e5e7eb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 28px;
 }
 
 .stat-card {
   background: #fff;
-  border: 1px solid #eaedf3;
-  border-radius: 12px;
-  padding: 16px 20px;
+  padding: 18px 20px;
+
+  .stat-icon { display: none; }
 
   .stat-label {
     font-size: 12px;
-    color: #9ca3af;
+    color: #6b7280;
     margin-bottom: 8px;
     font-weight: 500;
   }
@@ -164,96 +182,108 @@
     font-weight: 700;
     color: #111827;
 
-    &.orange { color: #f47920; }
+    &.orange { color: #e8302a; }
   }
 }
 
-/* ── Grid ── */
-.dossiers-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 16px;
-}
-
-/* ── Card ── */
-.dossier-card {
+/* ── Tableau des dossiers ────────────────────────────────────────────── */
+.dossiers-table-wrap {
   background: #fff;
-  border: 1px solid #eaedf3;
-  border-radius: 14px;
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  cursor: pointer;
-  transition: all 0.2s;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+}
 
-  &:hover {
-    border-color: #f47920;
-    box-shadow: 0 4px 20px rgba(244,121,32,0.1);
-    transform: translateY(-2px);
+.dossiers-table {
+  width: 100%;
+  border-collapse: collapse;
+
+  thead tr {
+    background: #f9fafb;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  th {
+    text-align: left;
+    padding: 12px 20px;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+  }
+
+  tbody tr {
+    border-bottom: 1px solid #f3f4f6;
+    transition: background 0.15s;
+
+    &:last-child { border-bottom: none; }
+    &:hover { background: #fafafa; }
+  }
+
+  td {
+    padding: 16px 20px;
+    font-size: 13.5px;
+    color: #111827;
   }
 }
 
-.card-top {
+.td-type {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 10px;
+  font-weight: 600;
 }
 
-.card-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
+.td-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  background: #f3f4f6;
+  color: #4b5563;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #f47920;
-  font-size: 20px;
+  flex-shrink: 0;
 }
 
-.card-mid {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-
-  .card-title {
-    font-size: 15px;
-    font-weight: 600;
-    color: #111827;
-  }
-
-  .card-id {
-    font-size: 11px;
-    color: #9ca3af;
-    font-family: monospace;
-  }
+.td-id {
+  font-size: 12px;
+  color: #9ca3af;
+  font-family: 'SF Mono', Consolas, monospace;
 }
 
-.card-bot {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-top: 14px;
-  border-top: 1px solid #f3f4f6;
-
-  .card-date { font-size: 12px; color: #9ca3af; }
-  .card-link { font-size: 12px; color: #f47920; font-weight: 600; }
+.td-date {
+  font-size: 13px;
+  color: #6b7280;
 }
 
-/* ── Statuts ── */
+.td-action {
+  text-align: right;
+}
+
+.card-link {
+  font-size: 12.5px;
+  color: #e8302a;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+/* ── Statuts ─────────────────────────────────────────────────────────── */
 .statut-badge {
-  padding: 4px 10px;
-  border-radius: 20px;
+  padding: 3px 10px;
+  border-radius: 4px;
   font-size: 11px;
   font-weight: 600;
 }
 
-.statut-attente  { background: #FAEEDA; color: #633806; }
-.statut-cours    { background: #E6F1FB; color: #0C447C; }
-.statut-approuve { background: #EAF3DE; color: #27500A; }
-.statut-refuse   { background: #FCEBEB; color: #791F1F; }
+.statut-attente  { background: #FEF3E2; color: #92400E; }
+.statut-cours    { background: #EFF6FF; color: #1E40AF; }
+.statut-approuve { background: #F0FDF4; color: #166534; }
+.statut-refuse   { background: #FEF2F2; color: #991B1B; }
 
-/* ── États ── */
+/* ── États ───────────────────────────────────────────────────────────── */
 .hist-loading, .hist-empty {
   display: flex;
   flex-direction: column;
@@ -266,9 +296,9 @@
 }
 
 .spinner-lg {
-  width: 36px; height: 36px;
-  border: 3px solid #f3f4f6;
-  border-top-color: #f47920;
+  width: 32px; height: 32px;
+  border: 2.5px solid #f3f4f6;
+  border-top-color: #e8302a;
   border-radius: 50%;
   animation: spin 0.75s linear infinite;
 }
@@ -279,7 +309,7 @@
   background: #fef2f2;
   color: #991b1b;
   border: 1px solid #fecaca;
-  border-radius: 10px;
+  border-radius: 6px;
   padding: 12px 16px;
   font-size: 13px;
   margin-bottom: 20px;
@@ -287,7 +317,120 @@
 
 .hist-footer {
   text-align: center;
-  font-size: 12px;
-  color: #d1d5db;
+  font-size: 11.5px;
+  color: #9ca3af;
   padding: 32px 0;
+}
+
+/* ── Modal détails dossier ──────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(17,24,39,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+
+.modal-box {
+  background: #fff;
+  border-radius: 12px;
+  width: 420px;
+  max-width: 90vw;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px 20px;
+  border-bottom: 1px solid #e5e7eb;
+
+  h3 {
+    font-size: 15px;
+    font-weight: 700;
+    color: #111827;
+    margin: 0;
+  }
+}
+
+.modal-close {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: none;
+  background: #f3f4f6;
+  color: #6b7280;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+
+  &:hover { background: #e5e7eb; color: #374151; }
+}
+
+.modal-loading {
+  display: flex;
+  justify-content: center;
+  padding: 40px 0;
+}
+
+.modal-files {
+  padding: 8px 0;
+}
+
+.file-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  border-bottom: 1px solid #f3f4f6;
+
+  &:last-child { border-bottom: none; }
+}
+
+.file-name {
+  font-size: 13px;
+  color: #111827;
+  font-weight: 500;
+}
+
+.modal-empty {
+  padding: 40px 20px;
+  text-align: center;
+  font-size: 13px;
+  color: #9ca3af;
+}
+.file-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn-voir {
+  font-size: 12px;
+  color: #e8302a;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+
+  &:hover { text-decoration: underline; }
+}
+
+.th-sortable {
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+
+  svg {
+    transition: transform 0.2s;
+    opacity: 0.6;
+  }
+
+  &:hover svg { opacity: 1; }
 }

@@ -1,5 +1,6 @@
 package com.example.crediSense.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -44,6 +45,7 @@ public class Fichier {
     @ManyToOne
     @JoinColumn(name = "dossier_id")
     @ToString.Exclude
+    @JsonIgnoreProperties({"fichiers"})
     private Dossier dossier;
 }
     

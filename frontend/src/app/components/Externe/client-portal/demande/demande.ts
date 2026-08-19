@@ -32,9 +32,10 @@ export class Demande implements OnInit {
   loading     = false;
   errorMsg    = '';
   dossierId: string | null = null;
-
+dossierCreatedAt: string | null = null;
   // ── Infos header ──────────────────────────────────────────────────────────
   clientNom       = '';
+clientPrenom    = '';   //
   clientInitiales = '';
   clientPhotoUrl  = '';
   showNotifs      = false;
@@ -155,6 +156,7 @@ export class Demande implements OnInit {
     ).subscribe({
       next: (res) => {
         this.dossierId   = res.dossierId;
+        this.dossierCreatedAt = res.createdAt;
         this.loading     = false;
         this.genererChecklist();
         this.currentStep = 2;

@@ -19,6 +19,11 @@ export class Historique implements OnInit {
   errorMsg = '';
   clientNom = '';
   clientInitiales = '';
+  selectedDossier: any = null;
+fichiers: any[] = [];
+loadingFichiers = false;
+sortDateAsc = false; // false = décroissant par défaut
+
 
   constructor(
     private http: HttpClient,
@@ -73,7 +78,9 @@ export class Historique implements OnInit {
   get refuses(): number {
     return this.dossiers.filter(d => d.statut === 'REFUSE').length;
   }
-
+getFileUrl(fichierId: string): string {
+  return `${environment.apiUrl}/api/public/fichiers/${fichierId}/download`;
+}
   getStatutClass(statut: string): string {
     switch (statut) {
       case 'EN_ATTENTE': return 'statut-attente';
@@ -101,4 +108,35 @@ export class Historique implements OnInit {
   logout() {
     this.clientAuth.logout();
   }
+
+voirDetails(dossier: any): void {
+  this.selectedDossier = dossier;
+  this.loadingFichiers = true;
+  this.fichiers = [];
+
+  this.http.get<any[]>(
+`${environment.apiUrl}/api/public/demande/${dossier.dossierId}/fichiers`  ).subscribe({
+    next: (data) => { this.fichiers = data; this.loadingFichiers = false; },
+    error: () => { this.loadingFichiers = false; }
+  });
+}
+
+fermerDetails(): void {
+  this.selectedDossier = null;
+  this.fichiers = [];
+}
+toggleSortDate(): void {
+  this.sortDateAsc = !this.sortDateAsc;
+  this.dossiers.sort((a, b) => {
+    const diff = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    return this.sortDateAsc ? diff : -diff;
+  });
+}
+
+formatDate(raw: string): string {
+  if (!raw) return '';
+  return raw.replace('T', ' ').replace('Z', '');
+}
+
+
 }
