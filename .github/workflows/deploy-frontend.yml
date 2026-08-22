@@ -1,0 +1,50 @@
+name: Deploy Frontend (Angular)
+
+# NOTE : si tu crées la Static Web App via le portail Azure en connectant
+# ton repo GitHub, Azure génère AUTOMATIQUEMENT un fichier très proche de
+# celui-ci (avec le bon token). Dans ce cas, garde le fichier généré par
+# Azure plutôt que celui-ci pour éviter les doublons.
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/deploy-frontend.yml'
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+    branches: [ main ]
+    paths:
+      - 'frontend/**'
+
+jobs:
+  build-and-deploy:
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action != 'closed')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout du code
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Build et déploiement
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: "upload"
+          app_location: "frontend"           # dossier du projet Angular
+          output_location: "dist/frontend"   # <-- adapte au vrai nom (regarde angular.json > outputPath)
+
+  close_pull_request_job:
+    if: github.event_name == 'pull_request' && github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fermer l'environnement de preview
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          action: "close"
