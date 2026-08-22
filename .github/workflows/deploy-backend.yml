@@ -2,7 +2,7 @@ name: Deploy Backend (Spring Boot)
 
 on:
   push:
-    branches: [ main ]
+    branches: [ dev ]
     paths:
       - 'Backend/**'
       - '.github/workflows/deploy-backend.yml'
