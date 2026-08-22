@@ -7,7 +7,7 @@ name: Deploy Frontend (Angular)
 
 on:
   push:
-    branches: [ main ]
+    branches: [ dev ]
     paths:
       - 'frontend/**'
       - '.github/workflows/deploy-frontend.yml'
