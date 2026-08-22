@@ -1,0 +1,48 @@
+name: Deploy AI Service (FastAPI - Docker)
+
+on:
+  push:
+    branches: [ dev ]
+    paths:
+      - 'Python/**'
+      - '.github/workflows/deploy-ai-service.yml'
+  workflow_dispatch: {}
+
+env:
+  AZURE_WEBAPP_NAME: credisense-ai   # doit correspondre à azure-setup.sh
+  IMAGE_NAME: credisense-ai
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout du code
+        uses: actions/checkout@v4
+
+      - name: Connexion à Azure Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.ACR_LOGIN_SERVER }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      - name: Build et push de l'image Docker
+        uses: docker/build-push-action@v6
+        with:
+          context: ./Python
+          push: true
+          tags: |
+            ${{ secrets.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+            ${{ secrets.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Déployer l'image sur Azure App Service
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_AI }}
+          images: ${{ secrets.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
