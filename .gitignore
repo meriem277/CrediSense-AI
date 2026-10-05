@@ -11,3 +11,9 @@ venv_test_ocr/
 terraform.tfvars
 crash.log
 vm_key.pem
+
+# Local secrets (never commit)
+/application.properties
+/env
+application-local.properties
+Python/.env

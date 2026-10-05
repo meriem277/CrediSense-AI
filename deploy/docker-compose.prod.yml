@@ -19,10 +19,7 @@ services:
   ai:
     image: ${IMAGE_PREFIX}-ai:${IMAGE_TAG:-latest}
     restart: unless-stopped
-    environment:
-      GROQ_API_KEY: ${GROQ_API_KEY:-}
-      MISTRAL_API_KEY: ${MISTRAL_API_KEY:-}
-      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+    env_file: ./ai.env
     volumes:
       # Same path as in the backend: the backend sends file paths to /ocr/extract.
       - uploads:/data/uploads

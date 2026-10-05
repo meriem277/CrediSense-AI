@@ -1,16 +1,32 @@
 # cp terraform.tfvars.example terraform.tfvars   (terraform.tfvars is git-ignored)
+# Then edit the values below.
 
-groq_api_key = "gsk_..."
-
-# Your GitHub owner in lowercase (used for first boot; deploy.yml keeps it in sync afterwards)
+# Your GitHub owner in lowercase (e.g. the account that owns the repo running the Actions)
 image_prefix = "ghcr.io/<github-owner>/credisense"
 
-# Optional
-# mistral_api_key  = ""
-# gemini_api_key   = ""
-# google_client_id = ""
-# smtp_username    = "you@gmail.com"
-# smtp_password    = "gmail-app-password"
+# Paste the content of Python/.env between the EOT markers (keep the markers on their own lines).
+# AZURE_DOC_* are not used by the code - you can leave them out.
+ai_env = <<EOT
+MISTRAL_API_KEY=
+MISTRAL_MODEL=mistral-small-latest
+MISTRAL_API_URL=https://api.mistral.ai/v1/chat/completions
+
+GROQ_API_KEY=
+GROQ_MODEL=openai/gpt-oss-120b
+
+PORT=8002
+
+LLM_ROUTE_CLASSIFICATION=groq,mistral
+LLM_ROUTE_EXTRACTION=groq,mistral
+LLM_ROUTE_ANALYSE=groq,mistral
+LLM_ROUTE_CHAT=groq,mistral
+LLM_MAX_ATTENTE=60
+EOT
+
+# Backend (Spring Boot) settings from application.properties
+google_client_id = "227321675300-1phqfskehqcnbia9d80l27bhu3tsh3c4.apps.googleusercontent.com"
+smtp_username    = "you@gmail.com"
+smtp_password    = "gmail-app-password"
 
 # location = "uksouth"
 # vm_size  = "Standard_D2s_v7"
