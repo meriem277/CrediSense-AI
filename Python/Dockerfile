@@ -17,9 +17,11 @@ RUN pip install --no-cache-dir \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Télécharge les modèles PaddleOCR (arabe + français) pendant le build,
-# pour qu'ils soient dans l'image et pas re-téléchargés à chaque démarrage
+# Pré-télécharge les modèles PaddleOCR (français + arabe) dans l'image
 RUN python -c "from paddleocr import PaddleOCR; PaddleOCR(lang='fr', use_angle_cls=True); PaddleOCR(lang='ar', use_angle_cls=True)"
+
+# Pré-télécharge le modèle d'embeddings (RAG / classification)
+RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2')"
 
 COPY . .
 
