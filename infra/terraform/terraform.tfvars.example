@@ -12,5 +12,7 @@ image_prefix = "ghcr.io/<github-owner>/credisense"
 # smtp_username    = "you@gmail.com"
 # smtp_password    = "gmail-app-password"
 
-# location = "uksouth"
-# vm_size  = "Standard_D2s_v7"
+# Azure for Students: use a region allowed by your subscription's policy
+# (francecentral, swedencentral, norwayeast, polandcentral, italynorth, ...).
+# location = "francecentral"
+# vm_size  = "Standard_B2ms"   # 2 vCPU / 8 GB

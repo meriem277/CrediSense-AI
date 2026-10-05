@@ -1,13 +1,13 @@
 variable "location" {
-  description = "Azure region. Azure for Students restricts regions (see README). uksouth worked for the InvoiceForge deployment on the same kind of subscription."
+  description = "Azure region. Azure for Students restricts regions via policy (RequestDisallowedByAzure otherwise) and the allowed list differs per subscription: check it with `az policy assignment list --query \"[].parameters.listOfAllowedLocations.value\" -o json`."
   type        = string
-  default     = "uksouth"
+  default     = "francecentral"
 }
 
 variable "vm_size" {
-  description = "VM size. The AI service (PaddleOCR + PyTorch + sentence-transformers) needs ~8 GB RAM in total with Spring Boot and Postgres, so 4 GB sizes (B2s) are too small. Standard_D2s_v7 and Standard_B2ms are both 2 vCPU / 8 GB; use whichever your subscription has quota for."
+  description = "VM size. The AI service (PaddleOCR + PyTorch + sentence-transformers) needs ~8 GB RAM in total with Spring Boot and Postgres, so 4 GB sizes (B2s) are too small. Standard_B2ms and Standard_D2s_v7 are both 2 vCPU / 8 GB; B2ms is usually the one available on student subscriptions. Check with `az vm list-skus --location <region> --size Standard_B2ms -o table`."
   type        = string
-  default     = "Standard_D2s_v7"
+  default     = "Standard_B2ms"
 }
 
 variable "os_disk_size_gb" {
