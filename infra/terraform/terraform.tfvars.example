@@ -29,6 +29,6 @@ smtp_username    = "you@gmail.com"
 smtp_password    = "gmail-app-password"
 
 # Azure for Students: use a region allowed by your subscription's policy
-# (francecentral, swedencentral, norwayeast, polandcentral, italynorth, ...).
-# location = "francecentral"
+# (e.g. swedencentral, norwayeast, switzerlandnorth, spaincentral, austriaeast).
+# location = "swedencentral"
 # vm_size  = "Standard_B2ms"   # 2 vCPU / 8 GB

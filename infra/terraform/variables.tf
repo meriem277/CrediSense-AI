@@ -1,7 +1,7 @@
 variable "location" {
   description = "Azure region. Azure for Students restricts regions via policy (RequestDisallowedByAzure otherwise) and the allowed list differs per subscription: check it with `az policy assignment list --query \"[].parameters.listOfAllowedLocations.value\" -o json`."
   type        = string
-  default     = "francecentral"
+  default     = "swedencentral"
 }
 
 variable "vm_size" {
