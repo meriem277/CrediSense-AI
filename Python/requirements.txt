@@ -2,10 +2,10 @@ fastapi==0.115.0
 uvicorn==0.30.6
 python-multipart==0.0.9
 sentence-transformers==3.0.1
-torch==2.4.0
 transformers==4.44.2
 PyMuPDF==1.24.5
-python-doctr[torch]==0.8.1
+paddlepaddle==2.6.2
+paddleocr==2.8.1
 faiss-cpu==1.8.0
 numpy==1.26.4
 httpx[http2]==0.27.2
