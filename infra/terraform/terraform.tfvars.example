@@ -29,6 +29,14 @@ smtp_username    = "you@gmail.com"
 smtp_password    = "gmail-app-password"
 
 # Azure for Students: use a region allowed by your subscription's policy
-# (e.g. swedencentral, norwayeast, switzerlandnorth, spaincentral, austriaeast).
+# (check: az policy assignment list --query "[].parameters.listOfAllowedLocations.value" -o json).
+# Not every VM family exists in every region (B-series are missing in spaincentral,
+# switzerlandnorth and austriaeast) and capacity varies: if you get SkuNotAvailable,
+# try another size or region. Always set both together once a combination works,
+# otherwise a later apply tries to move/recreate the VM.
 # location = "swedencentral"
-# vm_size  = "Standard_B2ms"   # 2 vCPU / 8 GB
+# vm_size  = "Standard_B2as_v2"   # 2 vCPU / 8 GB
+
+# If a failed apply leaves resources in Azure that Terraform does not know about
+# ("already exists ... needs to be imported", "Provider produced inconsistent result"),
+# run ./recover-state.sh instead of deleting things by hand.

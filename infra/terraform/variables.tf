@@ -5,9 +5,9 @@ variable "location" {
 }
 
 variable "vm_size" {
-  description = "VM size. The AI service (PaddleOCR + PyTorch + sentence-transformers) needs ~8 GB RAM in total with Spring Boot and Postgres, so 4 GB sizes (B2s) are too small. Standard_B2ms and Standard_D2s_v7 are both 2 vCPU / 8 GB; B2ms is usually the one available on student subscriptions. Check with `az vm list-skus --location <region> --size Standard_B2ms -o table`."
+  description = "VM size. The AI service (PaddleOCR + PyTorch + sentence-transformers) needs ~8 GB RAM in total with Spring Boot and Postgres, so 4 GB sizes (B2s) are too small. Pick a 2 vCPU / 8 GB size from a family where your subscription has quota (`az vm list-usage --location <region> --query \"[?limit!='0']\" -o table`) and that exists in the region (`az vm list-skus` or Get-AzComputeResourceSku): not every region has every family. Standard_B2as_v2 deployed on an Azure for Students subscription in swedencentral, where Standard_B2ms/B4ms hit SkuNotAvailable in norwayeast and D-series v5 quota was 0. If creation fails with SkuNotAvailable it is a temporary capacity shortage: try another size or region."
   type        = string
-  default     = "Standard_B2ms"
+  default     = "Standard_B2as_v2"
 }
 
 variable "os_disk_size_gb" {
