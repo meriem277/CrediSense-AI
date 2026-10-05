@@ -17,7 +17,7 @@ Terraform creates the VM; cloud-init installs Docker and writes the config. No A
 ```bash
 git clone <repo> && cd CrediSense-AI && git checkout deploy/azure
 cd infra/terraform
-cp terraform.tfvars.example terraform.tfvars   # fill in groq_api_key + image_prefix (+ optional keys)
+cp terraform.tfvars.example terraform.tfvars   # set image_prefix, paste Python/.env into ai_env, SMTP + Google id
 terraform init
 terraform apply -parallelism=1
 ```

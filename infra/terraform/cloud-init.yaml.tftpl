@@ -9,6 +9,10 @@ write_files:
     permissions: "0600"
     encoding: b64
     content: ${env_b64}
+  - path: /opt/credisense/ai.env
+    permissions: "0600"
+    encoding: b64
+    content: ${ai_env_b64}
   - path: /opt/credisense/docker-compose.prod.yml
     permissions: "0644"
     encoding: b64

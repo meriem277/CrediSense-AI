@@ -2,6 +2,9 @@ locals {
   name   = "credisense"
   domain = var.domain != "" ? var.domain : "${replace(azurerm_public_ip.main.ip_address, ".", "-")}.nip.io"
 
+  # Backend reuses the Groq key from the pasted Python .env (quotes stripped, empty if absent)
+  groq_api_key = try(trimspace(replace(regex("(?m)^GROQ_API_KEY=(.*)$", var.ai_env)[0], "\"", "")), "")
+
   env_file = <<-EOT
     DOMAIN=${local.domain}
     IMAGE_PREFIX=${var.image_prefix}
@@ -9,9 +12,7 @@ locals {
     POSTGRES_USER=credisense
     POSTGRES_PASSWORD=${random_password.postgres.result}
     JWT_SECRET=${random_password.jwt.result}
-    GROQ_API_KEY=${var.groq_api_key}
-    MISTRAL_API_KEY=${var.mistral_api_key}
-    GEMINI_API_KEY=${var.gemini_api_key}
+    GROQ_API_KEY=${local.groq_api_key}
     GOOGLE_CLIENT_ID=${var.google_client_id}
     SMTP_USERNAME=${var.smtp_username}
     SMTP_PASSWORD=${var.smtp_password}
@@ -153,6 +154,7 @@ resource "azurerm_linux_virtual_machine" "main" {
   custom_data = base64encode(templatefile("${path.module}/cloud-init.yaml.tftpl", {
     admin_username = var.admin_username
     env_b64        = base64encode(local.env_file)
+    ai_env_b64     = base64encode(var.ai_env)
     compose_b64    = filebase64("${path.module}/../../deploy/docker-compose.prod.yml")
     caddyfile_b64  = filebase64("${path.module}/../../deploy/Caddyfile")
   }))

@@ -41,21 +41,10 @@ variable "domain" {
 
 # ── Application secrets (put them in terraform.tfvars, which is git-ignored) ──
 
-variable "groq_api_key" {
-  type      = string
-  sensitive = true
-}
-
-variable "mistral_api_key" {
-  type      = string
-  sensitive = true
-  default   = ""
-}
-
-variable "gemini_api_key" {
-  type      = string
-  sensitive = true
-  default   = ""
+variable "ai_env" {
+  description = "Full content of Python/.env (pasted as a heredoc in terraform.tfvars). Written to /opt/credisense/ai.env and loaded by the AI container. GROQ_API_KEY from it is also reused by the backend."
+  type        = string
+  sensitive   = true
 }
 
 variable "google_client_id" {
