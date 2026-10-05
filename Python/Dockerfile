@@ -11,6 +11,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
+# paddlepaddle loads its own zlib; with it, recent Cython wheels fail with
+# "zlib.error: inconsistent stream state". Force the system zlib first.
+ENV LD_PRELOAD=/lib/x86_64-linux-gnu/libz.so.1
+
 # PyTorch version CPU (pour sentence-transformers)
 RUN pip install --no-cache-dir \
     torch==2.4.0 \
@@ -21,7 +25,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Fail fast (with a clear error) if a PaddleOCR native dependency is broken
 RUN python -c "import zlib, sys; print('python', sys.version.split()[0], 'zlib', zlib.ZLIB_VERSION, zlib.ZLIB_RUNTIME_VERSION)" \
- && python -c "import pyclipper, cv2, shapely, scipy.ndimage, skimage.morphology, sklearn; print('paddleocr native deps ok')"
+ && python -c "import paddle, pyclipper, cv2, shapely, scipy.ndimage, skimage.morphology, sklearn; print('paddleocr native deps ok')"
 
 # Pré-télécharge les modèles PaddleOCR (français + arabe) dans l'image
 RUN python -c "from paddleocr import PaddleOCR; PaddleOCR(lang='fr', use_angle_cls=True); PaddleOCR(lang='ar', use_angle_cls=True)"
