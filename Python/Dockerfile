@@ -1,4 +1,6 @@
-FROM python:3.11-slim
+# bookworm pinned on purpose: on the newer default (trixie) base, recent Cython-compiled
+# wheels (pyclipper 1.4.0, scipy 1.17) raise "zlib.error: inconsistent stream state" on import
+FROM python:3.11-slim-bookworm
 
 # Libs système requises par PaddleOCR / OpenCV / PyMuPDF
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -18,7 +20,8 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Fail fast (with a clear error) if a PaddleOCR native dependency is broken
-RUN python -c "import pyclipper, cv2, shapely; print('paddleocr native deps ok')"
+RUN python -c "import zlib, sys; print('python', sys.version.split()[0], 'zlib', zlib.ZLIB_VERSION, zlib.ZLIB_RUNTIME_VERSION)" \
+ && python -c "import pyclipper, cv2, shapely, scipy.ndimage, skimage.morphology, sklearn; print('paddleocr native deps ok')"
 
 # Pré-télécharge les modèles PaddleOCR (français + arabe) dans l'image
 RUN python -c "from paddleocr import PaddleOCR; PaddleOCR(lang='fr', use_angle_cls=True); PaddleOCR(lang='ar', use_angle_cls=True)"
