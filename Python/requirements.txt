@@ -4,14 +4,15 @@ python-multipart==0.0.9
 sentence-transformers==3.0.1
 transformers==4.44.2
 PyMuPDF==1.24.5
-paddlepaddle==2.6.2
-paddleocr==2.8.1
+# ocr_service.py uses the PaddleOCR 3.x API (PP-OCRv5 models, predict(), TextRecognition);
+# same versions as the local environment (see ../requirements.txt)
+paddlepaddle==3.3.1
+paddleocr==3.4.0
 # paddleocr does not pin pyclipper; 1.4.0 raises "zlib.error ... inconsistent stream state" on import
 pyclipper==1.3.0.post6
 # Same failure with recent Cython-compiled wheels once paddle is loaded
 # (zlib.error: inconsistent stream state in scipy._lib._ccallback_c): keep 2024 releases
 scipy==1.13.1
-scikit-image==0.24.0
 scikit-learn==1.5.2
 faiss-cpu==1.8.0
 numpy==1.26.4

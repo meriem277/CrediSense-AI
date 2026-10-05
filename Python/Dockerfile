@@ -25,10 +25,13 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Fail fast (with a clear error) if a PaddleOCR native dependency is broken
 RUN python -c "import zlib, sys; print('python', sys.version.split()[0], 'zlib', zlib.ZLIB_VERSION, zlib.ZLIB_RUNTIME_VERSION)" \
- && python -c "import paddle, pyclipper, cv2, shapely, scipy.ndimage, skimage.morphology, sklearn; print('paddleocr native deps ok')"
+ && python -c "import paddle, cv2, scipy.ndimage, sklearn; print('paddleocr native deps ok')"
 
-# Pré-télécharge les modèles PaddleOCR (français + arabe) dans l'image
-RUN python -c "from paddleocr import PaddleOCR; PaddleOCR(lang='fr', use_angle_cls=True); PaddleOCR(lang='ar', use_angle_cls=True)"
+# Pré-télécharge les modèles PaddleOCR 3.x (mêmes noms que services/ocr_service.py :
+# détection + arabe via le pipeline, latin via TextRecognition) dans l'image
+RUN python -c "from paddleocr import PaddleOCR, TextRecognition; \
+PaddleOCR(text_detection_model_name='PP-OCRv5_mobile_det', text_recognition_model_name='arabic_PP-OCRv5_mobile_rec', use_doc_orientation_classify=False, use_doc_unwarping=False, use_textline_orientation=False); \
+TextRecognition(model_name='latin_PP-OCRv5_mobile_rec')"
 
 # Pré-télécharge le modèle d'embeddings (RAG / classification)
 RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2')"
