@@ -2,11 +2,14 @@ package com.example.crediSense.Service.impl.client;
 
 import com.example.crediSense.entity.Client;
 import com.example.crediSense.repository.ClientRepository;
+import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-import org.springframework.mail.SimpleMailMessage;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -18,9 +21,12 @@ import java.util.concurrent.ConcurrentHashMap;
 @RequiredArgsConstructor
 public class ForgotPasswordService {
 
-
     private final ClientRepository clientRepository;
-    private final JavaMailSender mailSender;
+    private final JavaMailSender   mailSender;
+    private final PasswordEncoder  passwordEncoder;
+
+    @Value("${app.frontend-url:http://localhost:4200}")
+    private String frontendUrl;
 
     // ✅ Stockage temporaire des tokens (en prod → table DB)
     private final Map<String, TokenEntry> tokenStore = new ConcurrentHashMap<>();
@@ -33,21 +39,52 @@ public class ForgotPasswordService {
         String token = UUID.randomUUID().toString();
         tokenStore.put(token, new TokenEntry(email, LocalDateTime.now().plusMinutes(15)));
 
-        String resetLink = "http://localhost:4200/client/reset-password?token=" + token;
+        String resetLink = frontendUrl + "/client/reset-password?token=" + token;
 
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setTo(email);
-        message.setSubject("Réinitialisation de votre mot de passe — CrediSense");
-        message.setText(
-                "Bonjour " + client.getNom() + ",\n\n" +
-                        "Cliquez sur le lien ci-dessous pour réinitialiser votre mot de passe :\n\n" +
-                        resetLink + "\n\n" +
-                        "Ce lien expire dans 15 minutes.\n\n" +
-                        "Si vous n'avez pas fait cette demande, ignorez cet email.\n\n" +
-                        "Attijariwafa Bank — CrediSense"
-        );
-        mailSender.send(message);
-        log.info("Email de reset envoyé à : {}", email);
+        try {
+            sendResetEmail(email, client.getNom(), resetLink);
+            log.info("Email de reset envoyé à : {}", email);
+        } catch (Exception e) {
+            log.error("Échec envoi email de reset à {} : {}", email, e.getMessage());
+            throw new RuntimeException("Impossible d'envoyer l'email de réinitialisation");
+        }
+    }
+
+    private void sendResetEmail(String to, String nom, String resetLink) throws Exception {
+        MimeMessage mimeMessage = mailSender.createMimeMessage();
+        MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
+
+        helper.setTo(to);
+        helper.setSubject("Réinitialisation de votre mot de passe — CrediSense");
+
+        String html = """
+            <div style="font-family: Arial, sans-serif; max-width: 480px; margin: auto; padding: 32px; background: #ffffff;">
+              <h2 style="color: #111111; margin-bottom: 4px;">Bonjour %s,</h2>
+              <p style="color: #666666; font-size: 14px; line-height: 1.5;">
+                Vous avez demandé la réinitialisation de votre mot de passe CrediSense.
+              </p>
+              <div style="text-align: center; margin: 32px 0;">
+                <a href="%s"
+                   style="background: linear-gradient(135deg, #E8302A, #F47920);
+                          color: #ffffff; text-decoration: none;
+                          padding: 14px 32px; border-radius: 999px;
+                          font-weight: 700; font-size: 14px; display: inline-block;">
+                  Réinitialiser mon mot de passe →
+                </a>
+              </div>
+              <p style="color: #999999; font-size: 12.5px; line-height: 1.5;">
+                Ce lien expire dans <strong>15 minutes</strong>.<br>
+                Si vous n'avez pas fait cette demande, ignorez simplement cet email.
+              </p>
+              <hr style="border: none; border-top: 1px solid #eeeeee; margin: 24px 0;">
+              <p style="color: #aaaaaa; font-size: 12px; text-align: center;">
+                Attijari Bank — CrediSense
+              </p>
+            </div>
+            """.formatted(nom, resetLink);
+
+        helper.setText(html, true);
+        mailSender.send(mimeMessage);
     }
 
     // ── Reset mot de passe ────────────────────────────────────────────
@@ -61,23 +98,23 @@ public class ForgotPasswordService {
         Client client = clientRepository.findByEmail(entry.email())
                 .orElseThrow(() -> new RuntimeException("Compte introuvable"));
 
-        // ✅ Validation du nouveau mot de passe
         validatePassword(newPassword);
 
-        client.setPassword(new org.springframework.security.crypto.bcrypt
-                .BCryptPasswordEncoder().encode(newPassword));
+        client.setPassword(passwordEncoder.encode(newPassword));
         clientRepository.save(client);
         tokenStore.remove(token);
         log.info("Mot de passe réinitialisé pour : {}", entry.email());
     }
 
     private void validatePassword(String password) {
-        if (password.length() < 8)
-            throw new RuntimeException("Au moins 8 caractères requis");
+        if (password == null || password.length() < 8)
+            throw new RuntimeException("Le mot de passe doit contenir au moins 8 caractères");
         if (!password.matches(".*[A-Z].*"))
-            throw new RuntimeException("Au moins une majuscule requise");
+            throw new RuntimeException("Le mot de passe doit contenir au moins une majuscule");
         if (!password.matches(".*[0-9].*"))
-            throw new RuntimeException("Au moins un chiffre requis");
+            throw new RuntimeException("Le mot de passe doit contenir au moins un chiffre");
+        if (!password.matches(".*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>\\/?].*"))
+            throw new RuntimeException("Le mot de passe doit contenir au moins un caractère spécial");
     }
 
     // ── Record interne ────────────────────────────────────────────────

@@ -5,6 +5,8 @@ import com.example.crediSense.dto.request.FichierRequest;
 import com.example.crediSense.dto.response.FichierResponse;
 import com.example.crediSense.entity.*;
 import com.example.crediSense.repository.*;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -33,8 +35,11 @@ public class FichierServiceImpl implements FichierService {
     private final OcrResultRepository  ocrResultRepository;
     private final AgentAnalysisRepository  agentAnalysisRepository;
     private final DecisionFinaleRepository decisionFinaleRepository;
+    private final JsonExtractionRepository jsonExtractionRepository;  // ✅ nouveau
     private final Doctrclientservice   doctrclientservice;
     private final RestTemplate         restTemplate;
+
+    private final ObjectMapper objectMapper = new ObjectMapper();     // ✅ nouveau
 
     @Value("${upload.base-path}")
     private String uploadBasePath;
@@ -153,15 +158,44 @@ public class FichierServiceImpl implements FichierService {
                                 Map<String, Object> jsonBody = new HashMap<>();
                                 jsonBody.put("texte_nettoye", texte.toString());
                                 jsonBody.put("cin",           cin);
+                                jsonBody.put("type_document", f.getTypeDocument());
 
                                 HttpEntity<Map<String, Object>> jsonRequest =
                                         new HttpEntity<>(jsonBody, jsonHeaders);
 
-                                restTemplate.postForObject(
+                                Map extractResponse = restTemplate.postForObject(
                                         nlpServiceUrl + "/ai/extract-json",
                                         jsonRequest, Map.class
                                 );
-                                log.info("JSON extrait pour {}", f.getNomOriginal());
+
+                                // ✅ Persistance de l'extraction JSON, liée au fichier —
+                                // c'est cette table que toResponse() relit ensuite pour
+                                // remplir "verifie" et "jsonData" côté frontend.
+                                if (extractResponse != null) {
+                                    try {
+                                        Object jsonData        = extractResponse.get("json_data");
+                                        Object confidenceScore = extractResponse.get("confidence_score");
+
+                                        JsonExtraction extraction = JsonExtraction.builder()
+                                                .cin(cin)
+                                                .jsonData(objectMapper.writeValueAsString(jsonData))
+                                                .confidenceScore(confidenceScore != null
+                                                        ? Double.parseDouble(confidenceScore.toString())
+                                                        : null)
+                                                .fichier(f)
+                                                .build();
+
+                                        jsonExtractionRepository.save(extraction);
+                                        log.info("JsonExtraction sauvegardée pour {} (fichier_id={})",
+                                                f.getNomOriginal(), f.getId());
+                                    } catch (Exception e) {
+                                        log.warn("Erreur sauvegarde JsonExtraction pour {}: {}",
+                                                f.getNomOriginal(), e.getMessage());
+                                    }
+                                }
+
+                                log.info("JSON extrait pour {} (type={})",
+                                        f.getNomOriginal(), f.getTypeDocument());
 
                             } catch (Exception e) {
                                 log.warn("Extraction JSON échouée pour {}: {}",
@@ -300,8 +334,69 @@ public class FichierServiceImpl implements FichierService {
         r.setTypeDocument(f.getTypeDocument());
         r.setCheminPdf(f.getCheminPdf());
         r.setCreatedAt(f.getCreatedAt());
+
+        if (f.getAgent() != null)   r.setAgentId(f.getAgent().getId());
+        if (f.getDossier() != null) r.setDossierId(f.getDossier().getId());
+
+        // ✅ Récupère la dernière extraction JSON de ce fichier pour déterminer
+        // "verifie" et exposer les données extraites (nomClient, prenomClient, cin...)
+        // au frontend — c'est ce qui manquait pour que le pipeline visuel fonctionne.
+        try {
+            List<JsonExtraction> extractions = jsonExtractionRepository.findByFichierIdOrderByCreatedAtDesc(f.getId());
+
+            if (extractions != null && !extractions.isEmpty()) {
+                JsonExtraction derniere = extractions.get(0);   // ✅ triée DESC — index 0 = la plus récente
+
+                if (derniere.getJsonData() != null && !derniere.getJsonData().isBlank()) {
+                    Map<String, Object> parsed = objectMapper.readValue(
+                            derniere.getJsonData(), new TypeReference<Map<String, Object>>() {}
+                    );
+                    r.setJsonData(parsed);
+                    r.setVerifie(true);
+
+                    // ✅ Cohérence du CIN — compare le "cin" extrait de CE fichier
+                    // au CIN officiel du client du dossier. Source de vérité
+                    // calculée ici, pas côté frontend, car elle repose sur
+                    // dossier.client.cin (donnée sensible/authentique).
+                    Object cinExtraitObj = parsed.get("cin");
+                    String cinExtrait = cinExtraitObj != null ? cinExtraitObj.toString() : null;
+                    String cinAttendu = (f.getDossier() != null && f.getDossier().getClient() != null)
+                            ? f.getDossier().getClient().getCin() : null;
+
+                    if (cinExtrait != null && !cinExtrait.isBlank() && cinAttendu != null) {
+                        boolean coherent = normaliserCin(cinExtrait).equals(normaliserCin(cinAttendu));
+                        r.setCinCoherent(coherent);
+                        if (!coherent) {
+                            log.warn("CIN incohérent — fichier={} ({}), extrait='{}', attendu='{}'",
+                                    f.getId(), f.getTypeDocument(), cinExtrait, cinAttendu);
+                        }
+                    } else {
+                        // Pas de "cin" extrait sur ce document (ex: justificatif de
+                        // domicile) — rien à comparer, on ne pénalise pas.
+                        r.setCinCoherent(null);
+                    }
+                } else {
+                    r.setVerifie(false);
+                }
+            } else {
+                r.setVerifie(false);
+            }
+        } catch (Exception e) {
+            log.warn("Impossible de lire l'extraction JSON pour fichier {}: {}",
+                    f.getId(), e.getMessage());
+            r.setVerifie(false);
+        }
+
         return r;
     }
+
+    // ✅ Normalise un numéro CIN pour comparaison — garde uniquement les chiffres,
+    // pour absorber les variations de format issues de l'OCR (espaces, tirets...).
+    private String normaliserCin(String s) {
+        if (s == null) return "";
+        return s.replaceAll("[^0-9]", "");
+    }
+
     @Override
     public Map analyserEtScorer(String cin, String dossierId) {
         analyserDossierComplet(cin, dossierId);
@@ -323,6 +418,39 @@ public class FichierServiceImpl implements FichierService {
                 HttpHeaders headers = new HttpHeaders();
                 headers.setContentType(MediaType.APPLICATION_JSON);
 
+                Dossier dossier = dossierRepository.findById(dossierUUID).orElse(null);
+
+                // ✅ Injecte les infos de la demande (montant, durée, type de
+                // contrat) — ces données existent sur le Dossier (remplies au
+                // formulaire client) mais n'apparaissent dans AUCUN document
+                // uploadé (CIN, fiche de paie...). Sans ça, l'agent Python ne
+                // peut pas connaître le montant demandé ni calculer la
+                // mensualité estimée, d'où les "0 TND" affichés côté agent.
+                if (dossier != null) {
+                    StringBuilder demandeInfo = new StringBuilder();
+                    demandeInfo.append("=== DEMANDE DE CREDIT (formulaire client) ===\n");
+                    if (dossier.getMontantCredit() != null) {
+                        demandeInfo.append("Montant demande: ")
+                                .append(dossier.getMontantCredit()).append(" TND\n");
+                    }
+                    if (dossier.getDureeCredit() != null) {
+                        demandeInfo.append("Duree souhaitee: ")
+                                .append(dossier.getDureeCredit()).append(" mois\n");
+                    }
+                    if (dossier.getTypeContrat() != null) {
+                        demandeInfo.append("Type de contrat souhaite: ")
+                                .append(dossier.getTypeContrat()).append("\n");
+                    }
+                    demandeInfo.append("\n");
+
+                    texteComplet.insert(0, demandeInfo);
+                }
+
+                // ── ✅ Vérification identité client vs documents ──────────
+                Map<String, Object> alerteIdentite = verifierIdentiteClient(
+                        texteComplet.toString(), dossier, headers
+                );
+
                 Map<String, Object> body = new HashMap<>();
                 body.put("document_text", texteComplet.toString());
 
@@ -334,8 +462,6 @@ public class FichierServiceImpl implements FichierService {
                 );
 
                 if (result != null) {
-
-                    Dossier dossier = dossierRepository.findById(dossierUUID).orElse(null);
 
                     if (dossier != null) {
 
@@ -391,6 +517,17 @@ public class FichierServiceImpl implements FichierService {
                             df.setJustificationGlobale(justification);
                             df.setExplicationClient(explicationClient);
 
+                            // ✅ Sauvegarde la réponse complète de l'agent (financialMetrics,
+                            // risks, recommendedPlan, documentSources...) — sans ça, ce
+                            // détail riche n'existe qu'en mémoire côté Angular le temps de
+                            // la session et disparaît dès qu'on quitte l'onglet.
+                            try {
+                                df.setResultatComplet(objectMapper.writeValueAsString(result));
+                            } catch (Exception e) {
+                                log.warn("Impossible de sérialiser le résultat complet pour dossier {}: {}",
+                                        dossierId, e.getMessage());
+                            }
+
                             decisionFinaleRepository.save(df);
                             log.info("DecisionFinale sauvegardée — dossier={}, decision={}",
                                     dossierId, decision);
@@ -417,6 +554,9 @@ public class FichierServiceImpl implements FichierService {
                         }
                     }
 
+                    // ✅ Injecte l'alerte d'identité dans le résultat final
+                    result.putAll(alerteIdentite);
+
                     return result;
                 }
             }
@@ -426,6 +566,84 @@ public class FichierServiceImpl implements FichierService {
 
         return new HashMap<>();
     }
+
+    // ── ✅ Vérifie que les documents correspondent bien au client du dossier ──
+    private Map<String, Object> verifierIdentiteClient(
+            String texteComplet, Dossier dossier, HttpHeaders headers) {
+
+        Map<String, Object> alerte = new HashMap<>();
+        alerte.put("alerteIdentite", false);
+        alerte.put("messageIdentite", "");
+
+        if (dossier == null || dossier.getClient() == null) {
+            return alerte;
+        }
+
+        try {
+            Map<String, Object> extractBody = new HashMap<>();
+            extractBody.put("texte_nettoye", texteComplet);
+            extractBody.put("cin", dossier.getClient().getCin());
+
+            HttpEntity<Map<String, Object>> extractRequest =
+                    new HttpEntity<>(extractBody, headers);
+
+            Map extractResult = restTemplate.postForObject(
+                    nlpServiceUrl + "/ai/extract-json",
+                    extractRequest, Map.class
+            );
+
+            if (extractResult == null) return alerte;
+
+            Map<String, Object> jsonData = (Map<String, Object>)
+                    extractResult.getOrDefault("json_data", new HashMap<>());
+
+            String nomExtrait    = normaliser((String) jsonData.get("nomClient"));
+            String prenomExtrait = normaliser((String) jsonData.get("prenomClient"));
+
+            String nomAttendu    = normaliser(dossier.getClient().getNom());
+            String prenomAttendu = normaliser(dossier.getClient().getPrenom());
+
+            boolean nomManquant = nomExtrait == null || nomExtrait.isBlank()
+                    || prenomExtrait == null || prenomExtrait.isBlank();
+
+            if (nomManquant) {
+                return alerte; // pas assez d'info pour comparer, on ne pénalise pas
+            }
+
+            boolean nomMatch    = nomAttendu    != null && nomAttendu.contains(nomExtrait);
+            boolean prenomMatch = prenomAttendu != null && prenomAttendu.contains(prenomExtrait);
+
+            if (!nomMatch || !prenomMatch) {
+                alerte.put("alerteIdentite", true);
+                alerte.put("messageIdentite", String.format(
+                        "Les documents mentionnent \"%s %s\", mais le dossier appartient à \"%s %s\". " +
+                                "Vérification manuelle recommandée.",
+                        capitalize(prenomExtrait), capitalize(nomExtrait),
+                        dossier.getClient().getPrenom(), dossier.getClient().getNom()
+                ));
+                log.warn("Alerte identité — dossier={} : documents='{} {}' vs client='{} {}'",
+                        dossier.getId(), prenomExtrait, nomExtrait,
+                        dossier.getClient().getPrenom(), dossier.getClient().getNom());
+            }
+
+        } catch (Exception e) {
+            log.warn("Vérification identité échouée: {}", e.getMessage());
+        }
+
+        return alerte;
+    }
+
+    private String normaliser(String s) {
+        if (s == null) return null;
+        return java.text.Normalizer.normalize(s.trim().toLowerCase(), java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "");
+    }
+
+    private String capitalize(String s) {
+        if (s == null || s.isEmpty()) return s;
+        return s.substring(0, 1).toUpperCase() + s.substring(1);
+    }
+
     // ✅ Helper
     private Double toDouble(Object val) {
         if (val == null) return null;

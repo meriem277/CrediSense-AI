@@ -1,6 +1,5 @@
 package com.example.crediSense.Service.impl.client;
 
-
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -71,5 +70,10 @@ public class ClientServiceImpl implements ClientService {
         response.setNom(client.getNom());
         response.setPrenom(client.getPrenom());
         response.setCreatedAt(client.getCreatedAt());
+        response.setEmail(client.getEmail());
+        response.setPhotoUrl(client.getPhotoUrl());
+        response.setProvider(client.getProvider());
+        response.setEmailVerified(client.isEmailVerified());
         return response;
-    }}
+    }
+}

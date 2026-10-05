@@ -33,6 +33,8 @@ public class Client {
     private String provider;
     @CreationTimestamp
     private LocalDateTime createdAt;
+    @Column(name = "email_verified")
+    private boolean emailVerified = false;
     public String getPrenom() {
         return prenom;
     }

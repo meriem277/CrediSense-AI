@@ -1,15 +1,18 @@
 package com.example.crediSense.controller;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-import com.example.crediSense.entity.Client;
-import com.example.crediSense.entity.Dossier;
+import com.example.crediSense.entity.*;
 import com.example.crediSense.repository.AgentRepository;
 import com.example.crediSense.repository.DecisionFinaleRepository;
 import com.example.crediSense.repository.DossierRepository;
+import com.example.crediSense.repository.JsonExtractionRepository;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
@@ -35,7 +38,10 @@ public class DossierController {
     private final AgentRepository agentRepository;
 
     private final DecisionFinaleRepository decisionFinaleRepository;
+    private final JsonExtractionRepository jsonExtractionRepository;  // ✅ nouveau
     private final JavaMailSender mailSender;
+
+    private final ObjectMapper objectMapper = new ObjectMapper();     // ✅ nouveau
 
 
 
@@ -148,7 +154,8 @@ public class DossierController {
                 Map.entry("clientCin",    d.getClient() != null && d.getClient().getCin() != null
                         ? d.getClient().getCin() : ""),
                 Map.entry("agentNom",     d.getAgentTraitant() != null && d.getAgentTraitant().getNom() != null
-                        ? d.getAgentTraitant().getNom() : "")
+                        ? d.getAgentTraitant().getNom() : ""),
+                Map.entry("montantCredit", d.getMontantCredit() != null ? d.getMontantCredit() : 0.0)
         );
     }
     @GetMapping("/{id}/fichiers")
@@ -159,21 +166,95 @@ public class DossierController {
                 .orElseThrow(() -> new RuntimeException("Dossier introuvable"));
 
         List<Map<String, Object>> fichiers = dossier.getFichiers().stream()
-                .map(f -> Map.<String, Object>of(
-                        "fichierId",    f.getId().toString(),
-                        "nomOriginal",  f.getNomOriginal() != null ? f.getNomOriginal() : "",
-                        "typeDocument", f.getTypeDocument() != null ? f.getTypeDocument() : "",
-                        "typeOriginal", f.getTypeOriginal() != null ? f.getTypeOriginal() : "",
-                        "cheminPdf",    f.getCheminPdf() != null ? f.getCheminPdf() : "",
-                        "createdAt",    f.getCreatedAt() != null ? f.getCreatedAt().toString() : "",
-                        "verifie",      f.getOcrResult() != null
-                                && "SUCCESS".equals(f.getOcrResult().getStatut())
-                ))
+                .map(f -> buildFichierMap(f, dossier))
                 .collect(Collectors.toList());
 
         return ResponseEntity.ok(fichiers);
     }
 
+    // ✅ Nouveau — construit la réponse enrichie d'un fichier avec jsonData et
+    // cinCoherent, en s'appuyant sur la dernière JsonExtraction liée à ce
+    // fichier. Utilise un LinkedHashMap (et pas Map.of) car jsonData et
+    // cinCoherent peuvent être null, ce que Map.of interdit.
+    private Map<String, Object> buildFichierMap(Fichier f, Dossier dossier) {
+        Map<String, Object> map = new LinkedHashMap<>();
+
+        map.put("fichierId",    f.getId().toString());
+        map.put("nomOriginal",  f.getNomOriginal() != null ? f.getNomOriginal() : "");
+        map.put("typeDocument", f.getTypeDocument() != null ? f.getTypeDocument() : "");
+        map.put("typeOriginal", f.getTypeOriginal() != null ? f.getTypeOriginal() : "");
+        map.put("cheminPdf",    f.getCheminPdf() != null ? f.getCheminPdf() : "");
+        map.put("createdAt",    f.getCreatedAt() != null ? f.getCreatedAt().toString() : "");
+        map.put("verifie",      f.getOcrResult() != null
+                && "SUCCESS".equals(f.getOcrResult().getStatut()));
+
+        // ✅ jsonData + cinCoherent — mêmes calculs que dans FichierServiceImpl.toResponse()
+        map.put("jsonData", null);
+        map.put("cinCoherent", null);
+
+        try {
+            List<JsonExtraction> extractions = jsonExtractionRepository.findByFichierIdOrderByCreatedAtDesc(f.getId());
+
+            if (extractions != null && !extractions.isEmpty()) {
+                JsonExtraction derniere = extractions.get(0);   // ✅ triée DESC — index 0 = la plus récente
+
+                if (derniere.getJsonData() != null && !derniere.getJsonData().isBlank()) {
+                    Map<String, Object> parsed = objectMapper.readValue(
+                            derniere.getJsonData(), new TypeReference<Map<String, Object>>() {}
+                    );
+                    map.put("jsonData", parsed);
+
+                    Object cinExtraitObj = parsed.get("cin");
+                    String cinExtrait = cinExtraitObj != null ? cinExtraitObj.toString() : null;
+                    String cinAttendu = (dossier.getClient() != null)
+                            ? dossier.getClient().getCin() : null;
+
+                    if (cinExtrait != null && !cinExtrait.isBlank() && cinAttendu != null) {
+                        boolean coherent = normaliserCin(cinExtrait).equals(normaliserCin(cinAttendu));
+                        map.put("cinCoherent", coherent);
+                        if (!coherent) {
+                            log.warn("CIN incohérent — fichier={} ({}), extrait='{}', attendu='{}'",
+                                    f.getId(), f.getTypeDocument(), cinExtrait, cinAttendu);
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Impossible de lire l'extraction JSON pour fichier {}: {}",
+                    f.getId(), e.getMessage());
+        }
+
+        return map;
+    }
+
+    // ✅ Normalise un numéro CIN pour comparaison — garde uniquement les chiffres.
+    private String normaliserCin(String s) {
+        if (s == null) return "";
+        return s.replaceAll("[^0-9]", "");
+    }
+
+
+    // ✅ Nouveau — relit le résultat complet d'un dossier déjà analysé,
+    // sans relancer l'agent. Utilisé par credit-result.ts à l'ouverture
+    // d'un dossier déjà tranché (APPROUVE/REFUSE) ou simplement déjà scoré.
+    @GetMapping("/{id}/resultat")
+    public ResponseEntity<Map<String, Object>> getResultat(@PathVariable UUID id) {
+        DecisionFinale df = decisionFinaleRepository.findByDossierId(id).orElse(null);
+
+        if (df == null || df.getResultatComplet() == null || df.getResultatComplet().isBlank()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        try {
+            Map<String, Object> parsed = objectMapper.readValue(
+                    df.getResultatComplet(), new TypeReference<Map<String, Object>>() {}
+            );
+            return ResponseEntity.ok(parsed);
+        } catch (Exception e) {
+            log.warn("Résultat illisible pour dossier {}: {}", id, e.getMessage());
+            return ResponseEntity.internalServerError().build();
+        }
+    }
 
     @Value("${spring.mail.username}")
     private String fromEmail;

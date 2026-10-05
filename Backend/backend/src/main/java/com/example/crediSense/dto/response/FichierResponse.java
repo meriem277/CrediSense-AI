@@ -1,6 +1,7 @@
 package com.example.crediSense.dto.response;
 import lombok.Data;
 import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.UUID;
 
 @Data
@@ -15,6 +16,9 @@ public class FichierResponse {
     private String cheminPdf;
     private UUID agentId;
     private LocalDateTime createdAt;
+    private Boolean verifie;
+    private Map<String, Object> jsonData;
+    private Boolean cinCoherent;
     private UUID dossierId;
 
 

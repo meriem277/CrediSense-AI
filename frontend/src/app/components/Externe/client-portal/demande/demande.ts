@@ -50,6 +50,41 @@ clientPrenom    = '';   //
     return this.notifications.filter(n => !n.lue).length;
   }
 
+  // ── Simulateur de crédit (montant / durée / mensualité) ─────────────────────
+  montantMin = 500;
+  montantMax = 20000;
+  dureeMin   = 6;
+  dureeMax   = 36;
+
+  /** Taux d'intérêt annuel utilisé pour l'estimation de la mensualité */
+  private readonly tauxAnnuel = 0.12;
+
+  /** true si le montant saisi dépasse les bornes autorisées */
+  get montantHorsLimites(): boolean {
+    const m = this.form.montantCredit;
+    return m != null && (m > this.montantMax || m < this.montantMin);
+  }
+
+  /** Clamp le montant dans [montantMin, montantMax] quand l'utilisateur quitte le champ */
+  onMontantBlur(): void {
+    if (this.form.montantCredit == null) return;
+    if (this.form.montantCredit > this.montantMax) this.form.montantCredit = this.montantMax;
+    if (this.form.montantCredit < this.montantMin) this.form.montantCredit = this.montantMin;
+  }
+
+  /** Mensualité estimée (formule d'amortissement classique) */
+  get mensualite(): number {
+    const P = this.form.montantCredit || 0;
+    const n = this.form.dureeCredit   || 0;
+    if (!P || !n) return 0;
+
+    const r = this.tauxAnnuel / 12;
+    if (r === 0) return P / n;
+
+    const facteur = Math.pow(1 + r, n);
+    return (P * r * facteur) / (facteur - 1);
+  }
+
   // ── Formulaire step 1 ─────────────────────────────────────────────────────
   form = {
     cin:           '',
@@ -60,8 +95,8 @@ clientPrenom    = '';   //
     adresse:       '',
     nationalite:   'TN',
     typeContrat:   '',
-    montantCredit: null as number | null,
-    dureeCredit:   null as number | null,
+    montantCredit: 1000 as number | null,
+    dureeCredit:   12   as number | null,
   };
 
   typesContrat = [
@@ -87,7 +122,8 @@ clientPrenom    = '';   //
       this.form.telephone    &&
       this.form.typeContrat  &&
       this.form.montantCredit &&
-      this.form.dureeCredit
+      this.form.dureeCredit  &&
+      !this.montantHorsLimites
     );
   }
 
@@ -297,6 +333,11 @@ clientPrenom    = '';   //
   }
 
   logout() {
+
     this.clientAuth.logout();
   }
+
+
+
+
 }

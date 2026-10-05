@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, ChangeDetectorRef, Input } from '@angular/core';
+import { Component, OnInit, OnDestroy, OnChanges, SimpleChanges, ChangeDetectorRef, Input } from '@angular/core';
 import { CommonModule }                  from '@angular/common';
 import { HttpClient }                    from '@angular/common/http';
 import { Subscription, combineLatest }   from 'rxjs';
@@ -14,7 +14,7 @@ import { ExportButton } from '../export-button/export-button';
   templateUrl: './credit-result.html',
   styleUrl:    './credit-result.scss',
 })
-export class CreditResult implements OnInit, OnDestroy {
+export class CreditResult implements OnInit, OnDestroy, OnChanges {
   @Input() dossierId: string | null = null;
   @Input() cin: string | null = null;
 
@@ -51,6 +51,45 @@ export class CreditResult implements OnInit, OnDestroy {
     );
   }
 
+  // ✅ Nouveau — se déclenche à chaque changement de dossier consulté
+  // (y compris le tout premier binding, avant ngOnInit). Va chercher le
+  // résultat déjà sauvegardé en base pour ce dossier, pour ne plus dépendre
+  // uniquement de creditState (mémoire de session, vidée en cas de retour
+  // sur un dossier déjà analysé).
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['dossierId'] && this.dossierId) {
+      this.loadStoredResult(this.dossierId);
+    }
+  }
+
+  private loadStoredResult(dossierId: string): void {
+    this.http.get<any>(`${environment.apiUrl}/api/dossiers/${dossierId}/resultat`)
+      .subscribe({
+        next: (data) => {
+          if (!data) return;
+
+          // ✅ Repasse par creditState.setResult() pour rester sur le même
+          // flux que _setScore() côté upload-section — le template n'a rien
+          // à changer, il lit toujours creditState.result$.
+          this.creditState.setResult({
+            eligibility:      data.eligibility                                || 'INCONNU',
+            eligibilityScore: data.eligibilityScore || data.eligibility_score || 0,
+            creditType:       data.creditType                                || 'CONSOMMATION',
+            financialMetrics: data.financialMetrics || data.financial_metrics || {},
+            risks:            data.risks                                     || [],
+            recommendedPlan:  data.recommendedPlan  || data.recommended_plan   || [],
+            documentSources:  data.documentSources  || data.document_sources   || [],
+            rawExplanation:   data.rawExplanation   || data.explanation         || ''
+          });
+        },
+        error: () => {
+          // 404 normal si ce dossier n'a jamais été analysé — on laisse
+          // l'écran par défaut ("Uploadez un document puis cliquez sur
+          // Score Crédit") s'afficher, pas d'action à prendre.
+        }
+      });
+  }
+
   ngOnDestroy() { this.subs.unsubscribe(); }
 
   get eligibilityColor(): string {
@@ -81,9 +120,7 @@ export class CreditResult implements OnInit, OnDestroy {
       'applicableRate': 'Taux applicable',
       'maxAllowedAmount': 'Montant max autorisé'
     };
-    // direct match
     if (map[k]) return map[k];
-    // contains checks
     if (k.includes('dti')) return map['dti'];
     if (k.includes('ltv')) return map['ltv'];
     if (k.includes('income') || k.includes('revenu')) return map['monthlyincome'];
@@ -109,12 +146,10 @@ export class CreditResult implements OnInit, OnDestroy {
     if (value === null || value === undefined) return '-';
     const k = (key || '').toString().toLowerCase();
     let num = typeof value === 'number' ? value : parseFloat(value);
-    // percentages
     if (k.includes('dti') || k.includes('ltv') || k.includes('rate')) {
       if (isNaN(num)) return String(value);
       return `${Math.round(num * 100) / 100}%`;
     }
-    // money-like
     if (!isNaN(num) && (k.includes('amount') || k.includes('income') || k.includes('debts') || k.includes('payment') || k.includes('contribution') || k.includes('value') )) {
       try {
         return new Intl.NumberFormat('fr-TN', { maximumFractionDigits: 2 }).format(num) + ' TND';
@@ -128,7 +163,6 @@ export class CreditResult implements OnInit, OnDestroy {
     return String(value);
   }
 
-  // Helpers to normalize risk item structure
   getRiskLevel(r: any): string {
     if (!r) return 'LOW';
     if (typeof r === 'string') {
@@ -159,7 +193,6 @@ export class CreditResult implements OnInit, OnDestroy {
     return r.source ?? r['source'] ?? null;
   }
 
-  // Plan helpers
   getPlanPriority(p: any, idx: number): number {
     if (!p) return idx + 1;
     if (typeof p === 'string') return idx + 1;
@@ -191,7 +224,6 @@ export class CreditResult implements OnInit, OnDestroy {
     return p.source ?? p['source'] ?? null;
   }
 
-  // ── Envoi du résultat au client par email ──
   sendResultToClient(): void {
     if (!this.result || this.sendingEmail || this.emailSent) return;
 

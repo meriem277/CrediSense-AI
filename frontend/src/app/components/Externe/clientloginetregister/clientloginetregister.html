@@ -1,17 +1,30 @@
 <div class="auth-page">
 
+  <!-- Forme décorative en arrière-plan, comme sur la landing page -->
+  <div class="auth-decoration"></div>
+
   <div class="auth-card">
 
     <!-- Logo -->
     <div class="auth-logo">
       <img src="images/logo-attijaribank.png" alt="Attijari Logo" class="logo-img" />
-      <h1>Croire en vous</h1>
+
+      <h1 class="hero-title">
+        <span class="highlight">Faites</span> votre demande de<br>
+        crédit en quelques clics
+      </h1>
+
+      <p class="hero-subtitle">
+        Connectez-vous pour accéder à votre espace client
+        et suivre votre demande <strong>100% en ligne</strong>.
+      </p>
+
+      <h2 class="brand-tagline">Croire en vous</h2>
       <p>Portail client Attijari Bank</p>
-      <p>votre plateforme de demande de crédit bancaire</p>
     </div>
 
     <!-- Onglets Login / Register -->
-    <div class="auth-tabs" *ngIf="mode !== 'forgot'">
+    <div class="auth-tabs" *ngIf="mode !== 'forgot' && mode !== 'verify-sent'">
       <button class="tab" [class.active]="mode==='login'" (click)="mode='login'">Connexion</button>
       <button class="tab" [class.active]="mode==='register'" (click)="mode='register'">Créer un compte</button>
     </div>
@@ -35,14 +48,14 @@
                (keydown.enter)="onLogin()"/>
       </div>
 
-      <!-- ✅ Lien mot de passe oublié -->
       <div class="forgot-link">
         <a (click)="mode='forgot'; errorMsg=''; form.email=''">Mot de passe oublié ?</a>
       </div>
 
       <button class="btn-primary" (click)="onLogin()" [disabled]="loading">
         <span *ngIf="loading" class="spinner"></span>
-        {{ loading ? 'Connexion...' : 'Se connecter' }}
+        <span>{{ loading ? 'Connexion...' : 'Se connecter' }}</span>
+        <span class="btn-arrow" *ngIf="!loading">→</span>
       </button>
 
     </div>
@@ -75,7 +88,6 @@
                placeholder="Min. 8 caractères" class="form-input"
                (input)="checkPassword(form.password)"/>
 
-        <!-- Barre de progression -->
         <div class="pwd-strength" *ngIf="form.password">
           <div class="pwd-bar">
             <div class="pwd-fill"
@@ -88,7 +100,6 @@
           </span>
         </div>
 
-        <!-- Règles -->
         <div class="pwd-rules" *ngIf="form.password">
           <div class="pwd-rule" [class.ok]="form.password.length >= 8">
             <span>{{ form.password.length >= 8 ? '✓' : '✗' }}</span> 8 caractères minimum
@@ -113,7 +124,8 @@
 
       <button class="btn-primary" (click)="onRegister()" [disabled]="loading">
         <span *ngIf="loading" class="spinner"></span>
-        {{ loading ? 'Création...' : 'Créer mon compte' }}
+        <span>{{ loading ? 'Création...' : 'Créer mon compte' }}</span>
+        <span class="btn-arrow" *ngIf="!loading">→</span>
       </button>
 
     </div>
@@ -135,7 +147,8 @@
 
       <button class="btn-primary" (click)="onForgotPassword()" [disabled]="loading || !!successMsg">
         <span *ngIf="loading" class="spinner"></span>
-        {{ loading ? 'Envoi...' : 'Envoyer le lien' }}
+        <span>{{ loading ? 'Envoi...' : 'Envoyer le lien' }}</span>
+        <span class="btn-arrow" *ngIf="!loading && !successMsg">→</span>
       </button>
 
       <button class="btn-back" (click)="mode='login'; errorMsg=''; successMsg=''">
@@ -144,13 +157,27 @@
 
     </div>
 
+    <!-- ── EMAIL DE VÉRIFICATION ENVOYÉ ── -->
+    <div *ngIf="mode==='verify-sent'" class="auth-form">
+
+      <p class="forgot-desc">
+        📧 Un email de confirmation a été envoyé à <strong>{{ form.email }}</strong>.<br>
+        Cliquez sur le lien reçu pour activer votre compte.
+      </p>
+
+      <button class="btn-back" (click)="mode='login'; errorMsg=''">
+        ← Retour à la connexion
+      </button>
+
+    </div>
+
     <!-- Séparateur -->
-    <div class="separator" *ngIf="mode !== 'forgot'">
+    <div class="separator" *ngIf="mode !== 'forgot' && mode !== 'verify-sent'">
       <span>ou continuer avec</span>
     </div>
 
     <!-- Bouton Google -->
-    <div class="google-btn-wrapper" *ngIf="mode !== 'forgot'">
+    <div class="google-btn-wrapper" *ngIf="mode !== 'forgot' && mode !== 'verify-sent'">
       <div id="google-btn"></div>
     </div>
 

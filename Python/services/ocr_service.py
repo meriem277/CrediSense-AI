@@ -1,68 +1,263 @@
 # services/ocr_service.py
 """
-Service OCR CrediSense — version optimisée
-- Doctr chargé au démarrage (pas de latence premier appel)
-- Lecture depuis bytes (pas de fichier temporaire)
-- Traitement parallèle des pages avec ThreadPoolExecutor
-- Cache LRU sur le hash du fichier
-- Logging structuré avec métriques de performance
+Service OCR CrediSense — PaddleOCR, fusion arabe + français
+
+Fonctionnement :
+1. PDF natif (texte sélectionnable)   → extraction directe avec PyMuPDF
+2. PDF scanné (CIN, attestation, …)   → OCR PaddleOCR en FUSION :
+      a. détection des zones de texte (PP-OCRv5_mobile_det)          — 1 seule fois
+      b. lecture de chaque zone par le modèle ARABE
+         (arabic_PP-OCRv5_mobile_rec)
+      c. lecture de la MÊME zone par le modèle LATIN
+         (latin_PP-OCRv5_mobile_rec)
+      d. fusion zone par zone :
+           - zone sans arabe (français, chiffres) → lecture latine
+           - zone arabe                          → mots arabes de la lecture arabe
+           - zone mixte arabe + français/chiffres → mots arabes + lecture latine
+
+Pourquoi la fusion (benchmark sur une attestation bilingue, 181 mots) :
+    - PaddleOCR arabe seul   : lit 85 % de l'arabe mais perd le français et les
+                               chiffres des lignes mixtes (2 nombres sur 10)
+    - PaddleOCR français seul : lit le français et les chiffres, ignore l'arabe
+    - Les deux sont complémentaires, et utilisent le même framework (pas de conflit)
+
+Post-traitement :
+    - zones à faible confiance écartées (motifs de sécurité lus comme du texte)
+    - zones regroupées par ligne (position verticale), ordonnées de droite à
+      gauche pour les lignes arabes, de gauche à droite sinon
+    - normalisation Unicode NFKC (formes contextuelles arabes → lettres standard)
 """
 
-# ── Stub weasyprint ──────────────────────────────────────────────────────
-# doctr importe weasyprint en interne (pour une fonctionnalité HTML qu'on
-# n'utilise pas). weasyprint nécessite GTK3 (librairies système Windows)
-# qui ne sont pas installées. On simule un faux module pour éviter le crash.
-import sys
-import types
+import os
 
-if "weasyprint" not in sys.modules:
-    _fake_weasyprint = types.ModuleType("weasyprint")
-    _fake_weasyprint.HTML = None
-    sys.modules["weasyprint"] = _fake_weasyprint
-# ──────────────────────────────────────────────────────────────────────────
+# Ne pas tester la connexion aux serveurs de modèles à chaque démarrage
+os.environ.setdefault("DISABLE_MODEL_SOURCE_CHECK", "True")
 
-import logging
-import time
 import hashlib
-import fitz  # PyMuPDF
+import logging
+import statistics
+import threading
+import time
+import unicodedata
 from pathlib import Path
-from functools import lru_cache
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Optional
 
-logger = logging.getLogger(__name__)
-SEUIL_TEXTE_NATIF  = 50    # chars minimum → PDF natif
-CACHE_SIZE         = 128   # nombre de résultats en cache
-MAX_WORKERS        = 4     # threads parallèles pour les pages
+import numpy as np
 
+try:
+    import pymupdf as fitz  # nouveau nom officiel de PyMuPDF
+except ImportError:
+    import fitz
+
+logger = logging.getLogger(__name__)
+
+SEUIL_TEXTE_NATIF     = 50     # chars minimum pour considérer un PDF comme natif
+CACHE_SIZE            = 128    # nombre de résultats gardés en cache
+DPI                   = 300    # résolution de conversion PDF scanné → image
+SEUIL_CONFIANCE_MIN   = 0.50   # zones en dessous : considérées comme du bruit
+SEUIL_LECTURE_LATINE  = 0.80   # zone arabe : la lecture latine n'est ajoutée que
+                               # si le modèle latin est sûr de lui (sinon : bruit)
+TOLERANCE_LIGNE       = 0.5    # 2 zones sont sur la même ligne si leurs centres
+                               # sont à moins de 0.5 × hauteur médiane
+TAILLE_LOT_LATIN      = 8      # zones lues en même temps par le modèle latin
+
+MODELE_DETECTION      = "PP-OCRv5_mobile_det"
+MODELE_REC_ARABE      = "arabic_PP-OCRv5_mobile_rec"
+MODELE_REC_LATIN      = "latin_PP-OCRv5_mobile_rec"
+
+# True  : fusion arabe + latin (recommandé pour les documents bilingues)
+# False : modèle arabe seul (plus rapide, mais perd le français des lignes mixtes)
+FUSION_ACTIVE         = True
+
+# oneDNN (MKLDNN) accélère l'inférence sur CPU, mais provoque l'erreur
+# "ConvertPirAttribute2RuntimeAttribute not support" avec certaines versions
+# de paddlepaddle 3.x. À passer à True si la version installée le supporte.
+ACTIVER_MKLDNN        = False
+
+# Plages Unicode de l'alphabet arabe (lettres, formes de présentation)
+_PLAGES_ARABES = (
+    (0x0600, 0x06FF), (0x0750, 0x077F), (0x08A0, 0x08FF),
+    (0xFB50, 0xFDFF), (0xFE70, 0xFEFF),
+)
+
+
+# ═════════════════════════════════════════════════════════════════════════
+# Fonctions utilitaires (sans état)
+# ═════════════════════════════════════════════════════════════════════════
+
+def _est_lettre_arabe(c: str) -> bool:
+    code = ord(c)
+    return any(debut <= code <= fin for debut, fin in _PLAGES_ARABES) and c.isalpha()
+
+
+def contient_arabe(texte: str) -> bool:
+    return any(_est_lettre_arabe(c) for c in texte)
+
+
+def est_arabe(texte: str) -> bool:
+    """Vrai si le texte contient plus de lettres arabes que de lettres latines."""
+    arabes = sum(_est_lettre_arabe(c) for c in texte)
+    latines = sum(c.isalpha() and not _est_lettre_arabe(c) for c in texte)
+    return arabes > latines
+
+
+def normaliser(texte: str) -> str:
+    """NFKC : convertit les formes contextuelles arabes en lettres standard."""
+    return unicodedata.normalize("NFKC", str(texte)).strip()
+
+
+def fusionner_lectures(texte_ar: str, score_ar: float,
+                       texte_lat: str, score_lat: float) -> tuple[str, float]:
+    """
+    Combine les lectures arabe et latine d'UNE même zone de texte.
+
+    - Zone sans arabe (français, chiffres) → lecture latine (le spécialiste)
+    - Zone arabe → mots arabes de la lecture arabe, complétés par la lecture
+      latine si celle-ci est fiable (zone mixte : "مريم رحومة / Meriem Rehouma",
+      ou date "27 جويلية 2001" dont le modèle arabe perd les chiffres)
+    """
+    texte_ar, texte_lat = normaliser(texte_ar), normaliser(texte_lat)
+    mots_arabes = [m for m in texte_ar.split() if contient_arabe(m)]
+
+    if not mots_arabes:
+        if texte_lat:
+            return texte_lat, score_lat
+        return texte_ar, score_ar
+
+    texte = " ".join(mots_arabes)
+    lecture_latine_fiable = (
+        score_lat >= SEUIL_LECTURE_LATINE
+        and sum(c.isalnum() for c in texte_lat) >= 2
+    )
+    if lecture_latine_fiable:
+        texte = f"{texte} {texte_lat}"
+    return texte, score_ar
+
+
+def rogner_zone(image: np.ndarray, poly) -> np.ndarray:
+    """
+    Découpe une zone de texte (polygone à 4 points) et la redresse,
+    comme le fait PaddleOCR avant la reconnaissance.
+    """
+    import cv2
+
+    pts = np.asarray(poly, dtype=np.float32).reshape(-1, 2)
+    if len(pts) != 4:  # polygone quelconque → rectangle englobant
+        x1, y1 = pts.min(axis=0)
+        x2, y2 = pts.max(axis=0)
+        pts = np.float32([[x1, y1], [x2, y1], [x2, y2], [x1, y2]])
+
+    largeur = int(max(np.linalg.norm(pts[0] - pts[1]), np.linalg.norm(pts[2] - pts[3])))
+    hauteur = int(max(np.linalg.norm(pts[0] - pts[3]), np.linalg.norm(pts[1] - pts[2])))
+    largeur, hauteur = max(largeur, 1), max(hauteur, 1)
+
+    cible = np.float32([[0, 0], [largeur, 0], [largeur, hauteur], [0, hauteur]])
+    matrice = cv2.getPerspectiveTransform(pts, cible)
+    zone = cv2.warpPerspective(image, matrice, (largeur, hauteur),
+                               borderMode=cv2.BORDER_REPLICATE, flags=cv2.INTER_CUBIC)
+    if hauteur / largeur >= 1.5:  # texte vertical → on le couche
+        zone = np.ascontiguousarray(np.rot90(zone))
+    return zone
+
+
+def boite_englobante(poly) -> tuple[float, float, float, float]:
+    pts = np.asarray(poly, dtype=float).reshape(-1, 2)
+    return pts[:, 0].min(), pts[:, 1].min(), pts[:, 0].max(), pts[:, 1].max()
+
+
+def regrouper_par_ligne(zones: list[dict]) -> list[str]:
+    """
+    Regroupe les zones qui sont à la même hauteur, puis les ordonne :
+    de droite à gauche si la ligne est en arabe, de gauche à droite sinon.
+    Ex. CIN : "رحومة" et "اللقب" (deux zones) → "اللقب رحومة".
+    """
+    if not zones:
+        return []
+
+    hauteur_med = statistics.median(z["y2"] - z["y1"] for z in zones) or 1.0
+    centre = lambda z: (z["y1"] + z["y2"]) / 2
+
+    groupes: list[list[dict]] = []
+    for z in sorted(zones, key=centre):
+        if groupes:
+            centre_groupe = sum(centre(g) for g in groupes[-1]) / len(groupes[-1])
+            if abs(centre(z) - centre_groupe) <= hauteur_med * TOLERANCE_LIGNE:
+                groupes[-1].append(z)
+                continue
+        groupes.append([z])
+
+    lignes = []
+    for groupe in groupes:
+        rtl = est_arabe(" ".join(z["texte"] for z in groupe))
+        ordonnees = sorted(groupe, key=lambda z: z["x1"], reverse=rtl)
+        lignes.append(" ".join(z["texte"] for z in ordonnees))
+    return lignes
+
+
+# ═════════════════════════════════════════════════════════════════════════
+# Service
+# ═════════════════════════════════════════════════════════════════════════
 
 class OcrService:
 
     def __init__(self):
-        self._doctr_model = None
-        self._executor    = ThreadPoolExecutor(max_workers=MAX_WORKERS)
-        self._charger_doctr()
+        self._ocr = None          # pipeline : détection + lecture arabe
+        self._rec_latin = None    # lecture latine (fusion)
+        self._verrou = threading.Lock()   # PaddleOCR n'est pas thread-safe
+        self._cache: dict = {}
+        self._charger_modeles()
 
     # ── Chargement au démarrage ───────────────────────────────────────────────
 
-    def _charger_doctr(self):
-        """Charge Doctr une seule fois au démarrage du service."""
+    def _charger_modeles(self):
+        """Charge les modèles PaddleOCR une seule fois au démarrage du service."""
         try:
-            logger.info("Chargement Doctr OCR au démarrage...")
-            t0 = time.time()
-            from doctr.models import ocr_predictor
-            self._doctr_model = ocr_predictor(pretrained=True)
-            logger.info("Doctr prêt en %.2fs", time.time() - t0)
+            from paddleocr import PaddleOCR
         except ImportError:
-            logger.warning("Doctr non disponible — OCR images désactivé")
-            self._doctr_model = None
+            logger.warning("PaddleOCR non disponible — OCR des PDF scannés désactivé")
+            return
+
+        try:
+            t0 = time.time()
+            self._ocr = PaddleOCR(
+                text_detection_model_name=MODELE_DETECTION,
+                text_recognition_model_name=MODELE_REC_ARABE,
+                use_doc_orientation_classify=False,  # documents déjà droits
+                use_doc_unwarping=False,             # pas de redressement de page
+                use_textline_orientation=False,
+                enable_mkldnn=ACTIVER_MKLDNN,
+            )
+            logger.info("PaddleOCR prêt en %.2fs (%s + %s)",
+                        time.time() - t0, MODELE_DETECTION, MODELE_REC_ARABE)
+        except Exception:
+            logger.exception("Échec du chargement de PaddleOCR — OCR des PDF scannés désactivé")
+            self._ocr = None
+            return
+
+        if FUSION_ACTIVE:
+            try:
+                from paddleocr import TextRecognition
+                t0 = time.time()
+                try:
+                    self._rec_latin = TextRecognition(model_name=MODELE_REC_LATIN,
+                                                      enable_mkldnn=ACTIVER_MKLDNN)
+                except TypeError:  # version sans le paramètre enable_mkldnn
+                    self._rec_latin = TextRecognition(model_name=MODELE_REC_LATIN)
+                logger.info("Lecture latine prête en %.2fs (%s) — fusion activée",
+                            time.time() - t0, MODELE_REC_LATIN)
+            except Exception:
+                logger.exception("Modèle latin non chargé — fusion désactivée, arabe seul")
+                self._rec_latin = None
 
     # ── Point d'entrée principal ──────────────────────────────────────────────
 
-    def extraire(self, pdf_path: str, type_original: str) -> dict:
+    def extraire(self, pdf_path: str, type_original: str = "pdf",
+                 langue: Optional[str] = None) -> dict:
         """
-        Extrait le texte d'un fichier selon son type.
-        Utilise le cache si le fichier a déjà été traité.
+        Extrait le texte d'un PDF.
+
+        `langue` est conservé pour compatibilité avec les anciens appels,
+        mais n'est plus utilisé : la fusion lit l'arabe et le français.
         """
         t0   = time.time()
         path = Path(pdf_path)
@@ -70,140 +265,151 @@ class OcrService:
         if not path.exists():
             return self._erreur(f"Fichier introuvable : {pdf_path}")
 
-        # ── Cache : calculer le hash du fichier ─────────────────────────────
-        file_hash = self._hash_fichier(path)
-        cached    = self._cache_get(file_hash)
+        if type_original.lower().strip() != "pdf":
+            return self._erreur(f"Type non supporté : {type_original} (PDF uniquement)")
+
+        # ── Cache : empreinte SHA-256 du fichier ─────────────────────────────
+        pdf_bytes = path.read_bytes()
+        cle       = hashlib.sha256(pdf_bytes).hexdigest()
+        cached    = self._cache.get(cle)
         if cached:
-            logger.info("Cache HIT — %s (%.0fms)", path.name, (time.time()-t0)*1000)
+            logger.info("Cache HIT — %s (%.0fms)", path.name, (time.time() - t0) * 1000)
             return cached
 
-        # ── Extraction selon le type ─────────────────────────────────────────
-        ext = type_original.lower().strip()
         try:
-            if ext == "docx":
-                result = self._extraire_natif(path, cas="CAS1_DOCX")
-            elif ext in ("jpg", "jpeg", "png"):
-                result = self._extraire_doctr_bytes(path.read_bytes(), cas="CAS2_IMAGE")
-            elif ext == "pdf":
-                result = self._detection_auto(path)
-            else:
-                return self._erreur(f"Type non supporté : {ext}")
+            result = self._detection_auto(pdf_bytes)
 
             result["duree_ms"] = round((time.time() - t0) * 1000, 1)
-            logger.info("OCR terminé — cas=%s, %d chars, %.0fms",
-                       result["cas"], len(result["texte"]), result["duree_ms"])
+            logger.info("OCR terminé — cas=%s, moteur=%s, %d chars, %.0fms",
+                        result["cas"], result["moteur"], len(result["texte"]),
+                        result["duree_ms"])
 
-            # Mettre en cache
-            self._cache_set(file_hash, result)
+            self._cache_set(cle, result)
             return result
 
         except Exception as e:
             logger.error("Erreur extraction : %s", str(e), exc_info=True)
             return self._erreur(str(e))
 
-    # ── CAS 1 : PyMuPDF natif ────────────────────────────────────────────────
+    # ── Détection natif / scanné ─────────────────────────────────────────────
 
-    def _extraire_natif(self, path: Path, cas: str) -> dict:
-        """Extraction texte PDF natif avec PyMuPDF — parallèle par page."""
-        doc = fitz.open(str(path))
-        nb_pages = len(doc)
-
-        def extraire_page(page_num: int) -> str:
-            return doc[page_num].get_text()
-
-        # Traitement parallèle des pages
-        textes   = [""] * nb_pages
-        futures  = {
-            self._executor.submit(extraire_page, i): i
-            for i in range(nb_pages)
-        }
-        for future in as_completed(futures):
-            idx         = futures[future]
-            textes[idx] = future.result()
-
-        doc.close()
-        texte = "\n".join(textes)
-
-        logger.info("PyMuPDF — %d pages, %d chars", nb_pages, len(texte))
-        return {
-            "texte":      texte,
-            "nb_pages":   nb_pages,
-            "confidence": None,
-            "cas":        cas,
-            "statut":     "SUCCESS"
-        }
-
-    # ── CAS 2 : Doctr OCR ────────────────────────────────────────────────────
-
-    def _extraire_doctr_bytes(self, pdf_bytes: bytes, cas: str) -> dict:
-        """OCR Doctr depuis bytes — pas de fichier temporaire."""
-        if self._doctr_model is None:
-            raise RuntimeError("Doctr non disponible — installez python-doctr[torch]")
-
-        from doctr.io import DocumentFile
-
-        # Lire depuis bytes directement
-        doc    = DocumentFile.from_pdf(pdf_bytes)
-        result = self._doctr_model(doc)
-
-        # Extraction optimisée avec compréhension de liste
-        mots = [
-            word
-            for page  in result.pages
-            for block in page.blocks
-            for line  in block.lines
-            for word  in line.words
-        ]
-
-        texte      = " ".join(w.value for w in mots)
-        confidence = (
-            sum(w.confidence for w in mots) / len(mots)
-            if mots else 0.0
-        )
-
-        logger.info("Doctr — %d pages, conf=%.3f, %d chars",
-                   len(result.pages), confidence, len(texte))
-
-        return {
-            "texte":      texte,
-            "nb_pages":   len(result.pages),
-            "confidence": round(confidence, 4),
-            "cas":        cas,
-            "statut":     "SUCCESS"
-        }
-
-    # ── CAS 3 : Détection automatique ────────────────────────────────────────
-
-    def _detection_auto(self, path: Path) -> dict:
-        """Essaie PyMuPDF, bascule sur Doctr si texte insuffisant."""
-        result = self._extraire_natif(path, cas="CAS3_NATIF")
+    def _detection_auto(self, pdf_bytes: bytes) -> dict:
+        """Essaie PyMuPDF ; si le texte est insuffisant, c'est un scan → PaddleOCR."""
+        result = self._extraire_natif(pdf_bytes)
 
         if len(result["texte"].strip()) < SEUIL_TEXTE_NATIF:
-            logger.info(
-                "Texte court (%d chars) → Doctr OCR",
-                len(result["texte"].strip())
-            )
-            return self._extraire_doctr_bytes(
-                path.read_bytes(), cas="CAS3_SCAN"
-            )
+            logger.info("Texte court (%d chars) → PDF scanné, OCR PaddleOCR",
+                        len(result["texte"].strip()))
+            return self._ocr_pdf(pdf_bytes)
 
         return result
 
-    # ── Cache LRU ────────────────────────────────────────────────────────────
+    # ── PDF natif : PyMuPDF ──────────────────────────────────────────────────
 
-    _cache: dict = {}
+    def _extraire_natif(self, pdf_bytes: bytes) -> dict:
+        """Extraction du texte intégré au PDF (quelques millisecondes)."""
+        with fitz.open(stream=pdf_bytes, filetype="pdf") as doc:
+            nb_pages = len(doc)
+            texte    = "\n".join(page.get_text() for page in doc)
 
-    def _hash_fichier(self, path: Path) -> str:
-        h = hashlib.md5()
-        h.update(path.read_bytes())
-        return h.hexdigest()
+        logger.info("PyMuPDF — %d pages, %d chars", nb_pages, len(texte))
+        return {
+            "texte":          texte,
+            "nb_pages":       nb_pages,
+            "confidence":     None,
+            "cas":            "PDF_NATIF",
+            "moteur":         "pymupdf",
+            "langue_detectee": None,
+            "zones_ecartees": 0,
+            "statut":         "SUCCESS",
+        }
 
-    def _cache_get(self, key: str) -> Optional[dict]:
-        return self._cache.get(key)
+    # ── PDF scanné : PaddleOCR ───────────────────────────────────────────────
+
+    @staticmethod
+    def _pages_en_images(pdf_bytes: bytes) -> list:
+        """Convertit chaque page en image BGR (format attendu par PaddleOCR), en mémoire."""
+        images = []
+        with fitz.open(stream=pdf_bytes, filetype="pdf") as doc:
+            for page in doc:
+                pix = page.get_pixmap(dpi=DPI, colorspace=fitz.csRGB, alpha=False)
+                rgb = np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.h, pix.w, 3)
+                images.append(np.ascontiguousarray(rgb[:, :, ::-1]))  # RGB → BGR
+        return images
+
+    def _ocr_pdf(self, pdf_bytes: bytes) -> dict:
+        if self._ocr is None:
+            raise RuntimeError(
+                "PaddleOCR non disponible — vérifiez l'installation (paddlepaddle, paddleocr)"
+            )
+
+        images = self._pages_en_images(pdf_bytes)
+        fusion = self._rec_latin is not None
+
+        lignes, confidences, nb_ecartees = [], [], 0
+        for image in images:
+            with self._verrou:
+                zones, ecartees = self._lire_page(image, fusion)
+            nb_ecartees += ecartees
+            confidences.extend(z["score"] for z in zones)
+            lignes.extend(regrouper_par_ligne(zones))
+            lignes.append("")  # ligne vide entre les pages
+
+        texte      = "\n".join(lignes).strip()
+        confidence = sum(confidences) / len(confidences) if confidences else 0.0
+        moteur     = "paddleocr-fusion" if fusion else "paddleocr-arabe"
+
+        logger.info("%s — %d pages, conf=%.3f, %d chars, %d zones écartées",
+                    moteur, len(images), confidence, len(texte), nb_ecartees)
+
+        return {
+            "texte":          texte,
+            "nb_pages":       len(images),
+            "confidence":     round(confidence, 4),
+            "cas":            "PDF_SCAN",
+            "moteur":         moteur,
+            "langue_detectee": ("ar" if est_arabe(texte) else "fr") if texte else None,
+            "zones_ecartees": nb_ecartees,
+            "statut":         "SUCCESS",
+        }
+
+    def _lire_page(self, image: np.ndarray, fusion: bool) -> tuple[list[dict], int]:
+        """
+        Détection + lecture arabe (pipeline), puis lecture latine des mêmes zones,
+        puis fusion zone par zone. Renvoie (zones retenues, nombre de zones écartées).
+        """
+        zones, ecartees = [], 0
+
+        for res in self._ocr.predict(image):
+            polys     = list(res["rec_polys"])
+            textes_ar = list(res["rec_texts"])
+            scores_ar = [float(s) for s in res["rec_scores"]]
+
+            if fusion and polys:
+                rognures = [rogner_zone(image, p) for p in polys]
+                lectures = list(self._rec_latin.predict(rognures, batch_size=TAILLE_LOT_LATIN))
+                textes_lat = [str(r["rec_text"]) for r in lectures]
+                scores_lat = [float(r["rec_score"]) for r in lectures]
+            else:
+                textes_lat = [""] * len(polys)
+                scores_lat = [0.0] * len(polys)
+
+            for poly, t_ar, s_ar, t_lat, s_lat in zip(polys, textes_ar, scores_ar,
+                                                       textes_lat, scores_lat):
+                texte, score = fusionner_lectures(t_ar, s_ar, t_lat, s_lat)
+                if not texte or score < SEUIL_CONFIANCE_MIN:
+                    ecartees += 1
+                    continue
+                x1, y1, x2, y2 = boite_englobante(poly)
+                zones.append({"texte": texte, "score": score,
+                              "x1": x1, "y1": y1, "x2": x2, "y2": y2})
+
+        return zones, ecartees
+
+    # ── Cache FIFO ───────────────────────────────────────────────────────────
 
     def _cache_set(self, key: str, value: dict):
         if len(self._cache) >= CACHE_SIZE:
-            # Supprimer la première entrée (FIFO simple)
             oldest = next(iter(self._cache))
             del self._cache[oldest]
         self._cache[key] = value
@@ -216,20 +422,26 @@ class OcrService:
 
     def _erreur(self, message: str) -> dict:
         return {
-            "texte":      "",
-            "nb_pages":   0,
-            "confidence": None,
-            "cas":        "ERREUR",
-            "statut":     "FAILURE",
-            "erreur":     message,
-            "duree_ms":   0
+            "texte":          "",
+            "nb_pages":       0,
+            "confidence":     None,
+            "cas":            "ERREUR",
+            "moteur":         None,
+            "langue_detectee": None,
+            "zones_ecartees": 0,
+            "statut":         "FAILURE",
+            "erreur":         message,
+            "duree_ms":       0,
         }
 
     def stats(self) -> dict:
         """Retourne les statistiques du service."""
         return {
-            "cache_size":   len(self._cache),
-            "cache_max":    CACHE_SIZE,
-            "doctr_loaded": self._doctr_model is not None,
-            "max_workers":  MAX_WORKERS
+            "cache_size":  len(self._cache),
+            "cache_max":   CACHE_SIZE,
+            "ocr_charge":  self._ocr is not None,
+            "fusion":      self._rec_latin is not None,
+            "modele_det":  MODELE_DETECTION,
+            "modele_rec":  [MODELE_REC_ARABE] + ([MODELE_REC_LATIN] if self._rec_latin else []),
+            "mkldnn":      ACTIVER_MKLDNN,
         }

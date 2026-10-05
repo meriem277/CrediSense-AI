@@ -1,0 +1,47 @@
+<div class="auth-page">
+
+  <div class="auth-decoration"></div>
+
+  <div class="auth-card verify-card">
+
+    <div class="auth-logo">
+      <img src="images/logo-attijaribank.png" alt="Attijari Logo" class="logo-img" />
+    </div>
+
+    <!-- ── Chargement ── -->
+    @if (status === 'loading') {
+      <div class="verify-state">
+        <span class="spinner spinner-dark"></span>
+        <p class="verify-text">Vérification en cours...</p>
+      </div>
+    }
+
+    <!-- ── Succès ── -->
+    <div *ngIf="status === 'success'" class="verify-state">
+      <div class="verify-icon verify-icon-success">✓</div>
+      <h2 class="verify-title verify-title-success">Email vérifié avec succès</h2>
+      <p class="verify-text">Votre compte est maintenant actif. Vous pouvez vous connecter.</p>
+      <a routerLink="/client/login" class="btn-primary verify-btn">
+        Se connecter <span class="btn-arrow">→</span>
+      </a>
+    </div>
+
+    <!-- ── Erreur ── -->
+    @if (status === 'error') {
+      <div class="verify-state">
+        <div class="verify-icon verify-icon-error">✗</div>
+        <h2 class="verify-title verify-title-error">Échec de la vérification</h2>
+        <p class="verify-text">{{ errorMsg }}</p>
+        <a routerLink="/client/login" class="btn-back verify-btn">
+          ← Retour à la connexion
+        </a>
+      </div>
+    }
+
+  </div>
+
+  <p class="auth-footer">
+    Attijari Bank — Crédit Consommation en ligne
+  </p>
+
+</div>

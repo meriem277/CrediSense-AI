@@ -62,6 +62,13 @@ export const routes: Routes = [
   loadComponent: () => import('./components/Externe/client-portal/historique/historique')
     .then(m => m.Historique)
 },
+      {
+        path: 'verify-email',
+        loadComponent: () => import('./components/Externe/verify-email/verify-email')
+          .then(m => m.VerifyEmail)
+      },
+
+
     ]
   },
 

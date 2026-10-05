@@ -136,27 +136,42 @@ export class Dashboard implements OnInit, OnDestroy {
         const dossierPortail = this.tousLesDossiers.find(d => d.dossierId === dossierId);
         if (!dossierPortail) return;
 
-        const client: Client = {
-          id:        dossierPortail.clientId || '',
-          cin:       dossierPortail.clientCin,
-          nom:       dossierPortail.clientNom,
-          prenom:    dossierPortail.clientPrenom,
-          createdAt: ''
-        };
-        this.selectedClient = client;
-        this.currentCin     = dossierPortail.clientCin;
-
-        const dossierModel: DossierModel = {
-          id:         dossierId,
-          typeCredit: dossierPortail.typeCredit,
-          statut:     'EN_COURS',
-          createdAt:  '',
-          clientId:   dossierPortail.clientId || ''
-        };
-        this.selectedDossier = dossierModel;
-        this.activeTab       = 'documents';
+        this.ouvrirDossierPortail(dossierPortail, 'EN_COURS');
       }
     });
+  }
+
+  // ✅ Nouveau — ouvre un dossier déjà tranché (APPROUVE/REFUSE) en lecture,
+  // sans appeler updateStatut : le statut final ne doit pas être modifié
+  // juste parce que l'agent consulte le dossier.
+  consulterDossier(dossierPortail: any): void {
+    this.ouvrirDossierPortail(dossierPortail, dossierPortail.statut);
+  }
+
+  // ✅ Nouveau — logique commune à prendreEnCharge() et consulterDossier() :
+  // bascule l'écran vers le détail du dossier sélectionné. Le statut passé
+  // en paramètre sert uniquement à construire le DossierModel local (affiché
+  // dans l'en-tête) — il ne déclenche aucun appel réseau.
+  private ouvrirDossierPortail(dossierPortail: any, statutAffiche: string): void {
+    const client: Client = {
+      id:        dossierPortail.clientId || '',
+      cin:       dossierPortail.clientCin,
+      nom:       dossierPortail.clientNom,
+      prenom:    dossierPortail.clientPrenom,
+      createdAt: ''
+    };
+    this.selectedClient = client;
+    this.currentCin     = dossierPortail.clientCin;
+
+    const dossierModel: DossierModel = {
+      id:         dossierPortail.dossierId,
+      typeCredit: dossierPortail.typeCredit,
+      statut:     statutAffiche,
+      createdAt:  dossierPortail.createdAt || '',
+      clientId:   dossierPortail.clientId || ''
+    };
+    this.selectedDossier = dossierModel;
+    this.activeTab       = 'documents';
   }
 
   // ✅ Chargement des dossiers par email client

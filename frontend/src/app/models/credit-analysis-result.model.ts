@@ -20,6 +20,8 @@ export interface RiskItem {
 }
 
 export interface CreditAnalysisResult {
+  messageIdentite?: string;
+  alerteIdentite?: boolean;
   creditType: string;
   eligibility: 'ELIGIBLE' | 'REFUS' | 'CONDITIONNEL' | 'INDETERMINE';
   eligibilityScore: number;

@@ -27,6 +27,11 @@ export interface ClientAuthResponse {
   role:     string;
 }
 
+export interface RegisterResponse {
+  message: string;
+  email:   string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class ClientAuthService {
 
@@ -44,11 +49,13 @@ export class ClientAuthService {
   }
 
   // ── Inscription ───────────────────────────────────────────────────────
+  // ⚠️ Ne retourne plus de token : le compte doit être vérifié par email
+  // avant toute connexion, donc pas de saveSession() ici.
   register(email: string, password: string,
-           nom: string, prenom: string): Observable<ClientAuthResponse> {
-    return this.http.post<ClientAuthResponse>(
+           nom: string, prenom: string): Observable<RegisterResponse> {
+    return this.http.post<RegisterResponse>(
       `${this.apiUrl}/register`, { email, password, nom, prenom }
-    ).pipe(tap(res => this.saveSession(res)));
+    );
   }
 
   // ── Connexion email/password ──────────────────────────────────────────
@@ -63,6 +70,15 @@ export class ClientAuthService {
     return this.http.post<ClientAuthResponse>(
       `${this.apiUrl}/google`, { googleToken }
     ).pipe(tap(res => this.saveSession(res)));
+  }
+
+  // ── Vérification email ────────────────────────────────────────────────
+  verifyEmail(token: string): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/verify-email`, { token });
+  }
+
+  resendVerification(email: string): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/resend-verification`, { email });
   }
 
   // ── Session ───────────────────────────────────────────────────────────

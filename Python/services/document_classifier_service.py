@@ -5,13 +5,17 @@ Orchestrateur de classification à 2 niveaux (cascade) :
   1. Embeddings (nlp_service.py) — rapide, gratuit, local.
      Si le score de confiance est élevé → on garde ce résultat, FIN.
 
-  2. LLM (llm_classifier_service.py) — plus lent, appel API GROQ.
+  2. LLM (llm_classifier_service.py) — appel via le routeur LLM commun.
      Utilisé UNIQUEMENT quand les embeddings sont dans une "zone grise"
      (ni assez confiants pour trancher, ni assez bas pour dire AUTRE
      directement).
 
+Si le LLM échoue (quota, réponse invalide), on GARDE le verdict des
+embeddings au lieu de forcer "AUTRE" : mieux vaut une classification
+incertaine qu'un document rejeté à cause d'une erreur réseau.
+
 But : la majorité des documents propres sont classés en quelques ms sans
-jamais appeler le LLM ; seuls les cas ambigus consomment un appel GROQ.
+jamais appeler le LLM ; seuls les cas ambigus consomment un appel.
 """
 
 import logging
@@ -32,9 +36,8 @@ SEUIL_CONFIANCE_BASSE = 0.20
 class DocumentClassifierService:
 
     def __init__(self):
-        # Chargés une seule fois au démarrage du service (comme le fait
-        # déjà OcrService avec Doctr) — évite de recharger les modèles
-        # à chaque appel.
+        # Chargés une seule fois au démarrage du service — évite de
+        # recharger les modèles à chaque appel.
         self.embeddings_classifier = NLPClassifier()
         self.llm_classifier = LLMClassifierService()
 
@@ -42,9 +45,11 @@ class DocumentClassifierService:
         """
         Retourne le résultat de classification final, avec le champ
         "methode" indiquant comment la décision a été prise :
-        - "embeddings"                 → confiance élevée, LLM non appelé
+        - "embeddings"                  → confiance élevée, LLM non appelé
         - "embeddings_faible_confiance" → confiance très basse, LLM non appelé
-        - "llm_fallback"               → zone grise, LLM a tranché
+        - "llm_fallback"                → zone grise, LLM a tranché
+        - "embeddings_llm_indisponible" → zone grise, LLM en échec,
+                                          verdict des embeddings conservé
         """
         resultat_embeddings = self.embeddings_classifier.classify(texte_ocr, dossier_id)
         confiance = resultat_embeddings["confiance"]
@@ -74,6 +79,19 @@ class DocumentClassifierService:
             confiance, dossier_id
         )
         resultat_llm = self.llm_classifier.classify(texte_ocr, dossier_id)
+
+        if resultat_llm.get("echec"):
+            logger.warning(
+                "LLM indisponible pour la classification — verdict embeddings conservé "
+                "(%s, confiance=%.2f, dossier=%s)",
+                resultat_embeddings.get("type_document"), confiance, dossier_id
+            )
+            return {
+                **resultat_embeddings,
+                "methode": "embeddings_llm_indisponible",
+                "raison_llm": resultat_llm.get("justification"),
+            }
+
         return {
             **resultat_llm,
             "methode": "llm_fallback",

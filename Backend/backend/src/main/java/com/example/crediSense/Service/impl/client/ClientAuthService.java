@@ -1,4 +1,5 @@
 package com.example.crediSense.Service.impl.client;
+
 import com.example.crediSense.entity.Client;
 import com.example.crediSense.jwt.JwtUtil;
 import com.example.crediSense.repository.ClientRepository;
@@ -6,6 +7,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -22,6 +24,10 @@ public class ClientAuthService {
     private final JwtUtil          jwtUtil;
     private final RestTemplate     restTemplate;
     private final ObjectMapper     objectMapper;
+    private final EmailVerificationService emailVerificationService;
+
+    @Value("${google.oauth.client-id}")
+    private String googleClientId;
 
     // ─── Inscription email/password ───────────────────────────────────────────
 
@@ -40,10 +46,17 @@ public class ClientAuthService {
         client.setNom(nom);
         client.setPrenom(prenom);
         client.setProvider("LOCAL");
+        client.setEmailVerified(false);
 
         Client saved = clientRepository.save(client);
-        String token = jwtUtil.generateClientToken(saved);
-        return buildResponse(saved, token);
+
+        emailVerificationService.sendVerificationEmail(saved);
+
+        // Pas de JWT ici : le compte doit être vérifié avant toute connexion
+        return Map.of(
+                "message", "Compte créé. Vérifiez votre boîte mail pour l'activer.",
+                "email", saved.getEmail()
+        );
     }
 
     // ✅ Méthode de validation
@@ -72,6 +85,10 @@ public class ClientAuthService {
             throw new RuntimeException("Mot de passe incorrect");
         }
 
+        if (!client.isEmailVerified()) {
+            throw new RuntimeException("Email non vérifié. Vérifiez votre boîte mail avant de vous connecter.");
+        }
+
         String token = jwtUtil.generateClientToken(client);
         log.info("Client connecté : {}", email);
         return buildResponse(client, token);
@@ -85,6 +102,14 @@ public class ClientAuthService {
         try {
             String   response = restTemplate.getForObject(verifyUrl, String.class);
             JsonNode node     = objectMapper.readTree(response);
+
+            // ✅ Vérification obligatoire de l'audience — sans ça, un token
+            // Google valide émis pour une AUTRE application serait accepté ici
+            String audience = node.path("aud").asText();
+            if (!audience.equals(googleClientId)) {
+                log.warn("Token Google refusé : audience inattendue ({})", audience);
+                throw new RuntimeException("Token Google non destiné à cette application");
+            }
 
             String googleId = node.path("sub").asText();
             String email    = node.path("email").asText();
@@ -103,6 +128,8 @@ public class ClientAuthService {
                                 newClient.setGoogleId(googleId);
                                 newClient.setPhotoUrl(photoUrl);
                                 newClient.setProvider("GOOGLE");
+                                // Google a déjà vérifié cet email, pas besoin de re-vérifier
+                                newClient.setEmailVerified(true);
                                 return clientRepository.save(newClient);
                             }));
 
@@ -110,6 +137,7 @@ public class ClientAuthService {
             if (client.getGoogleId() == null) {
                 client.setGoogleId(googleId);
                 client.setPhotoUrl(photoUrl);
+                client.setEmailVerified(true);
                 clientRepository.save(client);
             }
 
@@ -117,6 +145,8 @@ public class ClientAuthService {
             log.info("Client connecté via Google : {}", email);
             return buildResponse(client, token);
 
+        } catch (RuntimeException e) {
+            throw e; // relance telle quelle (message clair côté frontend)
         } catch (Exception e) {
             log.error("Erreur vérification token Google : {}", e.getMessage());
             throw new RuntimeException("Token Google invalide");

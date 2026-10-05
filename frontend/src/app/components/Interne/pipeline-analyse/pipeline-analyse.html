@@ -1,0 +1,40 @@
+<div class="pipeline-wrap">
+  <div
+    class="pipeline-step"
+    *ngFor="let etape of etapes; let i = index; let last = last"
+    [ngClass]="'statut-' + etape.statut"
+  >
+    <div class="step-line">
+      <div class="step-marker">
+        <ng-container [ngSwitch]="etape.statut">
+
+          <!-- Validé : coche -->
+          <svg *ngSwitchCase="'valide'" viewBox="0 0 24 24" width="16" height="16" fill="none">
+            <path d="M4 12l5 5L20 6" stroke="currentColor" stroke-width="3"
+                  stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+
+          <!-- En cours : spinner -->
+          <div *ngSwitchCase="'en_cours'" class="spinner"></div>
+
+          <!-- Erreur : croix -->
+          <svg *ngSwitchCase="'erreur'" viewBox="0 0 24 24" width="14" height="14" fill="none">
+            <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="3"
+                  stroke-linecap="round"/>
+          </svg>
+
+          <!-- Attente : numéro -->
+          <span *ngSwitchDefault>{{ i + 1 }}</span>
+
+        </ng-container>
+      </div>
+
+      <div class="step-connector" *ngIf="!last"></div>
+    </div>
+
+    <div class="step-body">
+      <span class="step-title">{{ etape.titre }}</span>
+      <span class="step-detail">{{ etape.detail }}</span>
+    </div>
+  </div>
+</div>

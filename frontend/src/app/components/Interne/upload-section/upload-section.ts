@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { environment }         from '../../../../environments/environment';
 import { CreditStateService } from '../../../services/credit-state.service';
+import { DocumentPipeline, PipelineAnalyseComponent } from '../pipeline-analyse/pipeline-analyse';
 
 // ✅ Libellés lisibles pour chaque type de document détecté par le pipeline IA
 const LABELS_TYPE_DOCUMENT: Record<string, string> = {
@@ -21,7 +22,7 @@ const LABELS_TYPE_DOCUMENT: Record<string, string> = {
 @Component({
   selector: 'app-upload-section',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, PipelineAnalyseComponent],
   templateUrl: './upload-section.html',
   styleUrl:    './upload-section.scss'
 })
@@ -29,6 +30,7 @@ export class UploadSection implements OnChanges {
 
   @Input()  dossierId = '';
   @Input()  cin       = '';
+  @Input()  statutDossier = '';   // ✅ nouveau — 'APPROUVE'/'REFUSE' = dossier déjà tranché
   @Output() analysisComplete = new EventEmitter<void>(); // ✅ notifie le dashboard
 
   analyseLoading = false;
@@ -36,6 +38,11 @@ export class UploadSection implements OnChanges {
   analyseError   = '';
   analyseDone    = false;
   scoreResult: any = null;
+
+  // ✅ Alimenté par loadFichiers() — chaque fichier avec son typeDocument,
+  // son jsonData extrait, et cinCoherent, consommés par <app-pipeline-analyse>
+  documentsAvecJson: DocumentPipeline[] = [];
+  peutAnalyser = false;
 
   fichiers: any[] = [];
   loading  = false;
@@ -55,13 +62,40 @@ export class UploadSection implements OnChanges {
     }
   }
 
+  // ✅ Nouveau — un dossier déjà APPROUVE/REFUSE a forcément été analysé et
+  // scoré, même si analyseDone/scoreResult (état de session) sont encore à
+  // leurs valeurs par défaut après un simple "Consulter". Le pipeline doit
+  // refléter cet état déjà acquis, pas seulement ce qui vient de se passer
+  // dans la session en cours.
+  get analyseTermineeEffective(): boolean {
+    return this.analyseDone || ['APPROUVE', 'REFUSE'].includes(this.statutDossier);
+  }
+
+  get scoreDisponibleEffective(): boolean {
+    return !!this.scoreResult || ['APPROUVE', 'REFUSE'].includes(this.statutDossier);
+  }
+
   loadFichiers(): void {
     this.loading = true;
     this.http.get<any[]>(
       `${environment.apiUrl}/api/dossiers/${this.dossierId}/fichiers`
     ).subscribe({
-      next:  (data) => { this.fichiers = data; this.loading = false; },
-      error: ()     => { this.loading = false; }
+      next: (data) => {
+        this.fichiers = data;
+
+        // ✅ Reconstruit la liste consommée par le pipeline à chaque
+        // rechargement — indispensable après une analyse pour que le
+        // stepper reflète les jsonData fraîchement extraits.
+        this.documentsAvecJson = (data || []).map(f => ({
+          nomOriginal:  f.nomOriginal,
+          typeDocument: f.typeDocument,
+          jsonData:     f.jsonData ?? null,
+          cinCoherent:  f.cinCoherent ?? null
+        }));
+
+        this.loading = false;
+      },
+      error: () => { this.loading = false; }
     });
   }
 
@@ -85,6 +119,7 @@ export class UploadSection implements OnChanges {
     const libelle = LABELS_TYPE_DOCUMENT[fichier.typeDocument] || fichier.typeDocument;
     return `${libelle} vérifié et validé`;
   }
+
   // ── Analyser ───────────────────────────────────────────────────────────────
   handleAnalyse(): void {
     if (!this.dossierId) return;
@@ -103,7 +138,14 @@ export class UploadSection implements OnChanges {
         if (res.success) {
           this.analyseSuccess = '✅ ' + res.message;
           this.analyseDone    = true;
-          this.analysisComplete.emit(); // ✅ rafraîchit la liste
+
+          // ✅ FIX — sans cet appel, documentsAvecJson reste figé sur l'état
+          // chargé à l'ouverture de la page : le pipeline (étapes 1 et 2)
+          // ne voit jamais les jsonData fraîchement extraits par l'analyse,
+          // même si le score (étapes 3 et 4) est déjà disponible.
+          this.loadFichiers();
+
+          this.analysisComplete.emit(); // ✅ rafraîchit la liste du parent
 
           if (res.scoreResult && Object.keys(res.scoreResult).length > 0) {
             this.scoreResult = res.scoreResult;
@@ -146,6 +188,10 @@ export class UploadSection implements OnChanges {
           this._setScore(res.scoreResult);
           this.analyseSuccess = '✅ Analyse terminée';
           this.analyseDone    = true;
+
+          // ✅ FIX — même raison que dans handleAnalyse()
+          this.loadFichiers();
+
           this.analysisComplete.emit(); // ✅ rafraîchit la liste
         }
 
@@ -171,6 +217,5 @@ export class UploadSection implements OnChanges {
       rawExplanation:   score.rawExplanation   || score.explanation        || ''
     });
   }
-
 
 }

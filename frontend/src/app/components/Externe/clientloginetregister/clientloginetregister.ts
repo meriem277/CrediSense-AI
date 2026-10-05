@@ -25,7 +25,8 @@ function validatePassword(password: string): string | null {
 })
 export class Clientloginetregister implements AfterViewInit {
 
-mode: 'login' | 'register' | 'forgot' = 'login';
+mode: 'login' | 'register' | 'forgot' | 'verify-sent' = 'login';
+
 successMsg = ''
   loading = false;
   errorMsg = '';
@@ -163,7 +164,7 @@ checkPassword(value: string) {
     ).subscribe({
       next: () => {
         this.loading = false;
-        this.router.navigate(['/client/demande']); // ✅
+        this.mode = 'verify-sent';
       },
     error: (err: any) => {
   const msg = err.error?.message || '';
@@ -193,7 +194,7 @@ checkPassword(value: string) {
       if (typeof google !== 'undefined') {
         clearInterval(interval);
         google.accounts.id.initialize({
-          client_id: 'VOTRE_GOOGLE_CLIENT_ID',//
+          client_id: '227321675300-1phqfskehqcnbia9d80l27bhu3tsh3c4.apps.googleusercontent.com',
           callback: (response: any) => this.handleGoogleResponse(response)
         });
         google.accounts.id.renderButton(

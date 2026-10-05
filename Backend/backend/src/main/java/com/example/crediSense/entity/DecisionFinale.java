@@ -3,6 +3,8 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -13,7 +15,7 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 public class DecisionFinale {
-       @Id
+    @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
@@ -28,6 +30,15 @@ public class DecisionFinale {
 
     @Column(columnDefinition = "text")
     private String piecesManquantes;
+
+    // ✅ Nouveau — réponse JSON complète renvoyée par l'agent Python
+    // (/ai/score/consommation) : financialMetrics, risks, recommendedPlan,
+    // documentSources, etc. Permet de réafficher le résultat riche sans
+    // relancer une analyse quand l'agent revient consulter un dossier déjà
+    // tranché.
+    @Column(columnDefinition = "jsonb")
+    @JdbcTypeCode(SqlTypes.JSON)
+    private String resultatComplet;
 
     @CreationTimestamp
     private LocalDateTime createdAt;
@@ -44,5 +55,3 @@ public class DecisionFinale {
     @ToString.Exclude
     private ClientAggregation clientAggregation;
 }
-    
-

@@ -1,6 +1,24 @@
 <div class="upload">
   <h3>Documents soumis par le client</h3>
 
+  <!-- ✅ Pipeline visuel — déplacé en haut pour donner l'état global d'un coup d'œil -->
+  <app-pipeline-analyse
+    [documents]="documentsAvecJson"
+    [analyseEnCours]="analyseLoading"
+    [analyseTerminee]="analyseTermineeEffective"
+    [scoreDisponible]="scoreDisponibleEffective"
+    (etatChange)="peutAnalyser = $event.peutAnalyser"
+  >
+  </app-pipeline-analyse>
+
+  <!-- Messages -->
+  <div class="analyse-success" *ngIf="analyseSuccess">
+    ✅ {{ analyseSuccess }}
+  </div>
+  <div class="analyse-error" *ngIf="analyseError">
+    ❌ {{ analyseError }}
+  </div>
+
   <!-- Loading -->
   <div class="loading-state" *ngIf="loading">
     <div class="spinner"></div>
@@ -70,24 +88,16 @@
     </div>
   </div>
 
-<!-- Messages -->
-<div class="analyse-success" *ngIf="analyseSuccess">
-  ✅ {{ analyseSuccess }}
-</div>
-<div class="analyse-error" *ngIf="analyseError">
-  ❌ {{ analyseError }}
-</div>
-
-<!-- Actions -->
-<div class="actions" *ngIf="fichiers.length > 0">
-  <button class="secondary"
-          (click)="handleAnalyse()"
-          [disabled]="analyseLoading">
-    <span *ngIf="analyseLoading" class="spinner-sm"></span>
-    {{ analyseLoading ? 'Analyse en cours...' : 'Analyser' }}
-  </button>
-  <button class="primary" (click)="handleScore()">
-    Score Crédit
-  </button>
-</div>
+  <!-- Actions -->
+  <div class="actions" *ngIf="fichiers.length > 0">
+    <button class="secondary"
+            (click)="handleAnalyse()"
+            [disabled]="analyseLoading">
+      <span *ngIf="analyseLoading" class="spinner-sm"></span>
+      {{ analyseLoading ? 'Analyse en cours...' : 'Analyser' }}
+    </button>
+    <button class="primary" (click)="handleScore()">
+      Score Crédit
+    </button>
+  </div>
 </div>

@@ -1,8 +1,10 @@
 package com.example.crediSense.controller.Client;
+
 import com.example.crediSense.Service.impl.client.ClientAuthService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
 import java.util.Map;
 
 @RestController
@@ -10,6 +12,7 @@ import java.util.Map;
 @CrossOrigin(origins = "http://localhost:4200")
 @RequiredArgsConstructor
 public class ClientAuthControlleur {
+
     private final ClientAuthService clientAuthService;
 
     // ── Inscription email/password ─────────────────────────────────────────

@@ -11,6 +11,10 @@ import org.springframework.data.repository.query.Param;
 
 public interface JsonExtractionRepository extends JpaRepository<JsonExtraction, UUID> {
     List<JsonExtraction> findByFichierId(UUID fichierId);
+
+
+    List<JsonExtraction> findByFichierIdOrderByCreatedAtDesc(UUID fichierId);
+
     List<JsonExtraction> findByCin(String cin);
     @Query("SELECT j FROM JsonExtraction j WHERE j.fichier.dossier.id = :dossierId")
     List<JsonExtraction> findByDossierId(@Param("dossierId") UUID dossierId);

@@ -1,0 +1,62 @@
+.verify-card {
+  text-align: center;
+}
+
+.verify-state {
+  padding: 24px 0 8px;
+}
+
+.verify-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  font-weight: 700;
+  margin: 0 auto 20px;
+}
+
+.verify-icon-success {
+  background: #f0fdf4;
+  color: #16a34a;
+}
+
+.verify-icon-error {
+  background: #fdf0ef;
+  color: #c0392b;
+}
+
+.verify-title {
+  font-size: 19px;
+  font-weight: 800;
+  margin: 0 0 10px;
+}
+
+.verify-title-success { color: #16a34a; }
+.verify-title-error   { color: #c0392b; }
+
+.verify-text {
+  font-size: 13.5px;
+  color: #666666;
+  line-height: 1.5;
+  margin: 0 0 24px;
+}
+
+.verify-btn {
+  text-decoration: none;
+  display: inline-flex;
+  width: 100%;
+  box-sizing: border-box;
+  justify-content: center;
+}
+
+.spinner-dark {
+  border: 2px solid rgba(232, 48, 42, 0.2);
+  border-top-color: #E8302A;
+  width: 28px;
+  height: 28px;
+  margin: 0 auto 16px;
+  display: block;
+}

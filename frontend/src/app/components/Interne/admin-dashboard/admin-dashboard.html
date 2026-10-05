@@ -4,81 +4,371 @@
   <div class="admin-sidebar">
     <div class="brand">
       <div class="brand-icon">C</div>
-      <span>CrediSense Admin</span>
+      <span>Dashboard Admin</span>
     </div>
 
     <nav>
       <button [class.active]="activeTab === 'overview'"
               (click)="activeTab = 'overview'">
-        📊 Vue générale
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <rect x="3" y="12" width="4" height="9"/><rect x="10" y="6" width="4" height="15"/><rect x="17" y="3" width="4" height="18"/>
+        </svg>
+        Vue générale
       </button>
       <button [class.active]="activeTab === 'agents'"
               (click)="activeTab = 'agents'">
-        👥 Agents
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+        Agents
+      </button>
+      <button [class.active]="activeTab === 'dossiers'"
+              (click)="activeTab = 'dossiers'">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+        </svg>
+        Dossiers
       </button>
       <button [class.active]="activeTab === 'register'"
               (click)="activeTab = 'register'">
-        ➕ Créer un compte
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        Créer un compte
       </button>
     </nav>
 
     <div class="sidebar-bottom">
-      <p class="admin-name">{{ nom }}</p>
-      <span class="admin-role">Administrateur</span>
-      <button class="btn-logout" (click)="logout()">Déconnexion</button>
+      <div class="admin-avatar">{{ nom?.[0] || 'A' }}</div>
+      <div class="admin-info">
+        <p class="admin-name">{{ nom }}</p>
+        <span class="admin-role">Administrateur</span>
+      </div>
+      <button class="btn-logout" (click)="logout()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+        Déconnexion
+      </button>
     </div>
   </div>
 
   <!-- Contenu principal -->
   <div class="admin-main">
 
-    <!-- Vue générale -->
-    <div *ngIf="activeTab === 'overview'">
-      <h1>Vue générale</h1>
+    <!-- ═══ Vue générale ═══ -->
+    <div *ngIf="activeTab === 'overview'" class="overview-panel">
+
+      <div class="panel-head">
+        <div>
+          <h1>Vue générale</h1>
+          <p class="panel-sub">Aperçu de l'activité de la plateforme</p>
+        </div>
+        <div class="panel-date">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+          </svg>
+          {{ today | date:'dd MMMM yyyy' : '' : 'fr' }}
+        </div>
+      </div>
+
       <div class="stats-grid">
+
         <div class="stat-card">
-          <span class="stat-label">Agents actifs</span>
-          <span class="stat-value">{{ agents.length }}</span>
+          <div class="stat-top">
+            <div class="stat-icon stat-icon-red">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+              </svg>
+            </div>
+          </div>
+          <div class="stat-value">{{ agents.length }}</div>
+          <div class="stat-label">Agents actifs</div>
+          <svg class="stat-spark" viewBox="0 0 120 32" preserveAspectRatio="none">
+            <polyline points="0,26 15,22 30,24 45,16 60,18 75,10 90,13 105,6 120,9"
+                      fill="none" stroke="#e8302a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.85"/>
+          </svg>
         </div>
+
         <div class="stat-card">
-          <span class="stat-label">Dossiers traités</span>
-          <span class="stat-value">—</span>
+          <div class="stat-top">
+            <div class="stat-icon stat-icon-orange">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+              </svg>
+            </div>
+          </div>
+          <div class="stat-value">{{ tousLesDossiers.length || '—' }}</div>
+          <div class="stat-label">Dossiers traités</div>
+          <div class="stat-donut-wrap">
+            <svg viewBox="0 0 60 60" width="46" height="46">
+              <circle cx="30" cy="30" r="24" fill="none" stroke="#f3e9e0" stroke-width="6"/>
+              <circle cx="30" cy="30" r="24" fill="none" stroke="#f47920" stroke-width="6"
+                      stroke-linecap="round" stroke-dasharray="150" stroke-dashoffset="45"
+                      transform="rotate(-90 30 30)"/>
+            </svg>
+          </div>
         </div>
+
         <div class="stat-card">
-          <span class="stat-label">En attente</span>
-          <span class="stat-value">—</span>
+          <div class="stat-top">
+            <div class="stat-icon stat-icon-dark">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+              </svg>
+            </div>
+          </div>
+          <div class="stat-value">{{ enAttenteCount }}</div>
+          <div class="stat-label">En attente</div>
+          <div class="stat-bar-wrap">
+            <div class="stat-bar-track"><div class="stat-bar-fill" [style.width.%]="pourcentageEnAttente"></div></div>
+            <span class="stat-bar-caption">{{ pourcentageEnAttente }}% des dossiers du mois</span>
+          </div>
         </div>
+
+      </div>
+
+      <!-- Deuxième rangée : graphique + répartition -->
+      <div class="overview-charts">
+
+        <div class="chart-card chart-card-wide">
+          <div class="chart-head">
+            <h3>Activité de création des dossiers</h3>
+            <div class="week-nav">
+              <button class="week-nav-btn" (click)="semainePrecedente()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                  <polyline points="15 18 9 12 15 6"/>
+                </svg>
+              </button>
+              <span class="chart-badge">{{ periodeHeatmap }}</span>
+              <button class="week-nav-btn" (click)="semaineSuivante()" [disabled]="weekOffset === 0">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                  <polyline points="9 18 15 12 9 6"/>
+                </svg>
+              </button>
+              <button class="week-nav-today" *ngIf="weekOffset !== 0" (click)="allerSemaineActuelle()">
+                Aujourd'hui
+              </button>
+            </div>
+          </div>
+
+          <div class="heatmap">
+            <div class="heatmap-legend">
+              <span *ngFor="let s of creneaux">{{ s }}</span>
+            </div>
+            <div class="heatmap-grid">
+              <div class="heatmap-col" *ngFor="let jour of jours; let j = index">
+                <div class="heatmap-cell"
+                     *ngFor="let creneau of creneaux; let c = index"
+                     [style.background]="getCellColor(heatmapData[j][c])"
+                     [title]="heatmapData[j][c] + ' dossier(s)'">
+                </div>
+                <span class="heatmap-day">{{ jour }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-head">
+            <h3>Répartition des rôles</h3>
+          </div>
+          <div class="role-donut-wrap">
+            <svg viewBox="0 0 100 100" width="110" height="110">
+              <circle cx="50" cy="50" r="40" fill="none" stroke="#f3e9e0" stroke-width="12"/>
+              <circle cx="50" cy="50" r="40" fill="none" stroke="#e8302a" stroke-width="12"
+                      stroke-dasharray="188.5" stroke-dashoffset="47" stroke-linecap="round"
+                      transform="rotate(-90 50 50)"/>
+            </svg>
+            <div class="role-donut-center">
+              <strong>{{ agents.length }}</strong>
+              <span>agents</span>
+            </div>
+          </div>
+          <div class="role-legend">
+            <div class="legend-item"><span class="dot dot-red"></span>Agents</div>
+            <div class="legend-item"><span class="dot dot-light"></span>Admins</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Troisième rangée : stats bancaires -->
+      <div class="overview-charts overview-charts-secondary">
+
+      <div class="chart-card kpi-gauge-card">
+  <div class="chart-head">
+    <h3>Taux d'approbation global</h3>
+  </div>
+
+  <div class="gauge-wrap">
+    <svg viewBox="0 0 160 160" width="150" height="150">
+      <defs>
+        <linearGradient id="gaugeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#e8302a"/>
+          <stop offset="100%" stop-color="#f47920"/>
+        </linearGradient>
+      </defs>
+      <circle cx="80" cy="80" r="68" fill="none" stroke="#f3f4f6" stroke-width="14"/>
+      <circle cx="80" cy="80" r="68" fill="none" stroke="url(#gaugeGradient)" stroke-width="14"
+              stroke-linecap="round"
+              [attr.stroke-dasharray]="427.3"
+              [attr.stroke-dashoffset]="427.3 - (427.3 * tauxApprobation / 100)"
+              transform="rotate(-90 80 80)"
+              class="gauge-arc"/>
+    </svg>
+    <div class="gauge-center">
+      <span class="gauge-value">{{ tauxApprobation }}<small>%</small></span>
+      <span class="gauge-label">approuvés</span>
+    </div>
+  </div>
+
+  <div class="gauge-footer">
+    <div class="gauge-footer-item">
+      <span class="dot dot-green"></span>
+      <span>Traités : {{ dossiersTranchesCount }}</span>
+    </div>
+    <div class="gauge-footer-item">
+      <span class="dot dot-light"></span>
+      <span>En cours : {{ tousLesDossiers.length - dossiersTranchesCount }}</span>
+    </div>
+  </div>
+</div>
+
+<div class="chart-card">
+  <div class="chart-head">
+    <h3>Montant moyen demandé</h3>
+  </div>
+  <div class="kpi-big">
+    <span class="kpi-big-value">{{ montantMoyenDemande | number:'1.0-0':'fr' }} <small>DT</small></span>
+    <span class="kpi-big-caption">sur {{ tousLesDossiers.length }} dossiers</span>
+  </div>
+</div>
+
+<div class="chart-card chart-card-wide">
+  <div class="chart-head">
+    <h3>Top 5 agents — performance</h3>
+  </div>
+  <div class="leaderboard">
+    <div class="leaderboard-row" *ngFor="let a of classementAgents; let i = index" [class.rank-1]="i === 0">
+      <div class="rank-medal" [class]="'medal-' + (i + 1)">
+        <span *ngIf="i > 2">{{ i + 1 }}</span>
+        <svg *ngIf="i <= 2" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2l2.9 6.26L22 9.27l-5 4.87 1.18 6.86L12 17.77l-6.18 3.23L7 14.14 2 9.27l7.1-1.01L12 2z"/>
+        </svg>
+      </div>
+      <div class="agent-avatar leaderboard-avatar">{{ a.nom?.[0] || 'A' }}</div>
+      <div class="leaderboard-info">
+        <span class="leaderboard-name">{{ a.nom }}</span>
+        <span class="leaderboard-count">{{ a.total }} dossier(s) traité(s)</span>
+      </div>
+      <div class="leaderboard-bar-wrap">
+        <div class="stat-bar-track">
+          <div class="stat-bar-fill" [style.width.%]="a.taux" style="background: linear-gradient(90deg,#e8302a,#f47920)"></div>
+        </div>
+      </div>
+      <span class="leaderboard-taux">{{ a.taux }}%</span>
+    </div>
+    <p *ngIf="classementAgents.length === 0" class="empty-row">Aucune donnée disponible.</p>
+  </div>
+</div>
+
+</div>
+</div>
+
+    <!-- ═══ Liste des agents ═══ -->
+    <div *ngIf="activeTab === 'agents'" class="agents-panel">
+      <div class="panel-head">
+        <div>
+          <h1>Agents enregistrés</h1>
+          <p class="panel-sub">{{ agents.length }} agent(s) au total</p>
+        </div>
+      </div>
+
+      <div class="table-card">
+        <table class="agents-table">
+          <thead>
+            <tr>
+              <th>Agent</th>
+              <th>Email</th>
+              <th>Rôle</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let a of agents">
+              <td>
+                <div class="agent-cell">
+                  <div class="agent-avatar">{{ a.nom?.[0] || 'A' }}</div>
+                  <span>{{ a.nom }}</span>
+                </div>
+              </td>
+              <td class="email-cell">{{ a.email }}</td>
+              <td><span class="role-badge" [class.role-admin]="a.role === 'ADMIN'">{{ a.role }}</span></td>
+            </tr>
+            <tr *ngIf="agents.length === 0">
+              <td colspan="3" class="empty-row">Aucun agent trouvé.</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
 
-    <!-- Liste des agents -->
-    <div *ngIf="activeTab === 'agents'">
-      <h1>Agents enregistrés</h1>
-      <table class="agents-table">
-        <thead>
-          <tr>
-            <th>Nom</th>
-            <th>Email</th>
-            <th>Rôle</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let a of agents">
-            <td>{{ a.nom }}</td>
-            <td>{{ a.email }}</td>
-            <td><span class="role-badge">{{ a.role }}</span></td>
-          </tr>
-          <tr *ngIf="agents.length === 0">
-            <td colspan="3">Aucun agent trouvé.</td>
-          </tr>
-        </tbody>
-      </table>
+    <!-- ═══ Tous les dossiers ═══ -->
+    <div *ngIf="activeTab === 'dossiers'" class="dossiers-panel">
+      <div class="panel-head">
+        <div>
+          <h1>Tous les dossiers</h1>
+          <p class="panel-sub">{{ dossiersFiltres.length }} dossier(s)</p>
+        </div>
+        <div class="dossiers-filtres">
+          <button [class.active]="filtreDossierStatut === 'TOUS'" (click)="setFiltreDossierStatut('TOUS')">Tous</button>
+          <button [class.active]="filtreDossierStatut === 'EN_ATTENTE'" (click)="setFiltreDossierStatut('EN_ATTENTE')">En attente</button>
+          <button [class.active]="filtreDossierStatut === 'EN_COURS'" (click)="setFiltreDossierStatut('EN_COURS')">En cours</button>
+          <button [class.active]="filtreDossierStatut === 'APPROUVE'" (click)="setFiltreDossierStatut('APPROUVE')">Approuvés</button>
+          <button [class.active]="filtreDossierStatut === 'REFUSE'" (click)="setFiltreDossierStatut('REFUSE')">Refusés</button>
+        </div>
+      </div>
+
+      <div class="table-card">
+        <table class="agents-table">
+          <thead>
+            <tr>
+              <th>Client</th>
+              <th>CIN</th>
+              <th>Type</th>
+              <th>Statut</th>
+              <th>Traité par</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let d of dossiersFiltres">
+              <td>
+                <div class="agent-cell">
+                  <div class="agent-avatar">{{ (d.clientPrenom?.[0] || '') + (d.clientNom?.[0] || '') }}</div>
+                  <span>{{ d.clientPrenom }} {{ d.clientNom }}</span>
+                </div>
+              </td>
+              <td class="email-cell">{{ d.clientCin }}</td>
+              <td>{{ d.typeCredit }}</td>
+              <td>
+                <span class="dossier-statut-badge" [class]="getDossierStatutClass(d.statut)">
+                  {{ getDossierStatutLabel(d.statut) }}
+                </span>
+              </td>
+              <td class="email-cell">{{ d.agentNom || '—' }}</td>
+            </tr>
+            <tr *ngIf="dossiersFiltres.length === 0">
+              <td colspan="5" class="empty-row">Aucun dossier trouvé.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
 
-   
+    <!-- ═══ Créer un compte ═══ -->
     <div *ngIf="activeTab === 'register'">
-  <app-register />
-</div>
+      <app-register />
+    </div>
 
   </div>
 </div>

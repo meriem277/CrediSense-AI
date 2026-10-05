@@ -4,14 +4,14 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
    "outDir": "./out-tsc/app",
-    "rootDir": "./src",  
+    "rootDir": "./src",
     "types": [
       "node"
     ]
   },
   "include": [
     "src/**/*.ts"
-  ],
+, "src/app/components/Externe/verify-email"  ],
   "exclude": [
     "src/**/*.spec.ts"
   ]

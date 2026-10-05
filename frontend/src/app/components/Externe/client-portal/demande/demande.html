@@ -154,20 +154,49 @@
           </select>
         </div>
 
-        <div class="section-title full">Détails du crédit souhaité</div>
+      </div>
 
-        <div class="form-group">
-          <label>Montant souhaité (DT) <span class="req">*</span></label>
-          <input type="number" [(ngModel)]="form.montantCredit"
-                 placeholder="Ex: 15000" class="form-input"/>
+      <!-- ════ Simulateur de crédit (Montant / Durée / Mensualité) ════ -->
+      <div class="credit-section">
+        <div class="section-title">Détails du crédit souhaité</div>
+
+        <div class="credit-simulator">
+
+          <div class="sim-field">
+            <label>Montant souhaité</label>
+            <div class="sim-input-wrap">
+              <input type="number" [(ngModel)]="form.montantCredit"
+                     (blur)="onMontantBlur()"
+                     [class.sim-input-error]="montantHorsLimites"
+                     [min]="montantMin" [max]="montantMax" step="100"
+                     class="sim-input" placeholder="Ex: 15000"/>
+              <span class="sim-max">Max: {{ montantMax | number }}</span>
+            </div>
+            <span class="sim-error" *ngIf="montantHorsLimites">
+              Le montant doit être compris entre {{ montantMin | number }} et {{ montantMax | number }} DT
+            </span>
+          </div>
+
+          <div class="sim-field">
+            <label>Durée (en mois)</label>
+            <div class="sim-duree-value">{{ form.dureeCredit }}</div>
+            <input type="range" [(ngModel)]="form.dureeCredit"
+                   [min]="dureeMin" [max]="dureeMax" step="1"
+                   class="sim-slider"/>
+            <div class="sim-slider-labels">
+              <span>{{ dureeMin }} mois</span>
+              <span>{{ dureeMax }} mois</span>
+            </div>
+          </div>
+
+          <div class="sim-field">
+            <label>Mensualité</label>
+            <div class="sim-mensualite-box">
+              {{ mensualite | number:'1.0-0' }} DT<span class="sim-mensualite-suffix">/mois</span>
+            </div>
+          </div>
+
         </div>
-
-        <div class="form-group">
-          <label>Durée souhaitée (mois)</label>
-          <input type="number" [(ngModel)]="form.dureeCredit"
-                 placeholder="Ex: 60" class="form-input"/>
-        </div>
-
       </div>
 
       <div class="alert-warning" *ngIf="age > 70">

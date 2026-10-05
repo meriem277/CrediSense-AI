@@ -13,5 +13,6 @@ public class ClientResponse {
     private String email;
     private String photoUrl;
     private String provider;
+    private boolean emailVerified;
 
 }

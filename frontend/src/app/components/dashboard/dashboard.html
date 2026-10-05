@@ -164,24 +164,44 @@
               Consulter
             </button>
 
-            <!-- APPROUVE -->
-            <span class="traite traite-ok" *ngIf="d.statut === 'APPROUVE'">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
-                   stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
-                <polyline points="20 6 9 17 4 12"/>
-              </svg>
-              Approuvé
-            </span>
+            <!-- APPROUVE — badge + bouton Consulter (ne change pas le statut) -->
+            <div class="actions-traite" *ngIf="d.statut === 'APPROUVE'">
+              <span class="traite traite-ok">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+                Approuvé
+              </span>
+              <button class="btn-consulter" (click)="consulterDossier(d)">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+                Consulter
+              </button>
+            </div>
 
-            <!-- REFUSE -->
-            <span class="traite traite-ko" *ngIf="d.statut === 'REFUSE'">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
-                   stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
-                <line x1="18" y1="6" x2="6" y2="18"/>
-                <line x1="6" y1="6" x2="18" y2="18"/>
-              </svg>
-              Refusé
-            </span>
+            <!-- REFUSE — badge + bouton Consulter (ne change pas le statut) -->
+            <div class="actions-traite" *ngIf="d.statut === 'REFUSE'">
+              <span class="traite traite-ko">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                  <line x1="18" y1="6" x2="6" y2="18"/>
+                  <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+                Refusé
+              </span>
+              <button class="btn-consulter" (click)="consulterDossier(d)">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+                Consulter
+              </button>
+            </div>
           </td>
            <td class="agent-cell">
       <span *ngIf="['EN_COURS','APPROUVE','REFUSE'].includes(d.statut)">
@@ -341,7 +361,8 @@
 <!-- ✅ Après -->
 <app-upload-section
   [dossierId]="selectedDossierId"
-  [cin]="currentCin">
+  [cin]="currentCin"
+  [statutDossier]="selectedDossier?.statut || ''">
    (analysisComplete)="loadTousDossiers()">
 
 </app-upload-section>
@@ -384,4 +405,3 @@
     </div>
   </div>
 </div>
-

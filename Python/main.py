@@ -54,7 +54,8 @@ class OcrPathRequest(BaseModel):
 
 class GroqExtractRequest(BaseModel):
     texte_nettoye: str
-    cin:           str = ""
+    cin:           str            = ""
+    type_document: Optional[str]  = None   # ✅ nouveau — permet un score de confiance contextuel
 
 class ChatRequest(BaseModel):
     question:   str
@@ -202,7 +203,8 @@ def extraire_json(request: GroqExtractRequest):
     try:
         return groq_service.extraire_json(
             texte_nettoye=request.texte_nettoye,
-            cin=request.cin
+            cin=request.cin,
+            type_document=request.type_document   # ✅ propagé pour la confiance contextuelle
         )
     except Exception as e:
         logger.error(f"Erreur /ai/extract-json : {e}")
