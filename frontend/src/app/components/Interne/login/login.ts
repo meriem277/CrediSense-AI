@@ -1,3 +1,4 @@
+import { environment } from '../../../../environments/environment';
 import { CommonModule } from '@angular/common';
 import { Component } from '@angular/core';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -44,7 +45,7 @@ export class Login {
 
     const body: LoginRequest = this.form.value;
 
-    this.http.post<AuthResponse>('http://localhost:8081/api/auth/login', body)
+    this.http.post<AuthResponse>(environment.apiUrl + '/api/auth/login', body)
       .subscribe({
         next: (res) => {
           this.loading = false;
@@ -74,7 +75,7 @@ export class Login {
 
     this.loading = true;
     this.http.post(
-      'http://localhost:8081/api/auth/forgot-password',
+      environment.apiUrl + '/api/auth/forgot-password',
       { email: this.forgotEmail }
     ).subscribe({
       next: () => {

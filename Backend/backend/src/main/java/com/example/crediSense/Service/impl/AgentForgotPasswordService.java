@@ -25,6 +25,9 @@ public class AgentForgotPasswordService {
     private final JavaMailSender  mailSender;
     private final PasswordEncoder passwordEncoder;
 
+    @org.springframework.beans.factory.annotation.Value("${app.frontend-url:http://localhost:4200}")
+    private String frontendUrl;
+
     // ✅ Stockage temporaire des tokens
     private final Map<String, TokenEntry> tokenStore = new ConcurrentHashMap<>();
 
@@ -37,7 +40,7 @@ public class AgentForgotPasswordService {
         LocalDateTime expiry = LocalDateTime.now().plusMinutes(15);
         tokenStore.put(token, new TokenEntry(email, expiry));
 
-        String resetLink = "http://localhost:4200/reset-password?token=" + token;
+        String resetLink = frontendUrl + "/reset-password?token=" + token;
 
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(email);

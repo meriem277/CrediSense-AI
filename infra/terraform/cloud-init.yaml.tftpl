@@ -1,0 +1,29 @@
+#cloud-config
+package_update: true
+packages:
+  - curl
+  - ca-certificates
+
+write_files:
+  - path: /opt/credisense/.env
+    permissions: "0600"
+    encoding: b64
+    content: ${env_b64}
+  - path: /opt/credisense/docker-compose.prod.yml
+    permissions: "0644"
+    encoding: b64
+    content: ${compose_b64}
+  - path: /opt/credisense/Caddyfile
+    permissions: "0644"
+    encoding: b64
+    content: ${caddyfile_b64}
+
+runcmd:
+  # 4 GB swap: the AI service loads large models at startup
+  - fallocate -l 4G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile
+  - echo '/swapfile none swap sw 0 0' >> /etc/fstab
+  - curl -fsSL https://get.docker.com | sh
+  - usermod -aG docker ${admin_username}
+  - chown -R ${admin_username}:${admin_username} /opt/credisense
+  # App images only exist once deploy.yml has run; the first deploy pulls and starts everything.
+  - cd /opt/credisense && docker compose -f docker-compose.prod.yml up -d postgres || true

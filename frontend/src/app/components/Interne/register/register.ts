@@ -1,3 +1,4 @@
+import { environment } from '../../../../environments/environment';
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AbstractControl, FormBuilder, FormGroup, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
@@ -102,7 +103,7 @@ export class Register {
       role:     this.form.value.role.toUpperCase()
     };
 
-    this.http.post<AuthResponse>('http://localhost:8081/api/auth/register', body)
+    this.http.post<AuthResponse>(environment.apiUrl + '/api/auth/register', body)
       .subscribe({
         next: (res) => {
           this.loading = false;

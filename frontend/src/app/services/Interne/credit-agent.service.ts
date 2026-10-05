@@ -1,3 +1,4 @@
+import { environment } from '../../../environments/environment';
 import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
 import { Observable } from "rxjs";
@@ -6,7 +7,7 @@ import { CreditAnalysisResult } from "../../models/credit-analysis-result.model"
 // credit-agent.service.ts
 @Injectable({ providedIn: 'root' })
 export class CreditAgentService {
-  private api = 'http://localhost:8081/api/credit';
+  private api = `${environment.apiUrl}/api/credit`;
 
   constructor(private http: HttpClient) {}
 

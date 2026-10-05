@@ -3,3 +3,11 @@ venv_test_ocr/
 
 .env
 **/.env
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+terraform.tfvars
+crash.log
+vm_key.pem

@@ -1,3 +1,4 @@
+import { environment } from '../../../../environments/environment';
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AuthService } from '../../../services/Interne/auth.service';
@@ -60,12 +61,12 @@ export class AdminDashboard implements OnInit {
   }
 
   loadAgents() {
-    this.http.get<any[]>('http://localhost:8081/api/agents')
+    this.http.get<any[]>(environment.apiUrl + '/api/agents')
       .subscribe({ next: (data) => this.agents = data, error: () => {} });
   }
 
   loadDossiersHeatmap() {
-    this.http.get<any[]>('http://localhost:8081/api/dossiers')
+    this.http.get<any[]>(environment.apiUrl + '/api/dossiers')
       .subscribe({
         next: (dossiers) => {
           this.tousLesDossiers = dossiers;
@@ -234,7 +235,7 @@ export class AdminDashboard implements OnInit {
     this.registerSuccess = '';
 
     this.http.post<any>(
-      'http://localhost:8081/api/auth/register',
+      environment.apiUrl + '/api/auth/register',
       this.registerForm.value
     ).subscribe({
       next: () => {

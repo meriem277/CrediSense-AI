@@ -1,3 +1,4 @@
+import { environment } from '../../../environments/environment';
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
@@ -6,7 +7,7 @@ import { AnalysisResponse } from '../../models/analysis.model';
 @Injectable({ providedIn: 'root' })
 export class DocumentService {
 
-  private base = 'http://localhost:8081/api';
+  private base = `${environment.apiUrl}/api`;
 
   constructor(private http: HttpClient) {}
 

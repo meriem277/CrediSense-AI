@@ -1,3 +1,4 @@
+import { environment } from '../environments/environment';
 import { Component, ViewEncapsulation } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -35,7 +36,7 @@ export class AppComponent {
   isDragging = false;
 
   private fastapi = 'http://localhost:8001/api';
-  private springboot = 'http://localhost:8081/api';
+  private springboot = `${environment.apiUrl}/api`;
 
   constructor(private http: HttpClient) {}
 

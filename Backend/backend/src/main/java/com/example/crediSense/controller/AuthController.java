@@ -20,6 +20,7 @@ public class AuthController {
     private final AgentForgotPasswordService agentForgotPasswordService;
 
     private final AuthService authService;
+    private final com.example.crediSense.repository.AgentRepository agentRepository;
 
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@RequestBody LoginRequest request) {
@@ -33,9 +34,12 @@ public class AuthController {
         return ResponseEntity.ok(authService.register(request));
     }
 
-    // Création du premier compte ADMIN (à sécuriser ensuite)
+    // Création du premier compte ADMIN uniquement : refusé dès qu'un admin existe
     @PostMapping("/init-admin")
     public ResponseEntity<AuthResponse> initAdmin(@RequestBody RegisterRequest request) {
+        if (!agentRepository.findByRole(com.example.crediSense.entity.RoleType.ADMIN).isEmpty()) {
+            return ResponseEntity.status(403).build();
+        }
         request.setRole("ADMIN");
         return ResponseEntity.ok(authService.register(request));
     }

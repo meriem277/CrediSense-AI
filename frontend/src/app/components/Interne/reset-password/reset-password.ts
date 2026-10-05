@@ -1,3 +1,4 @@
+import { environment } from '../../../../environments/environment';
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -67,7 +68,7 @@ export class ResetPassword implements OnInit {
     }
 
     this.loading = true;
-    this.http.post('http://localhost:8081/api/auth/reset-password',
+    this.http.post(environment.apiUrl + '/api/auth/reset-password',
       { token: this.token, password: this.password }
     ).subscribe({
       next: () => {
