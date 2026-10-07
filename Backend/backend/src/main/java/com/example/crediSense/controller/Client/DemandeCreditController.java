@@ -9,6 +9,7 @@ import com.example.crediSense.repository.DossierRepository;
 import com.example.crediSense.repository.FichierRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -31,6 +32,9 @@ public class DemandeCreditController {
     private final ClientRepository  clientRepository;
     private final DossierRepository dossierRepository;
     private final FichierRepository fichierRepository;
+
+    @Value("${upload.base-path}")
+    private String uploadBasePath;
 
     // ─── Étape 1 : Création du dossier ───────────────────────────────────────
     @PostMapping("/demande")
@@ -81,10 +85,17 @@ public class DemandeCreditController {
             Dossier dossier = dossierRepository.findById(dossierId)
                     .orElseThrow(() -> new RuntimeException("Dossier introuvable"));
 
-            String uploadDir = "uploads/client-uploads/" + cin;
+            // Même dossier que FichierServiceImpl : upload.base-path pointe sur le volume
+            // persistant (/data/uploads en production). Un chemin relatif en dur écrivait
+            // dans le conteneur, et les fichiers disparaissaient à chaque redéploiement.
+            // cin et nom de fichier sont nettoyés : ils viennent du client (pas de "../").
+            String cinSur    = cin.replaceAll("[^A-Za-z0-9_-]", "");
+            String uploadDir = uploadBasePath + "/client-uploads/" + cinSur;
             Files.createDirectories(Paths.get(uploadDir));
 
-            String fileName  = UUID.randomUUID() + "_" + file.getOriginalFilename();
+            String nomSur    = Paths.get(String.valueOf(file.getOriginalFilename()))
+                    .getFileName().toString();
+            String fileName  = UUID.randomUUID() + "_" + nomSur;
             java.nio.file.Path savedPath = Paths.get(uploadDir, fileName);
             Files.copy(file.getInputStream(), savedPath,
                     StandardCopyOption.REPLACE_EXISTING);

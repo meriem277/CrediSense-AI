@@ -112,6 +112,16 @@ public class FichierServiceImpl implements FichierService {
                 try {
                     Path path = Paths.get(f.getCheminPdf());
 
+                    // Fichier absent du disque (volume non monté, conteneur recréé,
+                    // fichier supprimé) : message clair au lieu d'une erreur d'E/S obscure
+                    if (!Files.exists(path)) {
+                        log.warn("Fichier introuvable sur le serveur : {}", path);
+                        enregistrerOcr(f, null, "FAILED",
+                                "Fichier introuvable sur le serveur (supprimé ou déplacé) : "
+                                        + "le document doit être renvoyé");
+                        continue;
+                    }
+
                     HttpHeaders multipartHeaders = new HttpHeaders();
                     multipartHeaders.setContentType(MediaType.MULTIPART_FORM_DATA);
 
