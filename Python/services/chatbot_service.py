@@ -594,6 +594,18 @@ class ChatbotService:
             dossier_id, len(textes_valides), len(store["chunks"]) if store else 0
         )
 
+    def indexer_documents(self, dossier_id: str, textes: list) -> dict:
+        """
+        Construit l'index FAISS d'un dossier à partir des textes OCR, SANS appeler le LLM.
+
+        Chaque élément de `textes` est UN document : il est étiqueté séparément
+        (fiche de paie, relevé bancaire…), ce qui permet à la recherche de couvrir
+        chaque document du dossier (cf. CHUNKS_MIN_PAR_DOC).
+        """
+        self._invalider_et_reindexer(dossier_id, textes)
+        store = self._indexes.get(dossier_id)
+        return {"nb_chunks": len(store["chunks"]) if store else 0}
+
     # ── Invalidation cache ────────────────────────────────────────────────────
 
     def invalider_index(self, dossier_id: str):

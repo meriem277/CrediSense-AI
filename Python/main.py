@@ -256,36 +256,32 @@ def poser_question(request: ChatRequest):
 
 @app.post("/ai/chat/index")
 def indexer_dossier(request: IndexRequest):
-    """Indexe tous les textes OCR dans FAISS sans poser de question."""
+    """
+    Indexe les textes OCR dans FAISS, SANS appeler le LLM.
+
+    (Avant : l'index était construit en posant une vraie question au LLM, dont la
+    réponse était jetée — un appel gaspillé qui consommait les limites de débit.)
+    Chaque texte est un document distinct, étiqueté séparément pour la recherche.
+    Les contenus des documents ne sont pas écrits dans les journaux (données personnelles).
+    """
     try:
-        logger.info(f"Indexation — {len(request.ocr_textes)} textes")
-        for i, t in enumerate(request.ocr_textes):
-            logger.info(f"Texte {i+1} — {len(t)} chars : {t[:100]}...")
-        chatbot_service.invalider_index(request.dossier_id)
+        textes = [t for t in request.ocr_textes if t and t.strip()]
+        logger.info(f"Indexation — dossier={request.dossier_id}, {len(textes)} documents")
 
-        texte_complet = "\n\n".join([
-            f"=== Document {i+1} ===\n{t}"
-            for i, t in enumerate(request.ocr_textes)
-            if t and t.strip()
-        ])
-
-        if not texte_complet.strip():
+        if not textes:
+            chatbot_service.invalider_index(request.dossier_id)
             return {"status": "empty", "message": "Aucun texte a indexer"}
 
-        chatbot_service.poser_question(
-            question   = "Analyse ce dossier de credit",
-            dossier_id = request.dossier_id,
-            cin        = request.cin,
-            ocr_textes = [texte_complet]
-        )
-
-        logger.info(f"Index cree — {len(request.ocr_textes)} docs, {len(texte_complet)} chars")
+        resultat  = chatbot_service.indexer_documents(request.dossier_id, textes)
+        nb_chars  = sum(len(t) for t in textes)
+        logger.info(f"Index cree — {len(textes)} docs, {nb_chars} chars, {resultat['nb_chunks']} chunks")
 
         return {
             "status":     "indexed",
             "dossier_id": request.dossier_id,
-            "nb_textes":  len(request.ocr_textes),
-            "nb_chars":   len(texte_complet)
+            "nb_textes":  len(textes),
+            "nb_chars":   nb_chars,
+            "nb_chunks":  resultat["nb_chunks"]
         }
     except Exception as e:
         logger.error(f"Erreur /ai/chat/index : {e}")
