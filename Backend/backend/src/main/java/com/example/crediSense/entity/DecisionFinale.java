@@ -43,6 +43,23 @@ public class DecisionFinale {
     @CreationTimestamp
     private LocalDateTime createdAt;
 
+    // Date de la DERNIÈRE décision rendue. createdAt est la première analyse ; une nouvelle analyse
+    // met à jour cette même ligne. (Pas de @UpdateTimestamp : il bougerait aussi à chaque changement
+    // d'état de l'e-mail et fausserait les délais de traitement.) Null sur les anciennes lignes.
+    private LocalDateTime decisionLe;
+
+    // ── Réponse envoyée au client (automatiquement dès la décision, ou par le bouton de l'agent) ──
+    // ENVOYE | ECHEC | NON_ENVOYE | EN_ATTENTE_VALIDATION | PROGRAMME | ANNULE (null : rien tenté)
+    private String        emailStatut;
+    private LocalDateTime emailEnvoyeAt;
+    private String        emailDecision;      // décision contenue dans le dernier e-mail envoyé
+    private String        emailDestinataire;
+    @Column(length = 500)
+    private String        emailErreur;
+    private LocalDateTime emailProgrammeA;    // envoi différé : heure prévue (statut PROGRAMME)
+    private String        emailMode;          // AUTO | DELAI | VALIDATION | MANUEL
+    private String        emailActeur;        // agent qui a validé, annulé ou envoyé (SYSTEME : automatique)
+
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "dossier_id")
     @JsonIgnoreProperties({"agentAnalysis", "decisionFinale", "fichiers", "ragContexts", "client"})

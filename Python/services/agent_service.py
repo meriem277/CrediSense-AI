@@ -118,7 +118,7 @@ class CreditAnalysisResult(BaseModel):
 
 # ── System Prompt ─────────────────────────────────────────────────────────────
 
-SYSTEM_PROMPT = """Tu es un expert senior en analyse de crédit à la consommation pour Attijariwafa Bank Tunisie.
+SYSTEM_PROMPT = """Tu es un expert senior en analyse de crédit à la consommation pour Attijari Bank Tunisie.
 Tu rédiges une note d'analyse destinée à un agent bancaire : elle doit être claire, argumentée et actionnable.
 
 MISSION : Analyser le dossier bancaire fourni et retourner UNIQUEMENT un JSON valide.
@@ -309,18 +309,21 @@ def appliquer_regles(metrics: dict, dettes_connues: bool = True) -> dict:
 
     # 0. Taux d'intérêt appliqué
     if taux is None:
-        checks.append(_check("Taux d'intérêt appliqué", "A_VERIFIER", "non configuré", "taux annuel obligatoire",
-                             "Le taux d'intérêt du crédit n'est pas configuré sur le service IA "
-                             "(variable CREDIT_TAUX_ANNUEL) : aucune mensualité ne peut être calculée.", True))
+        # Texte lu par l'AGENT : pas de nom de variable ni de jargon technique. Le réglage
+        # (CREDIT_TAUX_ANNUEL) se fait côté serveur, par l'administrateur : voir le journal.
+        logger.warning("Taux d'intérêt absent ou invalide : à renseigner dans CREDIT_TAUX_ANNUEL (ai.env)")
+        checks.append(_check("Taux d'intérêt appliqué", "A_VERIFIER", "non renseigné", "taux annuel obligatoire",
+                             "Le taux d'intérêt du crédit n'est pas encore renseigné : l'administrateur doit "
+                             "le paramétrer. Tant qu'il manque, aucune mensualité ne peut être calculée.", True))
     else:
-        checks.append(_check("Taux d'intérêt appliqué", "OK", f"{taux * 100:.2f} % par an", "taux configuré",
+        checks.append(_check("Taux d'intérêt appliqué", "OK", f"{taux * 100:.2f} % par an", "taux renseigné",
                              "Taux annuel utilisé pour toutes les mensualités et simulations.", False))
 
     # 1. Taux d'endettement
     if dti is None:
         raisons = []
         if taux is None:
-            raisons.append("taux d'intérêt non configuré")
+            raisons.append("taux d'intérêt non renseigné")
         if not revenu:
             raisons.append("revenu mensuel net introuvable")
         if not (montant and duree):
@@ -456,8 +459,7 @@ def appliquer_regles(metrics: dict, dettes_connues: bool = True) -> dict:
 
     note = (f"Mensualités calculées avec un taux annuel de {taux * 100:.2f} % (configuration du service)."
             if taux is not None else
-            "Taux d'intérêt non configuré (CREDIT_TAUX_ANNUEL) : mensualités et taux d'endettement "
-            "non calculés.")
+            "Taux d'intérêt non renseigné : mensualités et taux d'endettement non calculés.")
 
     return {
         "metrics":          metrics,
@@ -480,7 +482,7 @@ def donnees_manquantes(metrics: dict, taux: Optional[float], dettes_connues: boo
     if not _num(metrics.get("requestedAmount")) or not _num(metrics.get("duration")):
         manquantes.append("Montant et durée demandés — formulaire de demande de crédit")
     if taux is None:
-        manquantes.append("Taux d'intérêt annuel — à configurer sur le service IA (variable CREDIT_TAUX_ANNUEL)")
+        manquantes.append("Taux d'intérêt annuel — à renseigner par l'administrateur (réglage du service d'analyse)")
     if not dettes_connues:
         manquantes.append("Dettes existantes — relevé bancaire des 3 derniers mois")
     if any(c["criterion"] == "Ancienneté dans l'emploi" and c["status"] == "A_VERIFIER" for c in checks):
@@ -594,6 +596,9 @@ class AgentService:
 
             result_dict["statut"]       = "SUCCESS" if analyse_complete else "FAILURE"
             result_dict["provider"]     = reponse.provider
+            # Traçabilité : avec quelle version des règles (seuils, formules) cette décision a été rendue.
+            # Le journal d'audit la conserve ; elle change à chaque modification des règles.
+            result_dict["versionRegles"] = RULES_VERSION
             result_dict["duree_ms"]     = duree_ms
             result_dict["depuis_cache"] = False
 
@@ -850,6 +855,7 @@ class AgentService:
             "creditType":       "CONSOMMATION",
             "statut":           "FAILURE",
             "provider":         None,
+            "versionRegles":    RULES_VERSION,
             "duree_ms":         round((time.time()-t0)*1000, 1),
             "depuis_cache":     False
         }

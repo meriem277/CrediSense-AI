@@ -1,5 +1,10 @@
 package com.example.crediSense.controller;
 
+import com.example.crediSense.Service.impl.AuditService;
+import com.example.crediSense.Service.impl.NotificationDecisionService;
+import com.example.crediSense.Service.impl.RapportPdfService;
+import com.example.crediSense.Service.impl.ResultatEmailService;
+
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -39,7 +44,9 @@ public class DossierController {
 
     private final DecisionFinaleRepository decisionFinaleRepository;
     private final JsonExtractionRepository jsonExtractionRepository;  // ✅ nouveau
-    private final JavaMailSender mailSender;
+    private final RapportPdfService         rapportPdfService;
+    private final NotificationDecisionService notificationService;
+    private final AuditService              auditService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();     // ✅ nouveau
 
@@ -109,6 +116,7 @@ public class DossierController {
             throw new RuntimeException("Statut invalide : " + nouveauStatut);
         }
 
+        String ancienStatut = d.getStatut();
         d.setStatut(nouveauStatut);
 
         // ✅ Capture l'agent connecté qui effectue le changement
@@ -126,6 +134,10 @@ public class DossierController {
 
         dossierRepository.save(d);
         log.info("Dossier {} → statut {} (agent: {})", id, nouveauStatut, email);
+        Map<String, Object> changement = new java.util.HashMap<>();
+        changement.put("ancien", String.valueOf(ancienStatut));
+        changement.put("nouveau", nouveauStatut);
+        auditService.enregistrer(id, AuditService.STATUT_MODIFIE, null, null, null, changement);
 
         return ResponseEntity.ok(Map.of(
                 "dossierId", id.toString(),
@@ -190,8 +202,10 @@ public class DossierController {
         map.put("classification", lireClassification(f));
         map.put("cheminPdf",    f.getCheminPdf() != null ? f.getCheminPdf() : "");
         map.put("createdAt",    f.getCreatedAt() != null ? f.getCreatedAt().toString() : "");
-        map.put("verifie",      f.getOcrResult() != null
-                && "SUCCESS".equals(f.getOcrResult().getStatut()));
+        // « verifie » = OCR réussi ET extraction exploitable (positionné plus bas), comme dans toResponse() :
+        // un document lu par l'OCR mais sans extraction ne doit pas être affiché « validé » alors que
+        // le pipeline, lui, attend ses données pour autoriser l'analyse.
+        map.put("verifie",      false);
         // Statut et raison de l'OCR : permet d'afficher « format non supporté », « image illisible »…
         map.put("ocrStatut",    f.getOcrResult() != null && f.getOcrResult().getStatut() != null
                 ? f.getOcrResult().getStatut() : "");
@@ -213,6 +227,7 @@ public class DossierController {
                             derniere.getJsonData(), new TypeReference<Map<String, Object>>() {}
                     );
                     map.put("jsonData", parsed);
+                    map.put("verifie", true);
 
                     Object cinExtraitObj = parsed.get("cin");
                     String cinExtrait = cinExtraitObj != null ? cinExtraitObj.toString() : null;
@@ -270,6 +285,8 @@ public class DossierController {
             Map<String, Object> parsed = objectMapper.readValue(
                     df.getResultatComplet(), new TypeReference<Map<String, Object>>() {}
             );
+            // L'agent voit si la réponse est partie chez le client (envoi automatique ou manuel)
+            parsed.put("notification", notificationService.etatDe(df));
             return ResponseEntity.ok(parsed);
         } catch (Exception e) {
             log.warn("Résultat illisible pour dossier {}: {}", id, e.getMessage());
@@ -277,231 +294,129 @@ public class DossierController {
         }
     }
 
-    @Value("${spring.mail.username}")
-    private String fromEmail;
 
+    // ── Réponse au client : envoi à la demande de l'agent (l'envoi automatique est dans
+    //    NotificationDecisionService, déclenché dès que la décision est prise) ─────────────────
     @PostMapping("/{dossierId}/send-result-email")
     public ResponseEntity<Map<String, Object>> sendResultEmail(
             @PathVariable UUID dossierId,
-            @RequestBody Map<String, Object> payload) {
+            @RequestBody(required = false) Map<String, Object> payload) {
         try {
             Dossier dossier = dossierRepository.findById(dossierId)
                     .orElseThrow(() -> new RuntimeException("Dossier introuvable"));
+            DecisionFinale df = decisionFinaleRepository.findByDossierId(dossierId).orElse(null);
 
-            Client client = dossier.getClient();
-            if (client == null || client.getEmail() == null) {
+            // Le résultat enregistré fait foi : ce qui part chez le client ne dépend pas de ce que
+            // le navigateur envoie. Le contenu de la requête ne sert que si rien n'est enregistré.
+            Map<String, Object> resultat = resultatEnregistre(df);
+            if (resultat == null) resultat = payload;
+            if (resultat == null || resultat.get("eligibility") == null) {
                 return ResponseEntity.badRequest()
-                        .body(Map.of("error", "Email client introuvable"));
+                        .body(Map.of("error", "Aucun résultat à envoyer pour ce dossier", "success", false));
             }
 
-            String eligibility = payload.getOrDefault("eligibility", "").toString();
-            String explication = payload.getOrDefault("rawExplanation", "").toString();
-            Object scoreObj    = payload.get("eligibilityScore");
-            int    score       = scoreObj != null ? Integer.parseInt(scoreObj.toString()) : 0;
-            String creditType  = payload.getOrDefault("creditType", "CONSOMMATION").toString();
-            String prenom      = client.getPrenom() != null ? client.getPrenom() : "";
-            String nom         = client.getNom()    != null ? client.getNom()    : "";
-
-            // ✅ Couleur et icône selon décision
-            String couleur = switch (eligibility) {
-                case "ELIGIBLE"     -> "#16a34a";
-                case "REFUS"        -> "#dc2626";
-                case "CONDITIONNEL" -> "#d97706";
-                case "A_COMPLETER"  -> "#d97706";
-                default             -> "#6b7280";
-            };
-
-            String icone = switch (eligibility) {
-                case "ELIGIBLE"     -> "✅";
-                case "REFUS"        -> "❌";
-                case "CONDITIONNEL" -> "⚠️";
-                case "A_COMPLETER"  -> "📄";
-                default             -> "ℹ️";
-            };
-
-            String messageDecision = switch (eligibility) {
-                case "ELIGIBLE"     -> "Félicitations ! Votre dossier remplit tous les critères d'éligibilité au crédit consommation.";
-                case "REFUS"        -> "Après analyse approfondie, votre dossier ne remplit pas actuellement les critères d'éligibilité. Nous vous invitons à contacter votre conseiller.";
-                case "CONDITIONNEL" -> "Votre dossier est accepté sous conditions. Des garanties supplémentaires peuvent être requises. Votre conseiller vous contactera prochainement.";
-                case "A_COMPLETER"  -> "Votre dossier est incomplet : des informations complémentaires sont nécessaires pour pouvoir rendre une décision. Votre conseiller vous contactera pour les recueillir.";
-                default             -> "Votre dossier est en cours d'analyse. Vous serez informé prochainement.";
-            };
-
-            String sujet = switch (eligibility) {
-                case "ELIGIBLE"     -> "Votre demande de crédit a été approuvée — Attijariwafa Bank";
-                case "REFUS"        -> "Résultat de votre demande de crédit — Attijariwafa Bank";
-                case "CONDITIONNEL" -> "Décision conditionnelle sur votre demande — Attijariwafa Bank";
-                case "A_COMPLETER"  -> "Informations complémentaires nécessaires pour votre demande — Attijariwafa Bank";
-                default             -> "Résultat de votre demande de crédit — Attijariwafa Bank";
-            };
-
-            // Libellé affiché dans l'e-mail (le code interne « A_COMPLETER » n'a pas à être montré)
-            String libelleDecision = "A_COMPLETER".equals(eligibility) ? "DOSSIER À COMPLÉTER" : eligibility;
-
-            // ✅ Barre de score colorée — pas de score pour un dossier à compléter : il serait
-            // provisoire, et un chiffre provisoire envoyé au client est pris pour un verdict
-            String couleurScore = score >= 70 ? "#16a34a" : score >= 40 ? "#d97706" : "#dc2626";
-            String blocScore = "A_COMPLETER".equals(eligibility) ? "" : String.format("""
-                    <tr>
-                      <td style="padding:0 40px 24px;">
-                        <div style="background:#f8f9fc;border-radius:10px;padding:20px;">
-                          <div style="display:flex;justify-content:space-between;margin-bottom:10px;">
-                            <span style="font-size:13px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">
-                              Score de crédit
-                            </span>
-                            <span style="font-size:18px;font-weight:700;color:%s;">
-                              %d / 100
-                            </span>
-                          </div>
-                          <div style="background:#e5e7eb;border-radius:99px;height:8px;overflow:hidden;">
-                            <div style="background:%s;height:8px;width:%d%%;border-radius:99px;"></div>
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
-                    """, couleurScore, score, couleurScore, score);
-
-            // ✅ HTML Email
-            String html = String.format("""
-            <!DOCTYPE html>
-            <html lang="fr">
-            <head>
-              <meta charset="UTF-8"/>
-              <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-            </head>
-            <body style="margin:0;padding:0;background:#f4f4f4;font-family:Arial,sans-serif;">
-              <table width="100%%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;padding:30px 0;">
-                <tr><td align="center">
-                  <table width="600" cellpadding="0" cellspacing="0"
-                         style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.08);">
-
-                    <!-- HEADER -->
-                    <tr>
-                      <td style="background:linear-gradient(135deg,#cc3300,#E8611A);padding:32px 40px;text-align:center;">
-                        <h1 style="color:#ffffff;margin:0;font-size:24px;font-weight:700;letter-spacing:-0.5px;">
-                          Attijariwafa Bank
-                        </h1>
-                        <p style="color:rgba(255,255,255,0.85);margin:6px 0 0;font-size:13px;">
-                          CrediSense — Plateforme d'Analyse de Crédit
-                        </p>
-                      </td>
-                    </tr>
-
-                    <!-- SALUTATION -->
-                    <tr>
-                      <td style="padding:32px 40px 0;">
-                        <p style="color:#1a1a2e;font-size:15px;margin:0;">
-                          Bonjour <strong>%s %s</strong>,
-                        </p>
-                        <p style="color:#555;font-size:14px;margin:12px 0 0;line-height:1.6;">
-                          Suite à l'analyse de votre dossier de crédit <strong>%s</strong>,
-                          nous vous communiquons le résultat de notre évaluation.
-                        </p>
-                      </td>
-                    </tr>
-
-                    <!-- DÉCISION -->
-                    <tr>
-                      <td style="padding:24px 40px;">
-                        <div style="background:%s15;border:2px solid %s;border-radius:10px;padding:24px;text-align:center;">
-                          <div style="font-size:36px;margin-bottom:8px;">%s</div>
-                          <div style="font-size:22px;font-weight:700;color:%s;margin-bottom:4px;">%s</div>
-                          <div style="font-size:13px;color:#6b7280;">Décision sur votre demande de crédit</div>
-                        </div>
-                      </td>
-                    </tr>
-
-                    <!-- SCORE (absent pour un dossier à compléter) -->
-                    %s
-
-                    <!-- MESSAGE DÉCISION -->
-                    <tr>
-                      <td style="padding:0 40px 24px;">
-                        <div style="background:#fff8f3;border-left:4px solid #E8611A;border-radius:0 8px 8px 0;padding:16px 20px;">
-                          <p style="margin:0;font-size:14px;color:#444;line-height:1.7;">
-                            %s
-                          </p>
-                        </div>
-                      </td>
-                    </tr>
-
-                    <!-- ANALYSE DÉTAILLÉE -->
-                    <tr>
-                      <td style="padding:0 40px 24px;">
-                        <h3 style="color:#1a1a2e;font-size:14px;font-weight:700;margin:0 0 12px;
-                                   text-transform:uppercase;letter-spacing:0.5px;">
-                          Analyse détaillée
-                        </h3>
-                        <p style="color:#555;font-size:13px;line-height:1.8;margin:0;
-                                  background:#f8f9fc;border-radius:8px;padding:16px;">
-                          %s
-                        </p>
-                      </td>
-                    </tr>
-
-                    <!-- CONTACT -->
-                    <tr>
-                      <td style="padding:0 40px 32px;">
-                        <div style="border-top:1px solid #e5e7eb;padding-top:20px;">
-                          <p style="color:#6b7280;font-size:13px;margin:0;line-height:1.6;">
-                            Pour toute question concernant votre dossier, veuillez contacter
-                            votre conseiller en agence ou appeler le <strong>71 141 400</strong>.
-                          </p>
-                        </div>
-                      </td>
-                    </tr>
-
-                    <!-- FOOTER -->
-                    <tr>
-                      <td style="background:#1a1a2e;padding:24px 40px;text-align:center;">
-                        <p style="color:rgba(255,255,255,0.6);font-size:12px;margin:0;">
-                          © 2026 Attijariwafa Bank Tunisie — CrediSense
-                        </p>
-                        <p style="color:rgba(255,255,255,0.4);font-size:11px;margin:6px 0 0;">
-                          Cet email est confidentiel et destiné uniquement à son destinataire.
-                        </p>
-                      </td>
-                    </tr>
-
-                  </table>
-                </td></tr>
-              </table>
-            </body>
-            </html>
-            """,
-                    prenom, nom,
-                    creditType,
-                    couleur, couleur,
-                    icone,
-                    couleur, libelleDecision,
-                    blocScore,
-                    messageDecision,
-                    explication
-            );
-
-            // ✅ Envoi HTML avec MimeMessage
-            jakarta.mail.internet.MimeMessage mimeMessage = mailSender.createMimeMessage();
-            org.springframework.mail.javamail.MimeMessageHelper helper =
-                    new org.springframework.mail.javamail.MimeMessageHelper(
-                            mimeMessage, true, "UTF-8");
-
-            helper.setFrom(fromEmail);
-            helper.setTo(client.getEmail());
-            helper.setSubject(sujet);
-            helper.setText(html, true); // ✅ true = HTML
-
-            mailSender.send(mimeMessage);
-            log.info("Email HTML envoyé à {} pour dossier {}", client.getEmail(), dossierId);
+            // Envoi immédiat à la demande de l'agent : l'état de la réponse et le journal sont tenus à jour
+            ResultatEmailService.Envoi envoi = notificationService.envoyerManuellement(dossier, df, resultat);
+            log.info("Email envoyé à {} pour dossier {} (à la demande de l'agent)", envoi.destinataire(), dossierId);
 
             return ResponseEntity.ok(Map.of(
-                    "message", "Email envoyé avec succès à " + client.getEmail(),
+                    "message", "Email envoyé avec succès à " + envoi.destinataire(),
                     "success", true
             ));
 
         } catch (Exception e) {
             log.error("Erreur envoi email résultat: {}", e.getMessage());
             return ResponseEntity.badRequest()
-                    .body(Map.of("error", e.getMessage(), "success", false));
+                    .body(Map.of("error", String.valueOf(e.getMessage()), "success", false));
+        }
+    }
+
+    // ── Validation de la réponse : « Valider et envoyer » / « Ne pas envoyer » ───────────────
+    @PostMapping("/{id}/reponse/valider")
+    public ResponseEntity<Map<String, Object>> validerReponse(
+            @PathVariable UUID id,
+            @RequestBody(required = false) Map<String, String> body) {
+
+        Dossier dossier = dossierRepository.findById(id).orElse(null);
+        DecisionFinale df = decisionFinaleRepository.findByDossierId(id).orElse(null);
+        Map<String, Object> resultat = resultatEnregistre(df);
+        if (dossier == null || df == null || resultat == null) {
+            return ResponseEntity.status(404)
+                    .body(Map.of("success", false, "error", "Aucun résultat enregistré pour ce dossier"));
+        }
+        try {
+            // La validation porte sur la décision que l'agent a lue : si elle a changé, le serveur refuse
+            Map<String, Object> etat = notificationService.valider(
+                    dossier, df, resultat, body != null ? body.get("decision") : null);
+            boolean parti = NotificationDecisionService.ENVOYE.equals(etat.get("statut"));
+            Map<String, Object> reponse = new java.util.HashMap<>();
+            reponse.put("success", parti);
+            reponse.put("notification", etat);
+            reponse.put("message", parti ? "Réponse envoyée au client" : String.valueOf(etat.get("detail")));
+            return ResponseEntity.ok(reponse);
+        } catch (NotificationDecisionService.ReponseNonModifiableException e) {
+            return ResponseEntity.status(409).body(Map.of("success", false, "error", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/{id}/reponse/annuler")
+    public ResponseEntity<Map<String, Object>> annulerReponse(@PathVariable UUID id) {
+        Dossier dossier = dossierRepository.findById(id).orElse(null);
+        DecisionFinale df = decisionFinaleRepository.findByDossierId(id).orElse(null);
+        if (dossier == null || df == null) {
+            return ResponseEntity.status(404)
+                    .body(Map.of("success", false, "error", "Aucun résultat enregistré pour ce dossier"));
+        }
+        try {
+            Map<String, Object> etat = notificationService.annuler(dossier, df);
+            return ResponseEntity.ok(Map.of("success", true, "notification", etat,
+                    "message", "Envoi annulé : le client ne recevra rien pour cette décision"));
+        } catch (NotificationDecisionService.ReponseNonModifiableException e) {
+            return ResponseEntity.status(409).body(Map.of("success", false, "error", e.getMessage()));
+        }
+    }
+
+    // ── Journal d'audit du dossier ───────────────────────────────────────────────────────────
+    @GetMapping("/{id}/audit")
+    public ResponseEntity<List<Map<String, Object>>> journal(@PathVariable UUID id) {
+        return ResponseEntity.ok(auditService.journal(id));
+    }
+
+    // ── Rapport PDF de la décision : version « agent » (complète) ou « client » ──────────────
+    @GetMapping("/{id}/rapport-pdf")
+    public ResponseEntity<byte[]> rapportPdf(
+            @PathVariable UUID id,
+            @RequestParam(name = "version", defaultValue = "agent") String version) {
+
+        Dossier dossier = dossierRepository.findById(id).orElse(null);
+        Map<String, Object> resultat = resultatEnregistre(decisionFinaleRepository.findByDossierId(id).orElse(null));
+        if (dossier == null || resultat == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        RapportPdfService.Version v = "client".equalsIgnoreCase(version)
+                ? RapportPdfService.Version.CLIENT : RapportPdfService.Version.AGENT;
+        byte[] pdf = rapportPdfService.generer(dossier, resultat, v);
+        auditService.enregistrer(id, AuditService.RAPPORT_TELECHARGE,
+                String.valueOf(resultat.get("eligibility")), null, null,
+                Map.of("version", v == RapportPdfService.Version.CLIENT ? "client" : "agent"));
+
+        String reference = id.toString().substring(0, 8).toUpperCase();
+        String nom = "Rapport-credit-" + reference + (v == RapportPdfService.Version.CLIENT ? "-client" : "") + ".pdf";
+        return ResponseEntity.ok()
+                .contentType(org.springframework.http.MediaType.APPLICATION_PDF)
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + nom + "\"")
+                .body(pdf);
+    }
+
+    /** Le résultat de l'analyse enregistré avec la décision (null s'il n'y en a pas ou s'il est illisible). */
+    private Map<String, Object> resultatEnregistre(DecisionFinale df) {
+        if (df == null || df.getResultatComplet() == null || df.getResultatComplet().isBlank()) return null;
+        try {
+            return objectMapper.readValue(df.getResultatComplet(), new TypeReference<Map<String, Object>>() {});
+        } catch (Exception e) {
+            log.warn("Résultat enregistré illisible : {}", e.getMessage());
+            return null;
         }
     }
 }

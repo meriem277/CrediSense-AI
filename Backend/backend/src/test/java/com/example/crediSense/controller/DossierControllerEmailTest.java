@@ -1,6 +1,10 @@
 package com.example.crediSense.controller;
 
 import com.example.crediSense.Service.DossierService;
+import com.example.crediSense.Service.impl.AuditService;
+import com.example.crediSense.Service.impl.NotificationDecisionService;
+import com.example.crediSense.Service.impl.RapportPdfService;
+import com.example.crediSense.Service.impl.ResultatEmailService;
 import com.example.crediSense.entity.Client;
 import com.example.crediSense.entity.Dossier;
 import com.example.crediSense.repository.AgentRepository;
@@ -51,10 +55,16 @@ class DossierControllerEmailTest {
         Dossier dossier = Dossier.builder().id(dossierId).client(client).build();
         when(dossierRepository.findById(dossierId)).thenReturn(Optional.of(dossier));
 
+        ResultatEmailService emailService = new ResultatEmailService(mailSender, new RapportPdfService());
+        ReflectionTestUtils.setField(emailService, "fromEmail", "banque@example.com");
+
+        NotificationDecisionService notifications = new NotificationDecisionService(
+                emailService, mock(DecisionFinaleRepository.class), mock(AuditService.class));
+
         controller = new DossierController(
                 mock(DossierService.class), dossierRepository, mock(AgentRepository.class),
-                mock(DecisionFinaleRepository.class), mock(JsonExtractionRepository.class), mailSender);
-        ReflectionTestUtils.setField(controller, "fromEmail", "banque@example.com");
+                mock(DecisionFinaleRepository.class), mock(JsonExtractionRepository.class),
+                new RapportPdfService(), notifications, mock(AuditService.class));
     }
 
     private String envoyer(String decision, int score, String explication) throws Exception {
@@ -79,7 +89,11 @@ class DossierControllerEmailTest {
             StringBuilder sb = new StringBuilder();
             for (int i = 0; i < mp.getCount(); i++) {
                 BodyPart partie = mp.getBodyPart(i);
-                sb.append(texteHtml(partie.getContent()));
+                Object contenuPartie = partie.getContent();
+                // une pièce jointe (le PDF) est un flux binaire : ce n'est pas du texte de l'e-mail
+                if (contenuPartie instanceof String || contenuPartie instanceof Multipart) {
+                    sb.append(texteHtml(contenuPartie));
+                }
             }
             return sb.toString();
         }

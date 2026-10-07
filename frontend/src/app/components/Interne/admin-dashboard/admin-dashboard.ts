@@ -6,17 +6,18 @@ import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { Register } from '../register/register';
+import { Statistiques } from '../statistiques/statistiques';
 
 @Component({
   selector: 'app-admin-dashboard',
-  imports: [CommonModule, ReactiveFormsModule, Register],
+  imports: [CommonModule, ReactiveFormsModule, Register, Statistiques],
   templateUrl: './admin-dashboard.html',
   styleUrl: './admin-dashboard.scss',
 })
 export class AdminDashboard implements OnInit {
   // Données admin
   nom = '';
-  activeTab = 'overview';  // 'overview' | 'agents' | 'dossiers' | 'register'
+  activeTab = 'overview';  // 'overview' | 'stats' | 'agents' | 'dossiers' | 'register'
   today = new Date();
 
   // Formulaire register

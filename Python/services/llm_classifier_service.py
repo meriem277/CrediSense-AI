@@ -45,7 +45,7 @@ class ResultatClassificationLLM(BaseModel):
         return self.categorie in CATEGORIES
 
 
-PROMPT_SYSTEME = """Tu es un classifieur de documents bancaires pour une banque tunisienne (Attijariwafa Bank).
+PROMPT_SYSTEME = """Tu es un classifieur de documents bancaires pour une banque tunisienne (Attijari Bank).
 Tu reçois le texte brut extrait par OCR d'un document, potentiellement en français ou en arabe,
 parfois avec des erreurs d'OCR (caractères mal reconnus, mots tronqués).
 

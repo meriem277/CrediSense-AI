@@ -70,6 +70,10 @@
   <tr><td>Chatbot</td><td>L'indexation n'appelle plus le LLM pour rien, et chaque document est indexé avec son propre libellé.</td></tr>
   <tr><td>Pipeline d'analyse</td><td>Deux étapes réellement verrouillées : « Vérifier les documents » puis « Analyser ». Contrôle du CIN avec confirmation de l'agent, et refus côté serveur (409) sans cette confirmation.</td></tr>
   <tr><td>Classification des documents</td><td>Branchée dans le pipeline : un document déposé dans le mauvais emplacement est détecté (cascade règles, embeddings, LLM). Un désaccord bloque « Analyser » jusqu'à confirmation de l'agent, et l'extraction JSON est adaptée au type réel du document.</td></tr>
+  <tr><td>Réponse automatique au client</td><td>Dès que la décision est prise, le serveur envoie l'e-mail de réponse au client avec le rapport PDF en pièce jointe, sans clic de l'agent. Pas de doublon, un échec n'annule jamais l'analyse, et l'agent voit l'état de l'envoi. Le nom de la banque est « Attijari Bank » partout.</td></tr>
+  <tr><td>Contrôle humain avant l'envoi</td><td>Un refus n'est plus envoyé tout seul : il attend « Valider et envoyer » de l'agent, qui peut aussi choisir de ne pas l'envoyer. Les autres décisions partent tout de suite ou après un délai annulable. La validation porte sur la décision lue : si une nouvelle analyse l'a changée, le serveur refuse.</td></tr>
+  <tr><td>Journal d'audit</td><td>Table en ajout seul : qui a décidé quoi, quand, avec quelle version des règles et quel fournisseur d'IA, et quel e-mail est parti, validé, annulé ou en échec. Visible en frise sur chaque dossier.</td></tr>
+  <tr><td>Tableau de bord administrateur</td><td>Taux d'acceptation, répartition des décisions, délais, motifs de refus, évolution dans le temps, état des envois, avec export Excel (4 feuilles). Réservé au rôle ADMIN.</td></tr>
   <tr><td>Calcul du crédit</td><td>Taux d'intérêt obligatoire, dettes inconnues jamais comptées comme zéro, nouvelle décision « À COMPLÉTER » : un dossier incomplet ne sort plus « éligible ».</td></tr>
   <tr><td>Écran de résultat</td><td>Affiche tout ce que le moteur calcule, plus le cas « à compléter », le score provisoire et le taux utilisé. E-mail client adapté.</td></tr>
   <tr><td>Identité visuelle</td><td>Icône et titre de l'onglet : l'icône Angular par défaut est remplacée par l'emblème Attijari.</td></tr>
@@ -163,6 +167,15 @@
 <div class="step"><div class="n">H</div><div class="t"><h4>Sauvegarde et statut</h4>
 <p>Le backend enregistre : <code>AgentAnalysis</code> (score, revenus, endettement, décision), <code>DecisionFinale</code> (justification, message au client, <b>résultat complet en JSON</b>) et met à jour le statut du dossier : <code>ELIGIBLE → APPROUVE</code>, <code>REFUS → REFUSE</code>, toute autre décision → <code>EN_COURS</code>.</p></div></div>
 
+<div class="box ok"><b>Envoi automatique de la réponse.</b> Juste après l'enregistrement de la décision (étape H), <code>NotificationDecisionService</code> envoie au client l'e-mail de réponse avec le <b>rapport PDF version client</b> en pièce jointe.
+<ul>
+  <li><b>Contrôle humain</b> : un refus attend la validation d'un agent avant de partir (voir la section 4) ; les autres décisions partent immédiatement, ou après un délai annulable si on en configure un.</li>
+  <li><b>Décisions notifiées</b> : éligible, refus, conditionnel, « à compléter » (qui demande au client les pièces manquantes). Une analyse échouée techniquement (INDETERMINE) n'envoie rien.</li>
+  <li><b>Pas de doublon</b> : relancer l'analyse sans que la décision change ne renvoie pas d'e-mail ; si elle change (« à compléter » puis « éligible »), le client reçoit la nouvelle.</li>
+  <li><b>Un échec ne casse rien</b> : l'erreur est enregistrée et affichée à l'agent, l'analyse est rendue normalement, et l'envoi est retenté à l'analyse suivante ou par le bouton « Envoyer la réponse au client ».</li>
+  <li><b>Interrupteur</b> : <code>AUTO_ENVOI_EMAIL=false</code> coupe l'envoi automatique ; le bouton manuel reste.</li>
+  <li><b>L'e-mail part du résultat enregistré</b>, pas de ce que le navigateur envoie : un appel falsifié ne peut pas changer ce que reçoit le client.</li>
+</ul></div>
 <div class="step"><div class="n">I</div><div class="t"><h4>Résultat pour l'agent et le client</h4>
 <p>L'écran de résultat (<code>credit-result</code>) affiche la décision, le score (marqué « provisoire » si des données manquent), la liste des données manquantes, les contrôles réglementaires, la capacité, les simulations par durée, les points forts, les points de vigilance, les conditions et le taux utilisé. <code>POST /api/dossiers/{id}/send-result-email</code> envoie au client un message adapté à la décision. Pour « À COMPLÉTER », il ne cite que des pièces que le client peut fournir, jamais un réglage technique.</p>
 <p>Le chatbot (<code>POST /api/chatbot/question</code> → <code>/ai/chat</code>) répond aux questions de l'agent sur le dossier par recherche dans les documents indexés (RAG), avec masquage des RIB, IBAN et CIN.</p></div></div>
@@ -255,6 +268,56 @@
 </table>
 <div class="box warn"><b>À lire avec prudence.</b> Le dossier de test a été généré par nous : ses titres ressemblent à nos mots-clés, donc le 10 / 10 est optimiste. Les deux documents réels (attestation de travail, attestation de réussite) sont un échantillon trop petit pour donner un pourcentage. La précision réelle ne sera connue qu'avec de vrais documents de la banque (CIN, fiches de paie, relevés d'Attijari).</div>
 
+<h3>Contrôle humain avant l'envoi de la réponse</h3>
+<p><b>Problème.</b> L'envoi automatique faisait partir un refus chez le client dès que l'IA avait tranché, alors que le score vient du modèle de langage. Une banque veut qu'un humain puisse relire avant.</p>
+<table>
+  <tr><th style="width:24%">Cas</th><th>Comportement</th></tr>
+  <tr><td>Décision qui exige une validation (par défaut : <b>refus</b>)</td><td>État « en attente de validation » : rien n'est envoyé. L'agent voit un bandeau ambre avec <b>Valider et envoyer</b> et <b>Ne pas envoyer</b>. Le bouton d'envoi direct disparaît pour qu'on ne contourne pas la validation.</td></tr>
+  <tr><td>Autre décision, délai à 0</td><td>Envoi immédiat (comportement précédent).</td></tr>
+  <tr><td>Autre décision, délai de N minutes</td><td>État « programmé » : <b>Envoyer maintenant</b> ou <b>Annuler l'envoi</b> d'ici là ; une tâche planifiée (toutes les 30 s) envoie à l'échéance.</td></tr>
+  <tr><td>Nouvelle analyse, même décision</td><td>Rien ne change : une réponse en attente n'est pas remise en attente, une réponse annulée ne ressuscite pas, une réponse envoyée n'est pas renvoyée.</td></tr>
+  <tr><td>Nouvelle analyse, décision différente</td><td>Un nouveau cycle commence pour la nouvelle décision.</td></tr>
+</table>
+<p><b>Garde-fou.</b> « Valider » envoie au serveur la décision que l'agent a sous les yeux. Si une nouvelle analyse l'a changée entre-temps, le serveur répond 409 et n'envoie rien : le client ne reçoit jamais autre chose que ce qui a été relu. L'écran relit alors l'état réel du dossier.</p>
+<p><b>Réglages</b> (variables d'environnement du backend) : <code>VALIDATION_REQUISE_POUR</code> (liste de décisions, par défaut <code>REFUS</code> ; vide : aucune), <code>DELAI_ENVOI_MINUTES</code> (par défaut 0), <code>AUTO_ENVOI_EMAIL</code> (couper tout l'automatique).</p>
+
+<h3>Journal d'audit</h3>
+<p>Une table <code>audit_events</code> en <b>ajout seul</b> : l'entité est immuable pour Hibernate, aucun endpoint ne modifie ni ne supprime une ligne, et le dossier n'est référencé que par son identifiant (le journal survit à sa suppression). Écrire dans le journal ne fait jamais échouer l'opération décrite.</p>
+<table>
+  <tr><th style="width:26%">Événement</th><th>Ce qui est consigné</th></tr>
+  <tr><td>Analyse terminée</td><td>décision, score, <b>version des règles</b> (renvoyée désormais par le service IA), fournisseur d'IA, taux appliqué, informations manquantes</td></tr>
+  <tr><td>Incohérence confirmée</td><td>l'agent qui a poursuivi malgré un CIN incohérent ou un type de document contredit, et lesquels</td></tr>
+  <tr><td>Réponse mise en attente, validée, annulée</td><td>qui, quand, pour quelle décision, pourquoi (validation requise ou délai)</td></tr>
+  <tr><td>Réponse envoyée, en échec</td><td>destinataire, mode (automatique, après délai, après validation, à la demande), PDF joint ou non, ou l'erreur</td></tr>
+  <tr><td>Rapport PDF téléchargé, statut modifié</td><td>version du rapport ; ancien et nouveau statut</td></tr>
+</table>
+<p>L'acteur est l'agent connecté (lu dans le jeton), ou « SYSTEME » pour une tâche automatique. L'écran de résultat affiche une frise « Journal du dossier » : date, acteur, phrase lisible écrite par le serveur, et version des règles.</p>
+
+<h3>Tableau de bord administrateur et export Excel</h3>
+<p>Nouvel onglet « Statistiques » de l'espace administrateur, alimenté par <code>GET /api/admin/statistiques?du=&amp;au=</code> (réservé au rôle ADMIN ; période par défaut : 30 jours, maximum 800 jours).</p>
+<table>
+  <tr><th style="width:26%">Indicateur</th><th>Définition</th></tr>
+  <tr><td>Décision définitive</td><td>éligible, conditionnel ou refus. « À compléter » n'est pas une décision (le dossier attend des pièces) ; « indéterminée » est un échec technique.</td></tr>
+  <tr><td>Taux d'acceptation</td><td>éligibles ÷ décisions définitives ; « avec conditions » : (éligibles + conditionnels) ÷ décisions définitives. Absent (et non 0 %) s'il n'y a aucune décision définitive.</td></tr>
+  <tr><td>Délai de traitement</td><td>du dépôt du dossier à la décision (moyenne, médiane, maximum).</td></tr>
+  <tr><td>Délai d'envoi</td><td>de la décision à l'envoi de la réponse ; il comprend l'attente de validation.</td></tr>
+  <tr><td>Motifs</td><td>critères réglementaires en échec pour un refus (« attention » aussi pour un conditionnel) ; informations manquantes pour un dossier à compléter.</td></tr>
+  <tr><td>Évolution</td><td>par jour jusqu'à 62 jours, par semaine au-delà ; chaque jour ou semaine existe, même à zéro.</td></tr>
+</table>
+<p>La date d'une décision est celle de la <b>dernière</b> décision (champ dédié) : une nouvelle analyse met à jour la même ligne, et un horodatage automatique bougerait à chaque changement d'état de l'e-mail et fausserait les délais.</p>
+<p><b>Export Excel</b> (<code>.xlsx</code> généré par Apache POI) : feuilles Synthèse, Décisions (une ligne par décision, avec filtre automatique et en-tête figé), Motifs et Évolution. Les dates sont de vraies dates et les montants de vrais nombres : Excel peut trier, filtrer et calculer. Le fichier contient les noms des clients, jamais leur CIN.</p>
+<p><b>Visualisation.</b> Graphiques en SVG sans bibliothèque. Barres et colonnes fines (24 px au plus), bout arrondi sur la donnée et base carrée, 2 px de surface entre les segments empilés, grille en traits pleins discrets, échelle ronde (1, 2, 5, 10, 20, 50…). Une seule infobulle par colonne avec toutes les décisions (la valeur d'abord), la même au clavier qu'à la souris. Chaque graphique a sa vue en tableau.</p>
+<div class="box warn"><b>Couleurs.</b> Les décisions ont un sens : vert, ambre et rouge sont la palette « statut », le bleu est la série 1. Contrôle du validateur de palette : séparation pour le daltonisme 11,3 (seuil 8), distinction en vision normale 27,6 (seuil 15). Une règle échoue, la bande de luminosité, à cause de l'ambre, et son contraste est de 1,79:1 sur fond blanc : c'est la raison pour laquelle aucune information ne repose sur la couleur seule (libellé, valeur, icône, tableau de données). Il n'y a pas de thème sombre dans l'application, donc pas de variante sombre.</div>
+
+<h3>Le rapport PDF de la décision</h3>
+<p>Généré <b>côté serveur</b> (iText, déjà présent dans le projet) à partir du résultat enregistré : il peut être régénéré à tout moment, sans relancer l'analyse et sans stocker de fichier. Deux versions :</p>
+<table>
+  <tr><th style="width:16%">Version</th><th>Contenu</th><th style="width:22%">Usage</th></tr>
+  <tr><td>Client</td><td>Décision, score (jamais pour un dossier « à compléter » : il serait provisoire), explication, informations à fournir (sans les réglages internes comme le taux d'intérêt), chiffres de la demande (montant, durée, mensualité, taux appliqué), conditions avant décaissement. Ni contrôles internes, ni risques, ni points de vigilance, ni CIN complet.</td><td>Pièce jointe de l'e-mail</td></tr>
+  <tr><td>Agent</td><td>Rapport complet : résumé, chiffres clés, contrôles réglementaires, capacité d'emprunt, simulations par durée, points forts et de vigilance, risques, plan recommandé, avertissements, note de calcul.</td><td>Bouton « Rapport complet » de l'écran de résultat</td></tr>
+</table>
+<p>Un chiffre non calculé est écrit « Non calculé » ou « Non calculée », jamais 0. Un titre de section ne reste jamais seul en bas de page.</p>
+
 <h3>Le chatbot RAG : indexation, découpage, recherche</h3>
 <p><b>RAG</b> (Retrieval-Augmented Generation) : on ne donne pas tout le dossier au LLM à chaque question. On <i>cherche</i> d'abord les passages utiles, puis on les lui donne avec la question. Fichier principal : <code>chatbot_service.py</code>.</p>
 <p><b>Indexation</b> = préparer les documents pour qu'on puisse les chercher vite, comme l'index d'un livre. Elle se fait une fois par analyse : (1) découper les textes OCR en chunks, (2) transformer chaque chunk en vecteur de 384 nombres avec le modèle d'embedding (MiniLM multilingue), (3) ranger les vecteurs dans <b>FAISS</b> (<code>IndexFlatIP</code>, recherche exacte par cosinus), plus un index lexical <b>BM25</b>. Les index sont <b>en mémoire</b>, un par dossier ; les textes viennent de PostgreSQL (<code>ocr_results</code>).</p>
@@ -319,7 +382,7 @@
   <li><b>Classification</b> : <code>classification_regles.py</code> (règles par mots-clés, niveau 0 de la cascade), <code>controle_type.py</code> (comparaison déclaré / détecté, seuils par méthode), endpoint <code>/ai/classify-hybrid</code> enrichi du bloc « controle ».</li>
   <li><b>Extraction JSON</b> (<code>groq_service.py</code>) : schéma et consignes par type de document ; le type classé arrive jusqu'au prompt.</li>
   <li><b>Texte du dossier</b> (<code>dossier_texte.py</code>) : budget par document.</li>
-  <li><b>Scoring</b> (<code>agent_service.py</code>) : règles, taux obligatoire, données manquantes, cache versionné.</li>
+  <li><b>Scoring</b> (<code>agent_service.py</code>) : règles, taux obligatoire, données manquantes, cache versionné. Les messages lus par l'agent sont sans jargon : le taux manquant est annoncé « à renseigner par l'administrateur (réglage du service d'analyse) », sans nom de variable.</li>
   <li><b>Chatbot</b> : index construit sans LLM, un libellé par document, journaux sans données personnelles ; découpage structurel et sémantique (<code>decoupage_rag.py</code>) ; recherche hybride sens + mots exacts avec fusion RRF (<code>recherche_hybride.py</code>) ; mémoire de conversation (historique transmis au LLM, relances complétées pour la recherche).</li>
 </ul>
 <h3>5.3 Backend</h3>
@@ -329,6 +392,11 @@
   <li><code>FichierController</code> : endpoints <code>verifier-dossier</code> et <code>analyser-dossier</code>, avec les codes d'erreur <code>CIN_INCOHERENT</code> et <code>TYPE_INCOHERENT</code>.</li>
   <li><code>DemandeCreditController</code> : écriture dans le volume persistant, CIN et nom de fichier assainis.</li>
   <li><code>DossierController</code> : e-mail de résultat adapté à « À COMPLÉTER », libellés lisibles, bloc de score omis tant que la décision n'est pas rendue.</li>
+  <li><b>Réponse automatique</b> : <code>NotificationDecisionService</code> (quand et si l'on envoie), <code>ResultatEmailService</code> (e-mail HTML avec PDF joint ; le texte venu de l'IA ou de la base est neutralisé avant d'entrer dans le HTML), <code>RapportPdfService</code> (rapport PDF, deux versions). <code>DecisionFinale</code> garde l'état de l'envoi (statut, date, destinataire, décision envoyée, erreur). Nouveaux endpoints : <code>GET /api/dossiers/{id}/rapport-pdf?version=agent|client</code> ; l'état de l'envoi est ajouté à <code>/resultat</code> ; <code>send-result-email</code> utilise désormais le résultat enregistré.</li>
+  <li><b>Contrôle avant envoi et journal</b> : <code>NotificationDecisionService</code> gère trois chemins (validation, délai annulable, immédiat) et les actions de l'agent ; <code>AuditService</code> et l'entité immuable <code>AuditEvent</code> tiennent le journal ; <code>DecisionFinale</code> garde l'état de la réponse (statut, mode, acteur, heure prévue) et la date de la dernière décision. Nouveaux endpoints : <code>POST /api/dossiers/{id}/reponse/valider</code>, <code>POST …/reponse/annuler</code> (409 si rien en attente ou décision changée), <code>GET …/audit</code>.</li>
+  <li><b>Statistiques</b> : <code>StatistiquesService</code> (calculs), <code>StatistiquesExcelService</code> (export), <code>AdminStatistiquesController</code> (<code>/api/admin/statistiques</code>, validation de la période, rôle ADMIN).</li>
+  <li><b>Nom de la banque</b> : « Attijari Bank » dans l'e-mail (sujets, en-tête, pied de page), l'e-mail de mot de passe agent, le pied de page du portail client et les consignes des modèles de langage (qui pouvaient reprendre le nom dans leurs réponses).</li>
+  <li><b>Alerte d'identité</b> : la comparaison entre les noms lus dans les documents et ceux du client se fait par <b>mots</b>, sans tenir compte de l'ordre nom / prénom, des accents, de la casse ni des noms composés. Avant, une fiche client enregistrée avec nom et prénom inversés (« nom = Meriem, prénom = Rehouma ») déclenchait une fausse alerte face à des documents « Rehouma Meriem ». Deux personnes différentes, ou un seul mot en commun, restent détectés.</li>
   <li><code>ChatbotController</code> / <code>ChatbotService</code> : la requête accepte un historique facultatif, nettoyé (6 derniers messages, rôles connus, 600 caractères) puis transmis au service IA.</li>
 </ul>
 <h3>5.4 Frontend</h3>
@@ -339,6 +407,11 @@
   <li><code>pipeline-analyse</code> : une incohérence confirmée par l'agent (ou déjà analysée) passe les étapes 1 et 2 au vert, avec mention.</li>
   <li><code>credit-result</code> : écran de résultat complet (section 3-I). Le modèle exporte <code>mapperResultat</code>, qui recopie tous les champs. Avant, plusieurs champs étaient perdus à la copie, donc invisibles.</li>
   <li><code>chat-assistant</code> : envoie les derniers échanges réels avec chaque question.</li>
+  <li><code>statistiques</code> (nouveau) : tableau de bord de l'administrateur, branché dans l'onglet « Statistiques » : filtres de période sur une ligne, tuiles de chiffres clés, répartition, évolution en colonnes empilées, motifs, délais, état des envois, export Excel, vues en tableau.</li>
+  <li><code>credit-result</code> : boutons « Valider et envoyer » / « Ne pas envoyer » (ou « Envoyer maintenant » / « Annuler l'envoi »), et frise « Journal du dossier ».</li>
+  <li><code>export-button</code> : remplace la coquille vide par le vrai téléchargement du rapport PDF (« Rapport complet » et « Version client »), avec messages d'erreur clairs.</li>
+  <li><code>credit-result</code> : bandeau « Réponse envoyée au client » (destinataire, date, PDF joint), en rouge avec la marche à suivre si l'envoi a échoué ; le bouton devient « Renvoyer la réponse au client » une fois la réponse partie.</li>
+  <li><code>credit-result</code>, chiffres clés : un chiffre calculé qui manque est annoncé « Non calculé » (mensualité : « Non calculée », dettes : « Inconnues »), jamais 0 ni une case vide ; une mensualité à 0 est traitée comme non calculée ; libellés lisibles (« Âge du client », « Type de contrat », « Date d'embauche »).</li>
   <li>Icône et titre de l'onglet.</li>
 </ul>
 
@@ -346,7 +419,7 @@
 <h3>Résultats</h3>
 <table>
   <tr><th style="width:18%">Couche</th><th style="width:22%">Résultat</th><th>Ce qui est couvert</th></tr>
-  <tr><td>Service IA (Python)</td><td><span class="ok">142 / 142 passent</span></td>
+  <tr><td>Service IA (Python)</td><td><span class="ok">145 / 145 passent</span></td>
     <td><b>test_agent_regles (18)</b> : taux obligatoire (absent, illisible, en pourcentage), dette inconnue jamais traitée comme zéro, DTI, capacité, simulations, décision « À COMPLÉTER », cohérence LLM/règles, clé de cache.<br>
     <b>test_dettes_releve (12)</b> : relevé natif et scanné, prêt soldé, salaire exclu, relevé illisible, absence de relevé.<br>
     <b>test_dossier_texte (9)</b> : répartition du budget, début et fin conservés, aucun document perdu.<br>
@@ -357,16 +430,31 @@
     <b>test_decoupage_rag (19)</b> : un chunk par opération, en-tête de colonnes répété, sens crédit / débit déduit du solde (et non inventé si le solde ne colle pas), document court non coupé, aucun chunk au-delà de 450 caractères, aucune ligne perdue, coupure au changement de sujet, embeddings en panne sans effet.<br>
     <b>test_recherche_hybride (18)</b> : jetons des montants, BM25 sur montant exact, fusion RRF, retriever hybride (montant exact en tête, couverture des documents, repli sans BM25).<br>
     <b>test_chatbot_memoire (17)</b> : historique inséré dans l'ordre entre le système et la question, 6 derniers messages, troncature, faux message « system » ignoré, CIN et RIB masqués, entrées invalides, détection des relances, chaîne de relances, la recherche suit le sujet de la conversation.</td></tr>
-  <tr><td>Backend (Java)</td><td><span class="ok">32 / 32 passent</span></td>
+  <tr><td>Backend (Java)</td><td><span class="ok">217 / 218 passent</span> (le 218e, <code>DemoApplicationTests</code>, exige une vraie base PostgreSQL)</td>
     <td><b>FichierServiceImplTest (17)</b> : garde 409 sur le CIN, retraitement évité, extraction en échec non enregistrée ; <b>nouveaux (9)</b> : conflit de type enregistré et extraction faite avec le type détecté, verdict incertain sans conflit, type non déclaré complété, panne de classification sans blocage, verrou « type contredit », CIN et type signalés ensemble, confirmation, le scoring voit le vrai type.<br>
     <b>DossierControllerEmailTest (3)</b> : e-mail pour « À COMPLÉTER », sans réglage technique, sans bloc de score.<br>
+    <b>RapportPdfServiceTest (15)</b> : contenu des deux versions (lu dans le PDF généré), rien d'interne chez le client, « à compléter » sans score ni réglage technique, « non calculé » jamais 0, rapport sur plusieurs pages, formats de montants, caractères hors police, exemples consultables.<br>
+    <b>ResultatEmailServiceTest (10)</b> : « Attijari Bank » dans chaque sujet et dans le corps, PDF joint sous un nom lisible, e-mail parti même si le PDF échoue, sans adresse, messagerie en panne, HTML venu de l'IA neutralisé.<br>
+    <b>NotificationDecisionServiceTest (15)</b> : envoi pour chaque décision rendue, pas de doublon, renvoi si la décision change, rien pour une analyse ratée, interrupteur, échec enregistré sans exception, nouvel essai après échec, base en panne.<br>
+    <b>NotificationWiringTest (5)</b> : les services se câblent ensemble, expéditeur, interrupteur actif par défaut et pilotable.<br>
+    <b>DossierControllerRapportTest (11)</b> : l'e-mail part du résultat enregistré (requête falsifiée sans effet), téléchargement du rapport en deux versions, absence de résultat, état de l'envoi dans le résultat. <b>FichierServiceImplTest</b> : 4 tests du déclenchement automatique.<br>
+    <b>AuditServiceTest (17)</b> : acteur lu dans le jeton ou SYSTEME, version des règles et détail conservés, une base en panne n'annule pas l'opération, journal lu dans l'ordre avec des phrases lisibles, entité immuable et aucune méthode de suppression.<br>
+    <b>NotificationValidationTest (29)</b> : un refus attend la validation, liste configurable, pas de remise en attente, valider (journal), décision changée refusée, rien en attente refusé, pas de double envoi, annuler et ne pas ressusciter, nouveau cycle si la décision change, envoi différé, tâche planifiée tolérante aux pannes, envoi manuel, envoi automatique coupé.<br>
+    <b>StatistiquesServiceTest (26)</b> : chaque définition (décisions définitives, taux absents et non à 0, délais, motifs, évolution par jour et par semaine, envois, période bornée, une seule lecture de la base).<br>
+    <b>StatistiquesExcelServiceTest (14)</b> : fichier relu avec POI : quatre feuilles, vrais nombres et vraies dates, filtre et en-tête figé, libellés lisibles, aucun CIN, fichier valide sans donnée.<br>
+    <b>AdminStatistiquesControllerTest (11)</b> : période par défaut, dates invalides, début après la fin, période trop longue, export servi comme fichier Excel, routes d'administration protégées par le rôle ADMIN. <b>DossierControllerRapportTest</b> : valider (200, 409, 404), annuler, journal, journalisation des téléchargements et des changements de statut. <b>FichierServiceImplTest</b> : analyse au journal avec la version des règles, confirmation d'incohérence journalisée.<br>
+    <b>IdentiteClientTest (9)</b> : nom et prénom inversés, casse et accents, noms composés, OCR qui colle un mot, deux personnes différentes, un seul mot en commun, rien à comparer, noms arabes ; <b>FichierServiceImplTest</b> : deux tests de bout en bout (identité inversée sans alerte, autre personne avec alerte).<br>
     <b>DossierControllerFichiersTest (3)</b> : le détail de la classification et sa trace sont transmis à l'écran ; document non classé : valeur nulle ; détail illisible : la liste n'échoue pas.<br>
     <b>ChatbotServiceMemoireTest (9)</b> : historique transmis dans l'ordre, absent ou null donne une liste vide, 6 derniers messages, troncature, rôles inconnus et messages vides écartés, service IA indisponible, contrôleur avec et sans historique.</td></tr>
-  <tr><td>Frontend (Angular)</td><td><span class="ok">57 / 57 passent</span> sur nos fichiers (67 sur 73 au total)</td>
+  <tr><td>Frontend (Angular)</td><td><span class="ok">147 / 147 passent</span> sur nos fichiers (156 sur 162 au total)</td>
     <td><b>pipeline-analyse (23)</b> : règles de verrouillage, dont 6 sur le conflit de type et 8 sur la confirmation de l'agent (étapes 1 et 2 au vert avec mention, relance sans redemander, dossier déjà analysé, CIN et type ensemble, identité manquante et document requis absent non masqués).<br>
     <b>upload-section (17)</b> : verdicts, ligne de résumé (pourcentage pour les règles, similarité pour les embeddings), cascade (règles seules, trois niveaux, LLM en panne), ouverture, fermeture et contenu du popup, CIN lu face au CIN du client, confirmation de l'agent et remise à zéro au changement de dossier.<br>
+    <b>export-button (8)</b> : téléchargement de chaque version, nom de fichier, un seul téléchargement à la fois, sans dossier, erreur 404 et erreur serveur.<br>
+    <b>credit-result</b> : 7 tests sur le bandeau de l'envoi (envoyé, échec, non envoyé, désactivé, aucune notification, date illisible, dossier transmis au bouton d'export).<br>
+    <b>statistiques (48)</b> : période par défaut et préréglages, dates invalides sans requête, tuiles, taux absents, état vide, répartition, échelle ronde, géométrie des colonnes (24 px au plus, 2 px entre segments, bout arrondi seulement en haut, hauteur proportionnelle), regroupement par semaine, infobulle au survol et au clavier, vues en tableau, motifs, envois, rechargement qui garde les chiffres, export.<br>
+    <b>credit-result</b> : 19 tests sur la validation avant envoi (bandeau et boutons, décision lue envoyée, double clic, 409, panne, annulation, envoi différé) et le journal (frise, acteur « Système », journal indisponible).<br>
     <b>chat-assistant (7)</b> : la salutation et les messages d'erreur ne sont pas envoyés comme historique, les deux premiers échanges dans l'ordre, 6 derniers messages, la question en cours jamais dans l'historique.<br>
-    <b>credit-result (4)</b> : affichage complet, cas « à compléter », absence de blocs parasites.<br>
+    <b>credit-result (11)</b> : affichage complet, cas « à compléter », absence de blocs parasites, et 7 tests sur les chiffres clés (libellés lisibles, « non calculé » au lieu de 0, mensualité à 0, dettes connues à 0, aucune case vide).<br>
     <b>credit-analysis-result.model (6)</b> : aucun champ perdu, valeurs par défaut sûres, score 0 conservé.</td></tr>
   <tr><td>Build</td><td><span class="ok">OK</span></td><td><code>ng build</code> passe. Avertissements sur le budget CSS et NG8107, déjà présents.</td></tr>
 </table>
@@ -404,6 +492,17 @@
 </table>
 
 <div class="box warn"><b>Détail de la classification : à savoir.</b> Il n'existe que pour les documents classés avec cette version : un document lu avant n'a pas de détail (le popup l'indique et propose de relancer « Vérifier les documents », qui ne retraite toutefois pas un document déjà lu et extrait : il faut le renvoyer). L'aspect visuel du popup n'a pas été vérifié dans un navigateur : seule sa structure est testée.</div>
+
+<div class="box warn"><b>Réponse automatique : à connaître avant un usage réel.</b>
+<ul>
+  <li><b>Validation humaine</b> : par défaut un refus attend un agent, mais les acceptations, conditionnels et « à compléter » partent seuls. C'est réglable (<code>VALIDATION_REQUISE_POUR</code>, <code>DELAI_ENVOI_MINUTES</code>). La validation est un contrôle de relecture, pas une seconde analyse : le score reste produit par le modèle de langage.</li>
+  <li><b>Statistiques</b> : calculées à la demande en relisant les décisions de la période (instantané pour quelques milliers de dossiers, à précalculer au-delà). Les motifs s'appuient sur les contrôles du résultat enregistré ; un refus sans critère en échec est rangé dans « appréciation de l'analyse ».</li>
+  <li><b>Journal</b> : les dossiers analysés avant cette version n'ont pas d'historique ; il commence à leur prochaine analyse.</li>
+  <li><b>Messagerie</b> : l'envoi suppose que <code>SMTP_USERNAME</code> et <code>SMTP_PASSWORD</code> soient renseignés sur la VM. Sinon l'e-mail échoue et l'agent voit « L'envoi automatique a échoué ».</li>
+  <li><b>Arabe</b> : la police du PDF ne contient pas l'alphabet arabe ; un nom écrit en arabe apparaît avec des « ? ». Le français est entièrement géré.</li>
+  <li><b>Alerte d'identité</b> : elle n'est pas conservée avec le résultat enregistré, donc absente du PDF généré après coup.</li>
+  <li>Le PDF n'est pas stocké : il est régénéré à chaque téléchargement (jamais périmé, pas de donnée personnelle de plus au repos).</li>
+</ul></div>
 
 <h3>Sécurité (à traiter avant tout usage réel)</h3>
 <ul>
@@ -466,6 +565,9 @@
   <tr><td>Comment gérez-vous l'arabe ?</td><td>Deux lectures de la même zone, par un modèle arabe et un modèle latin, fusionnées zone par zone.</td></tr>
   <tr><td>Les données personnelles sont-elles protégées ?</td><td>Le chatbot masque RIB, IBAN et CIN, et les journaux n'affichent plus le texte OCR. Les routes API doivent encore être protégées : c'est notre priorité de sécurité.</td></tr>
   <tr><td>Quelle est la précision ?</td><td>Calculs : déterministes et testés. Classification : 10 documents sur 10 avec les règles sur notre dossier de test, mais ce dossier est écrit par nous, donc le chiffre est optimiste ; sur les embeddings seuls, 3 sur 5. La vraie précision se mesurera avec des documents réels de la banque. Score : celui du LLM, non mesuré pour l'instant.</td></tr>
+  <tr><td>Un refus peut-il partir sans qu'un humain l'ait vu ?</td><td>Non par défaut : un refus attend « Valider et envoyer » de l'agent, qui peut aussi décider de ne pas l'envoyer. La validation porte sur la décision lue : si une nouvelle analyse l'a changée, le serveur refuse. Les autres décisions peuvent partir seules ou après un délai annulable, c'est réglable.</td></tr>
+  <tr><td>Comment prouvez-vous qui a décidé quoi ?</td><td>Un journal d'audit en ajout seul : chaque analyse (décision, score, version des règles, fournisseur d'IA) et chaque étape de la réponse (mise en attente, validation, annulation, envoi, échec) est consignée avec l'agent et l'heure. Aucune route ne permet de le modifier.</td></tr>
+  <tr><td>Que montre le tableau de bord ?</td><td>Taux d'acceptation (éligibles ÷ décisions définitives, avec une version « avec conditions »), répartition des décisions, délais de traitement et d'envoi, motifs de refus, évolution dans le temps et état des envois, avec un export Excel. Les définitions sont affichées à l'écran.</td></tr>
   <tr><td>Comment fonctionne votre RAG ?</td><td>Indexation : découpage structurel et sémantique, embeddings MiniLM multilingue, index FAISS en mémoire plus BM25. Question : recherche hybride (sens plus mots exacts) fusionnée par RRF, au moins 2 passages par document, puis génération par le LLM avec sources citées et identifiants masqués.</td></tr>
   <tr><td>Comment gérez-vous la mémoire du chatbot ?</td><td>Le navigateur renvoie les 6 derniers messages avec chaque question. Le modèle les reçoit comme historique de conversation, et une question de suivi est complétée avec la question précédente pour la recherche, par une règle simple qui n'ajoute aucun appel LLM. L'historique n'est pas cru : rôles filtrés, identifiants masqués, messages tronqués.</td></tr>
   <tr><td>Pourquoi une recherche hybride ?</td><td>Les embeddings comprennent le sens mais pèsent mal les valeurs exactes. Sur « 250,000 », la similarité sémantique n'est que de 0,27, alors que BM25 retrouve immédiatement l'opération. Les deux sont complémentaires.</td></tr>

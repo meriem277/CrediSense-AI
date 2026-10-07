@@ -17,4 +17,7 @@ public interface DossierRepository extends JpaRepository<Dossier, UUID> {
     List<Dossier> findByStatut(String statut);
     List<Dossier> findAllByOrderByStatutAsc();
 
+    /** Nombre de dossiers déposés dans [du, au[ (tableau de bord). */
+    long countByCreatedAtGreaterThanEqualAndCreatedAtLessThan(java.time.LocalDateTime du, java.time.LocalDateTime au);
+
 }

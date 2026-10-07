@@ -89,4 +89,12 @@ describe('mapperResultat', () => {
     expect(mapperResultat({ scoreProvisoire: 1 }).scoreProvisoire).toBe(false);
     expect(mapperResultat({ scoreProvisoire: true }).scoreProvisoire).toBe(true);
   });
+
+  it("conserve l'état de l'envoi de la réponse au client", () => {
+    const notification = { statut: 'ENVOYE', destinataire: 'client@example.com', envoyeAt: '2026-10-07T22:10:05' };
+
+    expect(mapperResultat({ notification }).notification).toEqual(notification);
+    expect(mapperResultat({}).notification).toBeNull();
+    expect(mapperResultat({ notification: null }).notification).toBeNull();
+  });
 });

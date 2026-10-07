@@ -1,6 +1,10 @@
 package com.example.crediSense.controller;
 
 import com.example.crediSense.Service.DossierService;
+import com.example.crediSense.Service.impl.AuditService;
+import com.example.crediSense.Service.impl.NotificationDecisionService;
+import com.example.crediSense.Service.impl.RapportPdfService;
+import com.example.crediSense.Service.impl.ResultatEmailService;
 import com.example.crediSense.entity.Client;
 import com.example.crediSense.entity.Dossier;
 import com.example.crediSense.entity.Fichier;
@@ -42,7 +46,8 @@ class DossierControllerFichiersTest {
         controller = new DossierController(
                 mock(DossierService.class), dossierRepository, mock(AgentRepository.class),
                 mock(DecisionFinaleRepository.class), mock(JsonExtractionRepository.class),
-                mock(JavaMailSender.class));
+                mock(RapportPdfService.class), mock(NotificationDecisionService.class),
+                mock(AuditService.class));
     }
 
     private Fichier fichier(String classificationJson) {

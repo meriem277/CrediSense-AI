@@ -1,0 +1,321 @@
+// Les couleurs sont définies UNE fois, ici, par rôle. Les décisions ont un sens (bon, à surveiller,
+// mauvais) : elles utilisent la palette « statut » ; « à compléter » prend le bleu de la série 1.
+// Aucune de ces couleurs ne porte l'information seule : chaque barre a son libellé et sa valeur,
+// et chaque graphique a sa vue en tableau (le jaune/ambre est sous 3:1 sur fond clair par conception).
+:host {
+  display: block;
+
+  --viz-surface:      #ffffff;
+  --viz-grille:       #e9e8e4;          // hairline, un cran au-dessus de la surface
+  --viz-texte:        #1b1b1a;
+  --viz-texte-2:      #52514e;
+  --viz-texte-3:      #6b6a66;          // texte discret, ≥ 4,5:1 sur fond blanc
+
+  --viz-eligible:     #0ca30c;
+  --viz-conditionnel: #fab219;
+  --viz-refus:        #d03b3b;
+  --viz-acompleter:   #2a78d6;
+  --viz-indetermine:  #8a8985;
+
+  --viz-attention-fond:    #fff7e6;
+  --viz-attention-bord:    #e8a317;
+  --viz-erreur:            #b3261e;
+  --viz-ok:                #0f6e56;
+}
+
+.stats {
+  color: var(--viz-texte);
+  font-size: 14px;
+  line-height: 1.45;
+  padding: 4px 0 40px;
+}
+
+.stats-tete {
+  margin-bottom: 18px;
+
+  h1 { margin: 0; font-size: 24px; font-weight: 700; }
+  .stats-sous-titre { margin: 2px 0 0; color: var(--viz-texte-2); }
+}
+
+// ── Filtres : une ligne ─────────────────────────────────────────────────────
+.stats-filtres {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 20px;
+  margin-bottom: 14px;
+}
+
+.presets, .perso { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.perso label { display: flex; align-items: center; gap: 6px; color: var(--viz-texte-2); font-size: 13px; }
+.perso input {
+  border: 1px solid var(--viz-grille);
+  border-radius: 8px;
+  padding: 6px 8px;
+  font: inherit;
+  color: var(--viz-texte);
+  background: var(--viz-surface);
+}
+
+.preset {
+  border: 1px solid var(--viz-grille);
+  background: var(--viz-surface);
+  color: var(--viz-texte-2);
+  padding: 7px 14px;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+
+  &:hover { background: #f6f5f2; }
+  &.actif { background: #fff4ee; border-color: #f47920; color: #cc5200; font-weight: 600; }
+  &:focus-visible { outline: 2px solid #f47920; outline-offset: 2px; }
+}
+
+.export {
+  margin-left: auto;
+  background: #f47920;
+  color: #fff;
+  border: none;
+  padding: 9px 18px;
+  border-radius: 8px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:hover:not(:disabled) { background: #d96b18; }
+  &:disabled { opacity: 0.55; cursor: default; }
+  &:focus-visible { outline: 2px solid #f47920; outline-offset: 2px; }
+}
+
+.alerte {
+  margin: 0 0 12px;
+  padding: 9px 14px;
+  border-radius: 8px;
+  background: #fdecec;
+  color: var(--viz-erreur);
+  font-size: 13px;
+}
+
+.chargement-initial { color: var(--viz-texte-2); }
+
+// Rechargement : on garde le cadre et les chiffres précédents, estompés (pas de squelette)
+.contenu {
+  transition: opacity 0.15s;
+  &.recharge { opacity: 0.55; pointer-events: none; }
+}
+
+.periode { margin: 0 0 12px; color: var(--viz-texte-2); font-size: 13px; }
+
+.vide { margin: 12px 0; color: var(--viz-texte-2); }
+
+// ── Tuiles de chiffres clés ─────────────────────────────────────────────────
+.tuiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.tuile {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 14px 16px;
+  background: var(--viz-surface);
+  border: 1px solid var(--viz-grille);
+  border-radius: 12px;
+
+  .tuile-libelle { color: var(--viz-texte-2); font-size: 13px; }
+  // chiffres proportionnels : un grand nombre isolé n'a pas de chasse fixe
+  .tuile-valeur  { font-size: 30px; font-weight: 650; line-height: 1.15; }
+  .tuile-detail  { color: var(--viz-texte-3); font-size: 12px; }
+
+  &.tuile-principale .tuile-valeur { font-size: 38px; }
+  &.tuile-attention { background: var(--viz-attention-fond); border-color: var(--viz-attention-bord); }
+}
+
+// ── Cartes de graphique ─────────────────────────────────────────────────────
+.carte {
+  margin: 0 0 18px;
+  padding: 16px 18px 14px;
+  background: var(--viz-surface);
+  border: 1px solid var(--viz-grille);
+  border-radius: 12px;
+
+  figcaption {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    margin-bottom: 12px;
+
+    h2 { margin: 0; font-size: 16px; font-weight: 650; }
+    .carte-aide { color: var(--viz-texte-3); font-size: 12.5px; }
+  }
+}
+
+.muet { color: var(--viz-texte-3); }
+.etiquette { font-size: 12px; margin-left: 4px; }
+
+.pastille {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 8px;
+  flex: 0 0 auto;
+
+  &.carree { border-radius: 2px; margin-right: 6px; }
+}
+
+// ── Barres horizontales : ≤ 24 px, bout arrondi, base carrée ────────────────
+.barres { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+
+.barre-ligne {
+  display: grid;
+  grid-template-columns: minmax(130px, 34%) 1fr 96px;
+  align-items: center;
+  gap: 12px;
+  min-height: 24px;
+
+  &.motif { grid-template-columns: minmax(160px, 42%) 1fr 48px; }
+}
+
+.barre-libelle { display: flex; align-items: center; color: var(--viz-texte); min-width: 0; }
+.barre-piste { display: block; height: 14px; }
+.barre {
+  display: block;
+  height: 14px;
+  max-width: 100%;
+  border-radius: 0 4px 4px 0;
+}
+.barre-valeur { text-align: right; white-space: nowrap; }
+.barre-valeur .muet { margin-left: 6px; }
+
+// ── Légende ─────────────────────────────────────────────────────────────────
+.legende {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin: 0 0 8px;
+  padding: 0;
+  color: var(--viz-texte-2);
+  font-size: 13px;
+
+  strong { color: var(--viz-texte); margin-left: 2px; }
+}
+
+// ── Graphique SVG ───────────────────────────────────────────────────────────
+.graphique {
+  position: relative;
+
+  svg { display: block; width: 100%; height: auto; overflow: visible; }
+
+  .grille line { stroke: var(--viz-grille); stroke-width: 1; }     // trait plein, jamais en pointillés
+  .axe { fill: var(--viz-texte-3); font-size: 10.5px; }
+
+  .colonne path { transition: opacity 0.1s; }
+  // la colonne survolée ressort : les autres s'estompent légèrement
+  svg:has(.colonne.active) .colonne:not(.active) path { opacity: 0.55; }
+
+  .zone { fill: transparent; cursor: default; outline: none; }
+  .zone:focus-visible { fill: rgba(244, 121, 32, 0.08); stroke: #f47920; stroke-width: 1.5; }
+}
+
+.infobulle {
+  position: absolute;
+  top: 8px;
+  transform: translateX(14px);
+  min-width: 150px;
+  padding: 9px 12px;
+  background: var(--viz-surface);
+  border: 1px solid var(--viz-grille);
+  border-radius: 10px;
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.12);
+  font-size: 12.5px;
+  pointer-events: none;
+  z-index: 5;
+
+  &.a-droite { transform: translateX(calc(-100% - 14px)); }
+
+  .infobulle-date { display: block; margin-bottom: 4px; color: var(--viz-texte-2); font-size: 12px; }
+  .infobulle-ligne { display: flex; align-items: center; gap: 7px; padding: 1px 0; }
+  .infobulle-ligne strong, .infobulle-total strong { font-size: 14px; min-width: 16px; text-align: right; }
+  .cle { display: inline-block; width: 12px; height: 3px; border-radius: 2px; }   // trait, pas une boîte
+  .infobulle-total { margin-top: 4px; padding-top: 4px; border-top: 1px solid var(--viz-grille); }
+  .infobulle-total .muet { margin-left: 4px; }
+}
+
+// ── Vue en tableau : le jumeau accessible de chaque graphique ───────────────
+.vue-tableau {
+  margin-top: 10px;
+  font-size: 13px;
+
+  summary { cursor: pointer; color: var(--viz-texte-2); padding: 4px 0; }
+  summary:focus-visible { outline: 2px solid #f47920; outline-offset: 2px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 6px; }
+  th, td { padding: 5px 8px; text-align: right; border-bottom: 1px solid var(--viz-grille); }
+  th:first-child, td:first-child { text-align: left; }
+  thead th { color: var(--viz-texte-2); font-weight: 600; }
+  tbody th { font-weight: 500; }
+}
+
+// ── Délais et envois ────────────────────────────────────────────────────────
+.deux-colonnes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 18px;
+
+  .carte { margin-bottom: 0; }
+}
+
+.mini {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+
+  th, td { padding: 6px 8px; text-align: right; border-bottom: 1px solid var(--viz-grille); }
+  th:first-child { text-align: left; font-weight: 500; }
+  thead th { color: var(--viz-texte-2); font-weight: 600; }
+  .muet { display: block; font-size: 11.5px; }
+}
+
+.note { margin: 10px 0 0; color: var(--viz-texte-2); font-size: 13px; }
+
+.envois {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+
+  li {
+    display: grid;
+    grid-template-columns: 22px 1fr auto;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--viz-grille);
+  }
+  .icone-etat { text-align: center; }
+  // un état qui demande une action n'est jamais signalé par la couleur seule : icône + libellé + chiffre
+  .envoi-ok strong        { color: var(--viz-ok); }
+  .envoi-attention strong { color: #7a5200; }
+  .envoi-erreur strong    { color: var(--viz-erreur); }
+  .envoi-neutre           { color: var(--viz-texte-2); }
+}
+
+.definitions {
+  margin: 20px 0 0;
+  padding: 12px 14px;
+  background: #f8f7f4;
+  border-radius: 10px;
+  color: var(--viz-texte-2);
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+
+@media (max-width: 640px) {
+  .barre-ligne, .barre-ligne.motif { grid-template-columns: 1fr 70px; }
+  .barre-piste { grid-column: 1 / -1; order: 3; }
+  .export { margin-left: 0; }
+}

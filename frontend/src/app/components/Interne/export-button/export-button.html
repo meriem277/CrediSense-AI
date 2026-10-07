@@ -1,4 +1,21 @@
 <div class="export">
-  <span>Exporter le rapport PDF</span>
-  <button>Exporter</button>
+  <div class="export-texte">
+    <span class="export-titre">Rapport PDF de la décision</span>
+    <span class="export-aide">Généré à partir du résultat enregistré. La version client est celle jointe à l'e-mail.</span>
+  </div>
+
+  <div class="export-actions">
+    <button type="button" class="export-agent"
+            (click)="telecharger('agent')"
+            [disabled]="!dossierId || enCours !== null">
+      {{ enCours === 'agent' ? 'Génération…' : 'Rapport complet' }}
+    </button>
+    <button type="button" class="export-client"
+            (click)="telecharger('client')"
+            [disabled]="!dossierId || enCours !== null">
+      {{ enCours === 'client' ? 'Génération…' : 'Version client' }}
+    </button>
+  </div>
+
+  <p class="export-erreur" *ngIf="erreur" role="alert">{{ erreur }}</p>
 </div>

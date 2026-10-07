@@ -176,7 +176,7 @@ public class ChatbotService {
 
         // System prompt court
         String systemPrompt =
-                "Tu es CrediSense, assistant IA pour Attijariwafa Bank. " +
+                "Tu es CrediSense, assistant IA pour Attijari Bank. " +
                         "Réponds uniquement en te basant sur le contexte fourni. " +
                         "Sois concis et professionnel. Réponds en français.";
 

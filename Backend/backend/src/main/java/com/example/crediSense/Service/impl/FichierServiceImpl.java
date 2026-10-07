@@ -38,6 +38,8 @@ public class FichierServiceImpl implements FichierService {
     private final JsonExtractionRepository jsonExtractionRepository;  // ✅ nouveau
     private final Doctrclientservice   doctrclientservice;
     private final RestTemplate         restTemplate;
+    private final NotificationDecisionService notificationDecisionService;   // réponse au client dès la décision
+    private final AuditService         auditService;                          // journal : qui a décidé quoi, quand
 
     private final ObjectMapper objectMapper = new ObjectMapper();     // ✅ nouveau
 
@@ -571,6 +573,7 @@ public class FichierServiceImpl implements FichierService {
     @Override
     public Map analyserEtScorer(String cin, String dossierId, boolean confirmerIncoherence) {
         UUID dossierUUID = UUID.fromString(dossierId);
+        Map<String, Object> notification = null;   // état de l'envoi automatique de la réponse au client
 
         // Lit seulement ce qui ne l'est pas déjà : l'étape « Vérifier » a normalement été faite
         lireEtExtraire(cin, dossierUUID);
@@ -588,6 +591,19 @@ public class FichierServiceImpl implements FichierService {
                 bloque.put("typesIncoherents", incoherents);
                 bloque.put("typesEnConflit",   enConflit);
                 return bloque;
+            }
+        } else {
+            // L'agent poursuit malgré une incohérence : c'est SA décision, elle est inscrite au journal
+            List<String> cinIncoherents = typesCinIncoherents(dossierUUID);
+            List<String> typesConflit   = typesEnConflit(dossierUUID);
+            if (!cinIncoherents.isEmpty() || !typesConflit.isEmpty()) {
+                Map<String, Object> detail = new LinkedHashMap<>();
+                detail.put("cinIncoherent", cinIncoherents);
+                detail.put("typesContredits", typesConflit);
+                detail.put("details", (cinIncoherents.isEmpty() ? "" : "CIN incohérent sur " + cinIncoherents)
+                        + (!cinIncoherents.isEmpty() && !typesConflit.isEmpty() ? " ; " : "")
+                        + (typesConflit.isEmpty() ? "" : "type contredit : " + typesConflit));
+                auditService.enregistrer(dossierUUID, AuditService.INCOHERENCE_CONFIRMEE, null, null, null, detail);
             }
         }
 
@@ -711,6 +727,7 @@ public class FichierServiceImpl implements FichierService {
                                     .findByDossierId(dossierUUID)
                                     .orElse(DecisionFinale.builder().dossier(dossier).build());
 
+                            df.setDecisionLe(java.time.LocalDateTime.now());
                             df.setScoreFinal(toDouble(result.get("eligibilityScore")));
                             df.setDecisionFinale(decision);
                             df.setJustificationGlobale(justification);
@@ -730,6 +747,22 @@ public class FichierServiceImpl implements FichierService {
                             decisionFinaleRepository.save(df);
                             log.info("DecisionFinale sauvegardée — dossier={}, decision={}",
                                     dossierId, decision);
+
+                            // Journal : la décision, son score, la version des règles et l'IA qui l'ont produite
+                            Map<String, Object> detailAnalyse = new LinkedHashMap<>();
+                            detailAnalyse.put("provider", result.get("provider"));
+                            detailAnalyse.put("tauxAnnuelApplique", result.get("tauxAnnuelApplique"));
+                            if (result.get("donneesManquantes") instanceof List<?> manquantes && !manquantes.isEmpty()) {
+                                detailAnalyse.put("donneesManquantes", manquantes);
+                            }
+                            auditService.enregistrer(dossierUUID, AuditService.ANALYSE, decision,
+                                    toDouble(result.get("eligibilityScore")),
+                                    result.get("versionRegles") != null ? result.get("versionRegles").toString() : null,
+                                    detailAnalyse);
+
+                            // La décision est prise : la réponse part chez le client, avec le rapport PDF.
+                            // Ne lève jamais d'exception : un e-mail en échec n'annule pas l'analyse.
+                            notification = notificationDecisionService.notifier(dossier, df, result);
 
                         } catch (Exception e) {
                             log.warn("Erreur sauvegarde DecisionFinale: {}", e.getMessage());
@@ -755,6 +788,7 @@ public class FichierServiceImpl implements FichierService {
 
                     // ✅ Injecte l'alerte d'identité dans le résultat final
                     result.putAll(alerteIdentite);
+                    if (notification != null) result.put("notification", notification);
 
                     return result;
                 }
@@ -809,10 +843,9 @@ public class FichierServiceImpl implements FichierService {
                 return alerte; // pas assez d'info pour comparer, on ne pénalise pas
             }
 
-            boolean nomMatch    = nomAttendu    != null && nomAttendu.contains(nomExtrait);
-            boolean prenomMatch = prenomAttendu != null && prenomAttendu.contains(prenomExtrait);
-
-            if (!nomMatch || !prenomMatch) {
+            // L'ordre nom / prénom ne compte pas : un client enregistré « nom = Meriem, prénom = Rehouma »
+            // et des documents qui disent « Rehouma Meriem » sont la même personne.
+            if (!memeIdentite(nomExtrait, prenomExtrait, nomAttendu, prenomAttendu)) {
                 alerte.put("alerteIdentite", true);
                 alerte.put("messageIdentite", String.format(
                         "Les documents mentionnent \"%s %s\", mais le dossier appartient à \"%s %s\". " +
@@ -830,6 +863,39 @@ public class FichierServiceImpl implements FichierService {
         }
 
         return alerte;
+    }
+
+    /**
+     * Les noms lus dans les documents et ceux du client désignent-ils la même personne ?
+     * Comparaison par MOTS, sans tenir compte de l'ordre (nom et prénom peuvent être inversés
+     * dans la fiche client ou dans le document), des accents ni de la casse. Le plus petit
+     * ensemble de mots doit se retrouver dans l'autre : « Sami Ben Ali » correspond à « Ben Ali Sami »
+     * et à « Sami », mais pas à « Yassine Trabelsi ». S'il n'y a rien à comparer, on ne conclut pas.
+     */
+    static boolean memeIdentite(String nomLu, String prenomLu, String nomClient, String prenomClient) {
+        List<String> lus      = mots(nomLu, prenomLu);
+        List<String> attendus = mots(nomClient, prenomClient);
+        if (lus.isEmpty() || attendus.isEmpty()) return true;
+
+        List<String> petit = lus.size() <= attendus.size() ? lus : attendus;
+        List<String> grand = petit == lus ? attendus : lus;
+        return petit.stream().allMatch(m -> grand.stream().anyMatch(g -> memeMot(m, g)));
+    }
+
+    /** Même mot, ou l'un contient l'autre (noms composés, OCR qui coupe un mot) à partir de 3 lettres. */
+    private static boolean memeMot(String a, String b) {
+        if (a.equals(b)) return true;
+        return Math.min(a.length(), b.length()) >= 3 && (a.contains(b) || b.contains(a));
+    }
+
+    private static List<String> mots(String... parties) {
+        String texte = String.join(" ", java.util.Arrays.stream(parties)
+                .filter(p -> p != null).toList());
+        String sansAccents = java.text.Normalizer.normalize(texte.toLowerCase(), java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "");
+        return java.util.Arrays.stream(sansAccents.split("[^\\p{L}]+"))
+                .filter(m -> m.length() >= 2)
+                .toList();
     }
 
     private String normaliser(String s) {

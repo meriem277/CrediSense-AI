@@ -1,0 +1,266 @@
+<section class="stats" aria-labelledby="stats-titre">
+
+  <header class="stats-tete">
+    <div>
+      <h1 id="stats-titre">Statistiques</h1>
+      <p class="stats-sous-titre">Décisions de crédit, délais de traitement et motifs de refus</p>
+    </div>
+  </header>
+
+  <!-- ── Filtres : une seule ligne, au-dessus de tout ce qu'ils règlent ── -->
+  <div class="stats-filtres" role="group" aria-label="Période">
+    <div class="presets" role="radiogroup" aria-label="Période prédéfinie">
+      <button *ngFor="let p of presets" type="button" class="preset"
+              role="radio" [attr.aria-checked]="preset === p.id"
+              [class.actif]="preset === p.id" (click)="appliquerPreset(p.id)">
+        {{ p.libelle }}
+      </button>
+    </div>
+
+    <div class="perso">
+      <label>Du <input type="date" [(ngModel)]="du" name="du" aria-label="Date de début"></label>
+      <label>au <input type="date" [(ngModel)]="au" name="au" aria-label="Date de fin"></label>
+      <button type="button" class="preset" [class.actif]="preset === 'perso'" (click)="appliquerPersonnalise()">Appliquer</button>
+    </div>
+
+    <button type="button" class="export" (click)="exporter()" [disabled]="exportEnCours || !stats">
+      {{ exportEnCours ? 'Génération…' : 'Exporter en Excel' }}
+    </button>
+  </div>
+
+  <p class="alerte" *ngIf="erreur" role="alert">{{ erreur }}</p>
+  <p class="alerte" *ngIf="erreurExport" role="alert">{{ erreurExport }}</p>
+
+  <p class="chargement-initial" *ngIf="!stats && chargement">Chargement des statistiques…</p>
+
+  <!-- Pendant un rechargement, les chiffres précédents restent là, estompés -->
+  <div *ngIf="stats" class="contenu" [class.recharge]="chargement" [attr.aria-busy]="chargement">
+
+    <p class="periode">
+      Du {{ stats.periode.du | date:'dd/MM/yyyy' }} au {{ stats.periode.au | date:'dd/MM/yyyy' }}
+      ({{ stats.periode.jours }} jours)
+    </p>
+
+    <!-- ── Chiffres clés ── -->
+    <div class="tuiles">
+      <div class="tuile">
+        <span class="tuile-libelle">Dossiers déposés</span>
+        <span class="tuile-valeur">{{ stats.dossiersDeposes }}</span>
+      </div>
+
+      <div class="tuile">
+        <span class="tuile-libelle">Décisions rendues</span>
+        <span class="tuile-valeur">{{ stats.decisionsTotal }}</span>
+        <span class="tuile-detail">dont {{ stats.decisionsDefinitives }} définitives</span>
+      </div>
+
+      <div class="tuile tuile-principale">
+        <span class="tuile-libelle">Taux d'acceptation</span>
+        <span class="tuile-valeur">{{ pourcent(stats.tauxAcceptation) }}</span>
+        <span class="tuile-detail" *ngIf="stats.tauxAcceptation !== null">
+          avec conditions : {{ pourcent(stats.tauxAcceptationAvecConditions) }}
+        </span>
+        <span class="tuile-detail" *ngIf="stats.tauxAcceptation === null">aucune décision définitive</span>
+      </div>
+
+      <div class="tuile">
+        <span class="tuile-libelle">Délai moyen de traitement</span>
+        <span class="tuile-valeur">{{ delai(stats.delaiTraitement.moyenneHeures) }}</span>
+        <span class="tuile-detail" *ngIf="stats.delaiTraitement.echantillon > 0">
+          médiane {{ delai(stats.delaiTraitement.medianeHeures) }} · max {{ delai(stats.delaiTraitement.maxHeures) }}
+        </span>
+      </div>
+
+      <div class="tuile" [class.tuile-attention]="stats.envois.enAttenteValidationTotal > 0">
+        <span class="tuile-libelle">Réponses à valider</span>
+        <span class="tuile-valeur">
+          <span class="icone-etat" *ngIf="stats.envois.enAttenteValidationTotal > 0" aria-hidden="true">⏳</span>
+          {{ stats.envois.enAttenteValidationTotal }}
+        </span>
+        <span class="tuile-detail">
+          {{ stats.envois.enAttenteValidationTotal > 0 ? 'en attente d\'un agent (toutes périodes)' : 'rien en attente' }}
+        </span>
+      </div>
+    </div>
+
+    <p class="vide" *ngIf="!aDesDecisions">
+      Aucune décision rendue sur cette période. Choisissez une période plus large.
+    </p>
+
+    <ng-container *ngIf="aDesDecisions">
+
+      <!-- ── Répartition des décisions ── -->
+      <figure class="carte">
+        <figcaption>
+          <h2>Répartition des décisions</h2>
+          <span class="carte-aide">Part de chaque décision sur la période</span>
+        </figcaption>
+
+        <ul class="barres" role="list">
+          <li *ngFor="let d of repartition" class="barre-ligne">
+            <span class="barre-libelle"><span class="pastille" [style.background]="'var(' + d.variable + ')'"></span>{{ d.libelle }}</span>
+            <span class="barre-piste">
+              <span class="barre" *ngIf="d.nombre > 0" [style.width.%]="d.largeur" [style.background]="'var(' + d.variable + ')'"></span>
+            </span>
+            <span class="barre-valeur"><strong>{{ d.nombre }}</strong> <span class="muet">{{ d.part }}</span></span>
+          </li>
+        </ul>
+      </figure>
+
+      <!-- ── Évolution ── -->
+      <figure class="carte">
+        <figcaption>
+          <h2>Évolution des décisions</h2>
+          <span class="carte-aide">
+            Décisions par {{ stats.granularite === 'SEMAINE' ? 'semaine' : 'jour' }} (date de la dernière décision)
+          </span>
+        </figcaption>
+
+        <ul class="legende" role="list">
+          <li *ngFor="let l of totauxLegende">
+            <span class="pastille carree" [style.background]="'var(' + l.variable + ')'"></span>
+            {{ l.libelle }} <strong>{{ l.nombre }}</strong>
+          </li>
+        </ul>
+
+        <div class="graphique">
+          <svg [attr.viewBox]="'0 0 ' + largeur + ' ' + hauteur" role="img"
+               [attr.aria-label]="'Graphique en colonnes empilées : ' + stats.evolution.length + ' ' + (stats.granularite === 'SEMAINE' ? 'semaines' : 'jours') + ', ' + stats.decisionsTotal + ' décisions au total. Les valeurs sont dans le tableau de données ci-dessous.'">
+
+            <!-- grille et axe : traits pleins, un cran au-dessus de la surface -->
+            <g class="grille">
+              <ng-container *ngFor="let g of graduations">
+                <line [attr.x1]="margeGauche" [attr.x2]="largeur - margeDroite" [attr.y1]="g.y" [attr.y2]="g.y"></line>
+                <text class="axe" [attr.x]="margeGauche - 6" [attr.y]="g.y + 3.5" text-anchor="end">{{ g.valeur }}</text>
+              </ng-container>
+            </g>
+
+            <g *ngFor="let c of colonnes" class="colonne" [class.active]="colonneActive === c">
+              <path *ngFor="let s of c.segments" [attr.d]="s.chemin" [style.fill]="'var(' + s.variable + ')'">
+                <title>{{ s.libelle }} : {{ s.nombre }}</title>
+              </path>
+              <text *ngIf="c.etiquette" class="axe" [attr.x]="c.centre" [attr.y]="hauteurTexteX" text-anchor="middle">{{ c.etiquette }}</text>
+
+              <!-- zone de survol : toute la case, bien plus large que la colonne -->
+              <rect class="zone" [attr.x]="c.x" [attr.y]="0" [attr.width]="c.largeurCase" [attr.height]="base"
+                    tabindex="0" role="img" [attr.aria-label]="c.description"
+                    (pointerenter)="activer(c)" (pointerleave)="desactiver()"
+                    (focus)="activer(c)" (blur)="desactiver()"></rect>
+            </g>
+          </svg>
+
+          <!-- Une seule infobulle, toutes les décisions : la valeur d'abord, le nom ensuite -->
+          <div class="infobulle" *ngIf="colonneActive && infobulle"
+               [style.left.%]="infobulle.gauche" [class.a-droite]="infobulle.aDroite" role="status">
+            <span class="infobulle-date">{{ colonneActive.libelleLong }}</span>
+            <div class="infobulle-ligne" *ngFor="let d of totauxLegende">
+              <span class="cle" [style.background]="'var(' + d.variable + ')'"></span>
+              <strong>{{ valeurDe(colonneActive.point, d.cle) }}</strong>
+              <span class="muet">{{ d.libelle }}</span>
+            </div>
+            <div class="infobulle-total"><strong>{{ colonneActive.point.total }}</strong> <span class="muet">au total</span></div>
+          </div>
+        </div>
+
+        <details class="vue-tableau">
+          <summary>Voir les données</summary>
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">{{ stats.granularite === 'SEMAINE' ? 'Semaine du' : 'Jour' }}</th>
+                <th scope="col" *ngFor="let l of totauxLegende">{{ l.libelle }}</th>
+                <th scope="col">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let p of stats.evolution">
+                <th scope="row">{{ p.date | date:'dd/MM/yyyy' }}</th>
+                <td>{{ p.eligible }}</td><td>{{ p.conditionnel }}</td><td>{{ p.refus }}</td><td>{{ p.aCompleter }}</td>
+                <td><strong>{{ p.total }}</strong></td>
+              </tr>
+            </tbody>
+          </table>
+        </details>
+      </figure>
+
+      <!-- ── Motifs ── -->
+      <figure class="carte">
+        <figcaption>
+          <h2>Motifs des refus et des dossiers à compléter</h2>
+          <span class="carte-aide">Critères réglementaires en échec, ou informations manquantes</span>
+        </figcaption>
+
+        <p class="vide" *ngIf="motifsPrincipaux.length === 0">Aucun motif à signaler sur cette période.</p>
+
+        <ul class="barres" role="list" *ngIf="motifsPrincipaux.length > 0">
+          <li *ngFor="let m of motifsPrincipaux" class="barre-ligne motif">
+            <span class="barre-libelle">
+              <span class="pastille" [style.background]="'var(' + m.variable + ')'"></span>
+              <span>{{ m.motif }} <span class="muet etiquette">{{ m.libelleDecision }}</span></span>
+            </span>
+            <span class="barre-piste"><span class="barre" [style.width.%]="m.largeur" [style.background]="'var(' + m.variable + ')'"></span></span>
+            <span class="barre-valeur"><strong>{{ m.nombre }}</strong></span>
+          </li>
+        </ul>
+
+        <details class="vue-tableau" *ngIf="stats.motifs.length > 0">
+          <summary>Voir tous les motifs ({{ stats.motifs.length }})</summary>
+          <table>
+            <thead><tr><th scope="col">Décision</th><th scope="col">Motif</th><th scope="col">Dossiers</th></tr></thead>
+            <tbody>
+              <tr *ngFor="let m of stats.motifs">
+                <td>{{ libelleDe(m.decision) }}</td><td>{{ m.motif }}</td><td><strong>{{ m.nombre }}</strong></td>
+              </tr>
+            </tbody>
+          </table>
+        </details>
+      </figure>
+
+      <div class="deux-colonnes">
+
+        <!-- ── Délais ── -->
+        <figure class="carte">
+          <figcaption><h2>Délais</h2><span class="carte-aide">En heures, jours au-delà de 48 h</span></figcaption>
+          <table class="mini">
+            <thead>
+              <tr><th scope="col"></th><th scope="col">Moyenne</th><th scope="col">Médiane</th><th scope="col">Maximum</th><th scope="col">Dossiers</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row">Traitement <span class="muet">dépôt → décision</span></th>
+                <td>{{ delai(stats.delaiTraitement.moyenneHeures) }}</td><td>{{ delai(stats.delaiTraitement.medianeHeures) }}</td>
+                <td>{{ delai(stats.delaiTraitement.maxHeures) }}</td><td>{{ stats.delaiTraitement.echantillon }}</td>
+              </tr>
+              <tr>
+                <th scope="row">Envoi <span class="muet">décision → réponse au client</span></th>
+                <td>{{ delai(stats.delaiEnvoi.moyenneHeures) }}</td><td>{{ delai(stats.delaiEnvoi.medianeHeures) }}</td>
+                <td>{{ delai(stats.delaiEnvoi.maxHeures) }}</td><td>{{ stats.delaiEnvoi.echantillon }}</td>
+              </tr>
+            </tbody>
+          </table>
+          <p class="note" *ngIf="stats.montantMoyenDemande !== null">Montant moyen demandé : <strong>{{ montant(stats.montantMoyenDemande) }}</strong></p>
+        </figure>
+
+        <!-- ── Réponses aux clients ── -->
+        <figure class="carte">
+          <figcaption><h2>Réponses aux clients</h2><span class="carte-aide">État des envois sur la période</span></figcaption>
+          <ul class="envois" role="list">
+            <li *ngFor="let e of envois" [ngClass]="'envoi-' + e.gravite">
+              <span class="icone-etat" aria-hidden="true">{{ e.icone }}</span>
+              <span class="envoi-libelle">{{ e.libelle }}</span>
+              <strong>{{ e.nombre }}</strong>
+            </li>
+          </ul>
+        </figure>
+      </div>
+
+      <p class="definitions">
+        <strong>Définitions.</strong> Une décision est « définitive » si elle est éligible, conditionnelle ou un refus ;
+        « à compléter » n'est pas une décision (le dossier attend des pièces) et « indéterminée » est un échec technique.
+        Taux d'acceptation = éligibles ÷ décisions définitives ; avec conditions = (éligibles + conditionnels) ÷ décisions définitives.
+        Délai de traitement = du dépôt du dossier à la décision ; délai d'envoi = de la décision à l'envoi de la réponse
+        (il comprend l'attente de validation).
+      </p>
+    </ng-container>
+  </div>
+</section>

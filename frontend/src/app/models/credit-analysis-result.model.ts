@@ -55,9 +55,41 @@ export interface SimulationDuree {
   isRequested: boolean;
 }
 
+/** État de l'envoi de la réponse au client (automatique dès la décision, ou par le bouton de l'agent). */
+export interface NotificationEnvoi {
+  /** ENVOYE | ECHEC | NON_ENVOYE | EN_ATTENTE_VALIDATION | PROGRAMME | ANNULE | DESACTIVE | AUCUN */
+  statut: string;
+  detail?: string;
+  destinataire?: string | null;
+  /** Date d'envoi, au format ISO. */
+  envoyeAt?: string | null;
+  decision?: string | null;
+  /** Envoi différé : heure prévue (statut PROGRAMME). */
+  programmeA?: string | null;
+  /** AUTO | DELAI | VALIDATION | MANUEL */
+  mode?: string | null;
+  /** Agent qui a validé, annulé ou envoyé ; SYSTEME pour un envoi automatique. */
+  acteur?: string | null;
+}
+
+/** Une ligne du journal d'audit d'un dossier. */
+export interface AuditLigne {
+  id: string;
+  date: string | null;
+  type: string;
+  acteur: string;
+  decision?: string | null;
+  score?: number | null;
+  versionRegles?: string | null;
+  detail?: Record<string, unknown>;
+  /** Phrase lisible, écrite par le serveur. */
+  libelle: string;
+}
+
 export interface CreditAnalysisResult {
   messageIdentite?: string;
   alerteIdentite?: boolean;
+  notification?: NotificationEnvoi | null;
   creditType: string;
   /** A_COMPLETER : des informations indispensables manquent, aucune décision n'est rendue. */
   eligibility: 'ELIGIBLE' | 'REFUS' | 'CONDITIONNEL' | 'A_COMPLETER' | 'INDETERMINE';
@@ -114,6 +146,7 @@ export function mapperResultat(src: any): CreditAnalysisResult {
     donneesManquantes:  s.donneesManquantes || [],
     avertissements:     s.avertissements || [],
     alerteIdentite:     s.alerteIdentite,
+    notification:       s.notification || null,
     messageIdentite:    s.messageIdentite,
     analysePreliminaire: s.analysePreliminaire || undefined,
     rawExplanation:     s.rawExplanation || s.explanation || '',

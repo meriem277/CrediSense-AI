@@ -46,6 +46,8 @@ class FichierServiceImplTest {
     private JsonExtractionRepository jsonExtractionRepository;
     private DossierRepository        dossierRepository;
     private RestTemplate             restTemplate;
+    private NotificationDecisionService notification;
+    private AuditService             audit;
     private FichierServiceImpl       service;
 
     private final UUID dossierId = UUID.randomUUID();
@@ -61,6 +63,8 @@ class FichierServiceImplTest {
         jsonExtractionRepository = mock(JsonExtractionRepository.class);
         dossierRepository        = mock(DossierRepository.class);
         restTemplate             = mock(RestTemplate.class);
+        notification             = mock(NotificationDecisionService.class);
+        audit                    = mock(AuditService.class);
 
         service = new FichierServiceImpl(
                 fichierRepository,
@@ -71,7 +75,9 @@ class FichierServiceImplTest {
                 mock(DecisionFinaleRepository.class),
                 jsonExtractionRepository,
                 null,                    // Doctrclientservice : non utilisé ici
-                restTemplate
+                restTemplate,
+                notification,
+                audit
         );
         ReflectionTestUtils.setField(service, "nlpServiceUrl", "http://ai:8002");
         ReflectionTestUtils.setField(service, "uploadBasePath", dossierTemporaire.toString());
@@ -412,5 +418,162 @@ class FichierServiceImplTest {
 
         assertNull(resultat.get("bloque"));
         verifierScoringAppele(1);
+    }
+
+    // ── Alerte d'identité (nom / prénom) ─────────────────────────────────────
+
+    /** Les noms que le service IA lit dans les documents du dossier. */
+    private void nomsLusDansLesDocuments(String nom, String prenom) {
+        Map<String, Object> extraction = new HashMap<>();
+        extraction.put("statut", "SUCCESS");
+        extraction.put("json_data", Map.of("nomClient", nom, "prenomClient", prenom));
+        when(restTemplate.postForObject(contains("/ai/extract-json"), any(HttpEntity.class), eq(Map.class)))
+                .thenReturn(extraction);
+    }
+
+    private void clientEnregistreSous(String nom, String prenom) {
+        fichier.getDossier().getClient().setNom(nom);
+        fichier.getDossier().getClient().setPrenom(prenom);
+    }
+
+    @Test
+    void nomEtPrenomInverses_neDeclenchentPasDeFausseAlerte() {
+        // fiche client « nom = meriem, prénom = rehouma » ; documents « Rehouma Meriem »
+        clientEnregistreSous("meriem", "rehouma");
+        documentDejaVerifie(CIN_CLIENT);
+        reponseScoring();
+        nomsLusDansLesDocuments("Rehouma", "Meriem");
+
+        Map resultat = service.analyserEtScorer(CIN_CLIENT, dossierId.toString(), false);
+
+        assertEquals(false, resultat.get("alerteIdentite"));
+    }
+
+    @Test
+    void uneAutrePersonne_declencheUneAlerte() {
+        clientEnregistreSous("Rehouma", "Meriem");
+        documentDejaVerifie(CIN_CLIENT);
+        reponseScoring();
+        nomsLusDansLesDocuments("Trabelsi", "Yassine");
+
+        Map resultat = service.analyserEtScorer(CIN_CLIENT, dossierId.toString(), false);
+
+        assertEquals(true, resultat.get("alerteIdentite"));
+        assertTrue(String.valueOf(resultat.get("messageIdentite")).contains("Yassine"));
+    }
+
+    // ── Réponse automatique au client dès la décision ────────────────────────
+
+    @Test
+    void la_decision_est_notifiee_au_client_des_qu_elle_est_prise() {
+        documentDejaVerifie(CIN_CLIENT);
+        reponseScoring();
+        Map<String, Object> etatEnvoi = Map.of("statut", "ENVOYE", "destinataire", "client@example.com");
+        when(notification.notifier(any(), any(), any())).thenReturn(etatEnvoi);
+
+        Map resultat = service.analyserEtScorer(CIN_CLIENT, dossierId.toString(), false);
+
+        verify(notification, times(1)).notifier(
+                any(Dossier.class), any(com.example.crediSense.entity.DecisionFinale.class), any());
+        assertEquals(etatEnvoi, resultat.get("notification"));      // l'écran de l'agent le voit tout de suite
+        assertEquals("ELIGIBLE", resultat.get("eligibility"));
+    }
+
+    @Test
+    void l_analyse_bloquee_n_ecrit_pas_au_client() {
+        documentDejaVerifie("22222222");   // CIN incohérent, pas de confirmation
+
+        Map resultat = service.analyserEtScorer(CIN_CLIENT, dossierId.toString(), false);
+
+        assertEquals("CIN_INCOHERENT", resultat.get("bloque"));
+        verify(notification, never()).notifier(any(), any(), any());
+    }
+
+    @Test
+    void une_notification_qui_plante_ne_fait_pas_echouer_l_analyse() {
+        documentDejaVerifie(CIN_CLIENT);
+        reponseScoring();
+        when(notification.notifier(any(), any(), any())).thenThrow(new RuntimeException("messagerie en panne"));
+
+        Map resultat = assertDoesNotThrow(() -> service.analyserEtScorer(CIN_CLIENT, dossierId.toString(), false));
+
+        assertEquals("ELIGIBLE", resultat.get("eligibility"));      // la décision est quand même rendue
+    }
+
+    @Test
+    void le_resultat_sans_notification_reste_valide() {
+        documentDejaVerifie(CIN_CLIENT);
+        reponseScoring();
+        when(notification.notifier(any(), any(), any())).thenReturn(null);   // rien à signaler
+
+        Map resultat = service.analyserEtScorer(CIN_CLIENT, dossierId.toString(), false);
+
+        assertFalse(resultat.containsKey("notification"));
+    }
+
+    // ── Journal d'audit de l'analyse ─────────────────────────────────────────
+
+    @Test
+    void l_analyse_est_inscrite_au_journal_avec_la_decision_le_score_et_la_version_des_regles() {
+        documentDejaVerifie(CIN_CLIENT);
+        Map<String, Object> score = new HashMap<>();
+        score.put("eligibility", "ELIGIBLE");
+        score.put("eligibilityScore", 75);
+        score.put("versionRegles", "2026-10-a");
+        score.put("provider", "groq");
+        score.put("tauxAnnuelApplique", 0.10);
+        when(restTemplate.postForObject(contains("/ai/score/consommation"), any(HttpEntity.class), eq(Map.class)))
+                .thenReturn(score);
+
+        service.analyserEtScorer(CIN_CLIENT, dossierId.toString(), false);
+
+        verify(audit).enregistrer(eq(dossierId), eq("ANALYSE"), eq("ELIGIBLE"), eq(75.0), eq("2026-10-a"),
+                argThat(d -> "groq".equals(d.get("provider")) && Double.valueOf(0.10).equals(d.get("tauxAnnuelApplique"))));
+    }
+
+    @Test
+    void les_donnees_manquantes_sont_gardees_dans_le_journal() {
+        documentDejaVerifie(CIN_CLIENT);
+        Map<String, Object> score = new HashMap<>();
+        score.put("eligibility", "A_COMPLETER");
+        score.put("eligibilityScore", 59);
+        score.put("donneesManquantes", List.of("Dettes existantes — relevé bancaire"));
+        when(restTemplate.postForObject(contains("/ai/score/consommation"), any(HttpEntity.class), eq(Map.class)))
+                .thenReturn(score);
+
+        service.analyserEtScorer(CIN_CLIENT, dossierId.toString(), false);
+
+        verify(audit).enregistrer(eq(dossierId), eq("ANALYSE"), eq("A_COMPLETER"), eq(59.0), isNull(),
+                argThat(d -> d.get("donneesManquantes") != null));
+    }
+
+    @Test
+    void poursuivre_malgre_une_incoherence_est_inscrit_au_journal() {
+        documentDejaVerifie("22222222");          // CIN incohérent
+        reponseScoring();
+
+        service.analyserEtScorer(CIN_CLIENT, dossierId.toString(), true);
+
+        verify(audit).enregistrer(eq(dossierId), eq("INCOHERENCE_CONFIRMEE"), isNull(), isNull(), isNull(),
+                argThat(d -> String.valueOf(d.get("details")).contains("CIN incohérent")));
+    }
+
+    @Test
+    void sans_incoherence_aucune_confirmation_n_est_inscrite() {
+        documentDejaVerifie(CIN_CLIENT);
+        reponseScoring();
+
+        service.analyserEtScorer(CIN_CLIENT, dossierId.toString(), true);
+
+        verify(audit, never()).enregistrer(any(), eq("INCOHERENCE_CONFIRMEE"), any(), any(), any(), any());
+    }
+
+    @Test
+    void une_analyse_bloquee_n_ecrit_rien_au_journal() {
+        documentDejaVerifie("22222222");
+
+        service.analyserEtScorer(CIN_CLIENT, dossierId.toString(), false);
+
+        verifyNoInteractions(audit);
     }
 }

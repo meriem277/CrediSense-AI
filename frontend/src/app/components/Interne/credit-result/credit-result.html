@@ -34,7 +34,7 @@
     <div class="cr-type">{{ result.creditType }}</div>
 
     <div class="cr-header-actions">
-      <button class="cr-send-btn"
+      <button class="cr-send-btn" *ngIf="!reponseEnAttente"
               [class.sent]="emailSent"
               [disabled]="sendingEmail || emailSent"
               (click)="sendResultToClient()">
@@ -49,7 +49,7 @@
              fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
           <polyline points="20 6 9 17 4 12"/>
         </svg>
-        <span>{{ sendingEmail ? 'Envoi...' : (emailSent ? 'Envoyé' : 'Envoyer la réponse au client') }}</span>
+        <span>{{ sendingEmail ? 'Envoi...' : (emailSent ? 'Envoyé' : (reponseDejaEnvoyee ? 'Renvoyer la réponse au client' : 'Envoyer la réponse au client')) }}</span>
       </button>
     </div>
   </div>
@@ -80,6 +80,23 @@
       <strong>Analyse possiblement incomplète</strong>
       <span *ngFor="let a of result.avertissements">{{ a }}</span>
     </div>
+  </div>
+
+  <!-- Réponse au client : envoyée automatiquement dès que la décision est prise -->
+  <div class="cr-notification" *ngIf="result.notification" [ngClass]="'cr-notification-' + classeNotification" role="status">
+    <strong>{{ titreNotification }}</strong>
+    <span>{{ detailNotification }}</span>
+
+    <!-- Une réponse en attente ne part que sur décision d'un agent -->
+    <div class="cr-validation" *ngIf="reponseEnAttente">
+      <button type="button" class="cr-valider" (click)="validerEnvoi()" [disabled]="validationEnCours">
+        {{ validationEnCours ? 'Envoi…' : (enAttenteValidation ? 'Valider et envoyer' : 'Envoyer maintenant') }}
+      </button>
+      <button type="button" class="cr-annuler" (click)="annulerEnvoi()" [disabled]="validationEnCours">
+        {{ enAttenteValidation ? 'Ne pas envoyer' : 'Annuler l\'envoi' }}
+      </button>
+    </div>
+    <span class="cr-validation-erreur" *ngIf="erreurValidation" role="alert">{{ erreurValidation }}</span>
   </div>
 
   <!-- Message erreur envoi -->
@@ -116,11 +133,9 @@
 
   <!-- ── Métriques financières ── -->
   <div class="cr-metrics">
-    <div class="cr-metric" *ngFor="let m of result.financialMetrics | keyvalue">
-      <div *ngIf="m.value !== null && m.value !== undefined">
-        <div class="cr-metric-key">{{ formatMetricKey(m.key) }}</div>
-        <div class="cr-metric-val">{{ formatValue(m.key, m.value) }}</div>
-      </div>
+    <div class="cr-metric" *ngFor="let m of metriquesAffichees" [class.cr-metric-manquante]="m.manquante">
+      <div class="cr-metric-key">{{ m.libelle }}</div>
+      <div class="cr-metric-val">{{ m.valeur }}</div>
     </div>
   </div>
 
@@ -308,9 +323,22 @@
     </div>
   </div>
 
+  <!-- ── Journal du dossier : qui a décidé quoi, quand, avec quelles règles ── -->
+  <details class="cr-journal" *ngIf="journal.length > 0">
+    <summary>Journal du dossier ({{ journal.length }})</summary>
+    <ol>
+      <li *ngFor="let e of journal">
+        <time class="cr-journal-date">{{ dateJournal(e.date) }}</time>
+        <span class="cr-journal-acteur">{{ acteurLisible(e.acteur) }}</span>
+        <span class="cr-journal-libelle">{{ e.libelle }}</span>
+        <span class="cr-journal-version" *ngIf="e.versionRegles">règles {{ e.versionRegles }}</span>
+      </li>
+    </ol>
+  </details>
+
   <!-- ── Export PDF ── -->
   <div class="cr-export-footer">
-    <app-export-button></app-export-button>
+    <app-export-button [dossierId]="dossierId"></app-export-button>
   </div>
 
 </div>

@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy, OnChanges, SimpleChanges, ChangeDetectorR
 import { CommonModule }                  from '@angular/common';
 import { HttpClient }                    from '@angular/common/http';
 import { Subscription, combineLatest }   from 'rxjs';
-import { CreditAnalysisResult, mapperResultat } from '../../../models/credit-analysis-result.model';
+import { AuditLigne, CreditAnalysisResult, mapperResultat } from '../../../models/credit-analysis-result.model';
 import { CreditStateService }            from '../../../services/credit-state.service';
 import { environment }                   from '../../../../environments/environment';
 import { ExportButton } from '../export-button/export-button';
@@ -21,6 +21,11 @@ export class CreditResult implements OnInit, OnDestroy, OnChanges {
   result:  CreditAnalysisResult | null = null;
   loading  = false;
   private subs = new Subscription();
+
+  // ── Validation de la réponse avant envoi, et journal du dossier ──
+  validationEnCours = false;
+  erreurValidation = '';
+  journal: AuditLigne[] = [];
 
   // ── Envoi du résultat au client ──
   sendingEmail = false;
@@ -45,6 +50,8 @@ export class CreditResult implements OnInit, OnDestroy, OnChanges {
         if (result) {
           this.emailSent = false;
           this.sendEmailError = '';
+          this.erreurValidation = '';
+          this.chargerJournal();
         }
         this.cdr.detectChanges();
       })
@@ -114,6 +121,41 @@ export class CreditResult implements OnInit, OnDestroy, OnChanges {
     return ({ 'OK': 'Conforme', 'ATTENTION': 'Attention', 'KO': 'Non conforme', 'A_VERIFIER': 'À vérifier' } as Record<string, string>)[statut] ?? statut;
   }
 
+  /** Chiffres calculés par le moteur : s'ils manquent, on le dit (jamais « 0 », jamais une case vide). */
+  private readonly CLES_CALCULEES = ['dti', 'monthlypayment', 'existingdebts'];
+
+  /** Un chiffre calculé qui vaut 0 est un chiffre qui n'a pas été calculé : une mensualité nulle n'existe pas. */
+  private estManquante(cle: string, valeur: any): boolean {
+    if (valeur === null || valeur === undefined) return true;
+    const k = cle.toLowerCase();
+    return (k === 'monthlypayment' || k === 'dti') && Number(valeur) === 0;
+  }
+
+  private valeurNonCalculee(cle: string): string {
+    const k = cle.toLowerCase();
+    if (k === 'monthlypayment') return 'Non calculée';
+    if (k === 'existingdebts')  return 'Inconnues';
+    return 'Non calculé';
+  }
+
+  /**
+   * Cases des chiffres clés. Une valeur inconnue n'est jamais affichée comme 0 ni comme une case
+   * vide : les chiffres calculés (mensualité, taux d'endettement, dettes) disent « Non calculé »,
+   * les autres champs absents ne sont simplement pas affichés.
+   */
+  get metriquesAffichees(): { cle: string; libelle: string; valeur: string; manquante: boolean }[] {
+    const metriques = (this.result?.financialMetrics ?? {}) as Record<string, any>;
+    return Object.entries(metriques)
+      .map(([cle, valeur]) => ({ cle, valeur, manquante: this.estManquante(cle, valeur) }))
+      .filter(m => !m.manquante || this.CLES_CALCULEES.includes(m.cle.toLowerCase()))
+      .map(m => ({
+        cle: m.cle,
+        libelle: this.formatMetricKey(m.cle),
+        manquante: m.manquante,
+        valeur: m.manquante ? this.valeurNonCalculee(m.cle) : this.formatValue(m.cle, m.valeur),
+      }));
+  }
+
   /** Montant en dinars avec 3 décimales (millimes) : 2100 -> « 2 100,000 DT ». */
   formatDT(valeur: number | null | undefined): string {
     if (valeur === null || valeur === undefined || isNaN(Number(valeur))) return '—';
@@ -149,8 +191,12 @@ export class CreditResult implements OnInit, OnDestroy, OnChanges {
       'employmenttype': 'Type d\'emploi',
       'employmentyears': 'Ancienneté',
       'creditpurpose': 'Objet du crédit',
-      'applicableRate': 'Taux applicable',
-      'maxAllowedAmount': 'Montant max autorisé'
+      'applicablerate': 'Taux applicable',
+      'maxallowedamount': 'Montant max autorisé',
+      'clientage': 'Âge du client',
+      'contracttype': 'Type de contrat',
+      'employmentstartdate': 'Date d\'embauche',
+      'paymentincidents': 'Incidents de paiement'
     };
     if (map[k]) return map[k];
     if (k.includes('dti')) return map['dti'];
@@ -178,6 +224,9 @@ export class CreditResult implements OnInit, OnDestroy, OnChanges {
     if (value === null || value === undefined) return '-';
     const k = (key || '').toString().toLowerCase();
     let num = typeof value === 'number' ? value : parseFloat(value);
+    // Un nombre d'incidents n'est pas un montant (« payment » est dans le nom de la clé)
+    if (k === 'paymentincidents' || k === 'contracttype' || k === 'employmentstartdate') return String(value);
+    if (k === 'clientage' && !isNaN(num)) return `${num} ans`;
     if (k.includes('dti') || k.includes('ltv') || k.includes('rate')) {
       if (isNaN(num)) return String(value);
       return `${Math.round(num * 100) / 100}%`;
@@ -254,6 +303,148 @@ export class CreditResult implements OnInit, OnDestroy, OnChanges {
     if (!p) return null;
     if (typeof p === 'string') return null;
     return p.source ?? p['source'] ?? null;
+  }
+
+  // ── Envoi automatique de la réponse au client ──────────────────────────────
+
+  /** La réponse est déjà partie chez le client (automatiquement ou par l'agent). */
+  get reponseDejaEnvoyee(): boolean {
+    return this.result?.notification?.statut === 'ENVOYE';
+  }
+
+  /** La réponse attend un agent : « Valider et envoyer », ou un envoi différé encore annulable. */
+  get enAttenteValidation(): boolean {
+    return this.result?.notification?.statut === 'EN_ATTENTE_VALIDATION';
+  }
+
+  get envoiProgramme(): boolean {
+    return this.result?.notification?.statut === 'PROGRAMME';
+  }
+
+  get reponseEnAttente(): boolean {
+    return this.enAttenteValidation || this.envoiProgramme;
+  }
+
+  get classeNotification(): 'ok' | 'erreur' | 'attente' | 'info' {
+    const statut = this.result?.notification?.statut;
+    if (statut === 'ENVOYE') return 'ok';
+    if (statut === 'ECHEC') return 'erreur';
+    if (statut === 'EN_ATTENTE_VALIDATION' || statut === 'PROGRAMME') return 'attente';
+    return 'info';
+  }
+
+  get titreNotification(): string {
+    switch (this.result?.notification?.statut) {
+      case 'ENVOYE':     return 'Réponse envoyée au client';
+      case 'ECHEC':      return 'L\'envoi automatique a échoué';
+      case 'EN_ATTENTE_VALIDATION': return 'Réponse en attente de votre validation';
+      case 'PROGRAMME':  return 'Envoi programmé';
+      case 'ANNULE':     return 'Envoi annulé';
+      case 'NON_ENVOYE': return 'Réponse non envoyée';
+      case 'DESACTIVE':  return 'Envoi automatique désactivé';
+      default:           return 'Aucun e-mail envoyé';
+    }
+  }
+
+  get detailNotification(): string {
+    const n = this.result?.notification;
+    if (!n) return '';
+    if (n.statut === 'ENVOYE') {
+      const quand = this.dateLisible(n.envoyeAt);
+      return `E-mail envoyé automatiquement à ${n.destinataire ?? 'le client'}` +
+             `${quand ? ' le ' + quand : ''}, avec le rapport PDF en pièce jointe.`;
+    }
+    if (n.statut === 'ECHEC') {
+      return `${n.detail ?? ''} Utilisez « Envoyer la réponse au client » pour réessayer.`.trim();
+    }
+    if (n.statut === 'EN_ATTENTE_VALIDATION') {
+      const a = n.destinataire ? ` Destinataire : ${n.destinataire}.` : '';
+      return `Le client ne recevra rien tant que vous n'avez pas validé.${a}`;
+    }
+    return n.detail ?? '';
+  }
+
+  // ── Valider et envoyer / ne pas envoyer ────────────────────────────────────
+
+  /** « Valider et envoyer » (ou « Envoyer maintenant » pour un envoi différé). */
+  validerEnvoi(): void {
+    if (!this.result || !this.dossierId || this.validationEnCours || !this.reponseEnAttente) return;
+    this.validationEnCours = true;
+    this.erreurValidation = '';
+
+    // On envoie la décision que l'agent a sous les yeux : si une nouvelle analyse l'a changée, le serveur refuse
+    this.http.post<any>(`${environment.apiUrl}/api/dossiers/${this.dossierId}/reponse/valider`,
+      { decision: this.result.eligibility }
+    ).subscribe({
+      next: (reponse) => this.apresAction(reponse),
+      error: (err) => this.echecAction(err, 'La réponse n\'a pas pu être validée. Veuillez réessayer.'),
+    });
+  }
+
+  /** « Ne pas envoyer » / « Annuler l'envoi » : le client ne recevra rien pour cette décision. */
+  annulerEnvoi(): void {
+    if (!this.result || !this.dossierId || this.validationEnCours || !this.reponseEnAttente) return;
+    this.validationEnCours = true;
+    this.erreurValidation = '';
+
+    this.http.post<any>(`${environment.apiUrl}/api/dossiers/${this.dossierId}/reponse/annuler`, {})
+      .subscribe({
+        next: (reponse) => this.apresAction(reponse),
+        error: (err) => this.echecAction(err, 'L\'envoi n\'a pas pu être annulé. Veuillez réessayer.'),
+      });
+  }
+
+  private apresAction(reponse: any): void {
+    this.validationEnCours = false;
+    if (this.result && reponse?.notification) {
+      this.result = { ...this.result, notification: reponse.notification };
+    }
+    // « success » est faux quand la validation a été prise en compte mais que l'envoi a échoué :
+    // le bandeau rouge l'explique déjà, pas de message de plus
+    this.chargerJournal();
+    this.cdr.detectChanges();
+  }
+
+  private echecAction(err: any, messageParDefaut: string): void {
+    this.validationEnCours = false;
+    this.erreurValidation = err?.status === 409 && err?.error?.error ? err.error.error : messageParDefaut;
+    // La situation a changé (nouvelle analyse, déjà traité) : on relit l'état réel du dossier
+    if (err?.status === 409 && this.dossierId) this.loadStoredResult(this.dossierId);
+    this.cdr.detectChanges();
+  }
+
+  // ── Journal d'audit ────────────────────────────────────────────────────────
+
+  chargerJournal(): void {
+    if (!this.dossierId) return;
+    this.http.get<AuditLigne[]>(`${environment.apiUrl}/api/dossiers/${this.dossierId}/audit`)
+      .subscribe({
+        next: (lignes) => { this.journal = Array.isArray(lignes) ? lignes : []; this.cdr.detectChanges(); },
+        error: () => { /* le journal est un plus : son absence n'empêche pas de travailler */ },
+      });
+  }
+
+  /** « 07/10/2026 22:10 » */
+  dateJournal(iso: string | null | undefined): string {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    return new Intl.DateTimeFormat('fr-FR', {
+      day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+    }).format(d);
+  }
+
+  acteurLisible(acteur: string | null | undefined): string {
+    return !acteur || acteur === 'SYSTEME' ? 'Système' : acteur;
+  }
+
+  private dateLisible(iso: string | null | undefined): string {
+    if (!iso) return '';
+    const date = new Date(iso);
+    if (isNaN(date.getTime())) return '';
+    return new Intl.DateTimeFormat('fr-FR', {
+      day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+    }).format(date);
   }
 
   sendResultToClient(): void {

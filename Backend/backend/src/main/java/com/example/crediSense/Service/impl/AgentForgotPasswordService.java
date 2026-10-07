@@ -51,7 +51,7 @@ public class AgentForgotPasswordService {
                         resetLink + "\n\n" +
                         "Ce lien expire dans 15 minutes.\n\n" +
                         "Si vous n'avez pas fait cette demande, ignorez cet email.\n\n" +
-                        "Attijariwafa Bank — CrediSense"
+                        "Attijari Bank — CrediSense"
         );
         mailSender.send(message);
         log.info("Email reset envoyé à l'agent : {}", email);

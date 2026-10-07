@@ -71,6 +71,22 @@ class TestAgentRegles(unittest.TestCase):
         with patch.dict(os.environ, {"CREDIT_TAUX_ANNUEL": taux}):
             return AgentService().analyser_consommation(texte)
 
+    # ── Traçabilité : version des règles ─────────────────────────────────────
+
+    def test_le_resultat_porte_la_version_des_regles(self):
+        r = self.analyser(DEMANDE + PAIE + RELEVE_SANS_PRET)
+        self.assertEqual(r["versionRegles"], agent_service.RULES_VERSION)
+        self.assertTrue(r["versionRegles"])
+
+    def test_la_version_des_regles_est_aussi_dans_un_resultat_en_echec(self):
+        r = AgentService()._resultat_echec("service indisponible", 0.0)
+        self.assertEqual(r["versionRegles"], agent_service.RULES_VERSION)
+
+    def test_la_version_des_regles_suit_la_decision_a_completer(self):
+        r = self.analyser(DEMANDE + PAIE, taux="")          # dossier incomplet
+        self.assertEqual(r["eligibility"], "A_COMPLETER")
+        self.assertEqual(r["versionRegles"], agent_service.RULES_VERSION)
+
     # ── Lecture du taux ──────────────────────────────────────────────────────
 
     def test_lecture_du_taux(self):
@@ -173,8 +189,14 @@ class TestAgentRegles(unittest.TestCase):
         self.assertNotIn("CREDIT_TAUX_ANNUEL", r["rawExplanation"])
         self.assertNotIn("service IA", r["rawExplanation"])
         self.assertIn("conseiller", r["rawExplanation"])
-        # l'agent, lui, voit bien la cause réelle
-        self.assertIn("CREDIT_TAUX_ANNUEL", " ".join(r["donneesManquantes"]))
+        # l'agent, lui, voit bien la cause réelle, dite sans jargon : pas de nom de variable
+        manquantes = " ".join(r["donneesManquantes"])
+        self.assertIn("Taux d'intérêt annuel", manquantes)
+        self.assertIn("administrateur", manquantes)
+        self.assertNotIn("CREDIT_TAUX_ANNUEL", manquantes)
+        self.assertNotIn("CREDIT_TAUX_ANNUEL", r["calculationNote"])
+        for controle in r["regulatoryChecks"]:
+            self.assertNotIn("CREDIT_TAUX_ANNUEL", controle["explanation"])
 
     def test_un_refus_fonde_reste_un_refus(self):
         r = self.analyser(DEMANDE + PAIE, eligibility="REFUS", score=20)
