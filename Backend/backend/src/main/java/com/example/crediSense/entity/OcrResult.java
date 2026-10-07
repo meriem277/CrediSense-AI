@@ -24,6 +24,10 @@ public class OcrResult {
 
     private String statut;
 
+    // Raison de l'échec quand statut = "FAILED" (format non supporté, image illisible, OCR indisponible…)
+    @Column(columnDefinition = "text")
+    private String erreur;
+
     @CreationTimestamp
     private LocalDateTime createdAt;
 

@@ -126,23 +126,27 @@ public class FichierServiceImpl implements FichierService {
                     );
 
                     if (ocrResponse.getBody() != null) {
-                        Object texte = ocrResponse.getBody().get("texte");
-                        if (texte != null && !texte.toString().isBlank()) {
+                        Map reponseOcr = ocrResponse.getBody();
+                        Object texte = reponseOcr.get("texte");
+                        boolean ocrOk = texte != null && !texte.toString().isBlank()
+                                && !"FAILURE".equals(String.valueOf(reponseOcr.get("statut")));
+
+                        // ❌ Format non supporté, image illisible, aucun texte lu… :
+                        // on garde la raison au lieu d'ignorer le fichier en silence
+                        if (!ocrOk) {
+                            Object erreurIa = reponseOcr.get("erreur");
+                            String raison = erreurIa != null && !erreurIa.toString().isBlank()
+                                    ? erreurIa.toString()
+                                    : "Aucun texte lisible dans le document";
+                            log.warn("OCR sans résultat pour {} : {}", f.getNomOriginal(), raison);
+                            enregistrerOcr(f, null, "FAILED", raison);
+                        }
+
+                        if (ocrOk) {
 
                             // ✅ Sauvegarde dans ocr_results
-                            try {
-                                OcrResult ocrResult = OcrResult.builder()
-                                        .texteBrut(texte.toString())
-                                        .texteNettoye(texte.toString())
-                                        .statut("SUCCESS")
-                                        .fichier(f)
-                                        .build();
-                                ocrResultRepository.save(ocrResult);
-                                log.info("OCR sauvegardé pour fichier {}",
-                                        f.getNomOriginal());
-                            } catch (Exception e) {
-                                log.warn("Erreur sauvegarde OCR: {}", e.getMessage());
-                            }
+                            enregistrerOcr(f, texte.toString(), "SUCCESS", null);
+                            log.info("OCR sauvegardé pour fichier {}", f.getNomOriginal());
 
                             texteComplet.append("=== ")
                                     .append(f.getTypeDocument())
@@ -206,6 +210,8 @@ public class FichierServiceImpl implements FichierService {
                 } catch (Exception e) {
                     log.warn("OCR échoué pour {}: {}", f.getNomOriginal(),
                             e.getMessage());
+                    enregistrerOcr(f, null, "FAILED",
+                            "Service OCR indisponible ou en erreur : " + e.getMessage());
                 }
             }
 
@@ -285,6 +291,25 @@ public class FichierServiceImpl implements FichierService {
         } catch (Exception e) {
             log.error("Erreur analyse complète dossier {}: {}",
                     dossierId, e.getMessage());
+        }
+    }
+
+    /**
+     * Crée ou met à jour le résultat OCR d'un fichier (un seul par fichier).
+     * Réutiliser l'enregistrement existant évite qu'une nouvelle analyse échoue
+     * sur la contrainte d'unicité et laisse un ancien résultat périmé.
+     */
+    private void enregistrerOcr(Fichier f, String texte, String statut, String erreur) {
+        try {
+            OcrResult ocr = ocrResultRepository.findByFichierId(f.getId())
+                    .orElseGet(() -> OcrResult.builder().fichier(f).build());
+            ocr.setTexteBrut(texte);
+            ocr.setTexteNettoye(texte);
+            ocr.setStatut(statut);
+            ocr.setErreur(erreur);
+            ocrResultRepository.save(ocr);
+        } catch (Exception e) {
+            log.warn("Erreur sauvegarde OCR ({}): {}", f.getNomOriginal(), e.getMessage());
         }
     }
 

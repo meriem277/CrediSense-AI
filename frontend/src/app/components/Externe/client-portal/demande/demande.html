@@ -268,7 +268,7 @@
               <span *ngIf="doc.statut === 'uploading'" class="spinner-sm"></span>
               <span *ngIf="doc.statut === 'uploade'">✓ Uploadé</span>
               <span *ngIf="doc.statut === 'erreur'">Réessayer</span>
-              <input type="file" accept=".pdf,.jpg,.jpeg,.png,.docx" style="display:none"
+              <input type="file" accept=".pdf,.jpg,.jpeg,.png" style="display:none"
                      (change)="onFileSelected($event, doc)"
                      [disabled]="doc.statut === 'uploading'"/>
             </label>

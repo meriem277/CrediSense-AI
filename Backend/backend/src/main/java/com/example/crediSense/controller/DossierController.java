@@ -187,6 +187,11 @@ public class DossierController {
         map.put("createdAt",    f.getCreatedAt() != null ? f.getCreatedAt().toString() : "");
         map.put("verifie",      f.getOcrResult() != null
                 && "SUCCESS".equals(f.getOcrResult().getStatut()));
+        // Statut et raison de l'OCR : permet d'afficher « format non supporté », « image illisible »…
+        map.put("ocrStatut",    f.getOcrResult() != null && f.getOcrResult().getStatut() != null
+                ? f.getOcrResult().getStatut() : "");
+        map.put("ocrErreur",    f.getOcrResult() != null && f.getOcrResult().getErreur() != null
+                ? f.getOcrResult().getErreur() : "");
 
         // ✅ jsonData + cinCoherent — mêmes calculs que dans FichierServiceImpl.toResponse()
         map.put("jsonData", null);

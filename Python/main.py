@@ -2,6 +2,7 @@ import logging
 import uvicorn
 import tempfile
 import os
+from pathlib import Path
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from pydantic import BaseModel
 from typing import Optional
@@ -15,6 +16,8 @@ from services.document_classifier_service import DocumentClassifierService  # �
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+MAX_UPLOAD_OCTETS = 25 * 1024 * 1024   # 25 Mo par fichier envoyé à /ocr
 
 app = FastAPI(
     title="CrediSense AI Service",
@@ -146,14 +149,23 @@ async def ocr_upload(
     file:          UploadFile = File(...),
     type_original: str        = Form(default="pdf")
 ):
+    tmp_path = None
     try:
-        pdf_bytes = await file.read()
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-            tmp.write(pdf_bytes)
+        contenu = await file.read()
+        if len(contenu) > MAX_UPLOAD_OCTETS:
+            raise HTTPException(
+                status_code=413,
+                detail=f"Fichier trop volumineux (maximum {MAX_UPLOAD_OCTETS // (1024 * 1024)} Mo)"
+            )
+
+        # Le format réel est détecté par le service OCR à partir du contenu ;
+        # le suffixe ne sert qu'à nommer le fichier temporaire.
+        suffixe = Path(file.filename or "").suffix.lower()[:10] or ".bin"
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffixe) as tmp:
+            tmp.write(contenu)
             tmp_path = tmp.name
 
         result = ocr_service.extraire(tmp_path, type_original)
-        os.unlink(tmp_path)
 
         return {
             "texte":      result["texte"],
@@ -164,9 +176,14 @@ async def ocr_upload(
             "cas":        result["cas"],
             "duree_ms":   result.get("duree_ms", 0)
         }
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Erreur /ocr : {e}")
         raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if tmp_path and os.path.exists(tmp_path):
+            os.unlink(tmp_path)
 
 @app.post("/ocr/extract")
 def ocr_extract(request: OcrPathRequest):

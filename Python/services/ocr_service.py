@@ -3,8 +3,12 @@
 Service OCR CrediSense — PaddleOCR, fusion arabe + français
 
 Fonctionnement :
+0. Le format est détecté par les premiers octets du fichier (jamais par son nom
+   ni par le type déclaré) : PDF, ou image (JPG, PNG, TIFF, BMP, WebP).
+   Les photos (CIN, fiche de paie prises au téléphone) vont directement à l'étape 2.
+   Tout autre format (Word .docx, HEIC…) est refusé avec un message explicite.
 1. PDF natif (texte sélectionnable)   → extraction directe avec PyMuPDF
-2. PDF scanné (CIN, attestation, …)   → OCR PaddleOCR en FUSION :
+2. PDF scanné ou image (CIN, attestation, …) → OCR PaddleOCR en FUSION :
       a. détection des zones de texte (PP-OCRv5_mobile_det)          — 1 seule fois
       b. lecture de chaque zone par le modèle ARABE
          (arabic_PP-OCRv5_mobile_rec)
@@ -54,6 +58,13 @@ logger = logging.getLogger(__name__)
 SEUIL_TEXTE_NATIF     = 50     # chars minimum pour considérer un PDF comme natif
 CACHE_SIZE            = 128    # nombre de résultats gardés en cache
 DPI                   = 300    # résolution de conversion PDF scanné → image
+MAX_COTE_IMAGE        = 4000   # px : une photo plus grande est réduite (A4 à 300 dpi ≈ 3500 px)
+
+MESSAGE_FORMAT_NON_SUPPORTE = (
+    "Format de fichier non supporté. Formats acceptés : PDF, JPG, PNG "
+    "(TIFF, BMP et WebP aussi). Un document Word (.docx) doit d'abord être "
+    "converti en PDF ; une photo HEIC doit être enregistrée en JPG."
+)
 SEUIL_CONFIANCE_MIN   = 0.50   # zones en dessous : considérées comme du bruit
 SEUIL_LECTURE_LATINE  = 0.80   # zone arabe : la lecture latine n'est ajoutée que
                                # si le modèle latin est sûr de lui (sinon : bruit)
@@ -99,6 +110,37 @@ def est_arabe(texte: str) -> bool:
     arabes = sum(_est_lettre_arabe(c) for c in texte)
     latines = sum(c.isalpha() and not _est_lettre_arabe(c) for c in texte)
     return arabes > latines
+
+
+def detecter_format(donnees: bytes) -> str:
+    """
+    Reconnaît le format réel d'un fichier à ses premiers octets.
+    Renvoie "pdf", "image", "zip" (docx, xlsx… sont des zip) ou "inconnu".
+    """
+    if b"%PDF" in donnees[:1024]:
+        return "pdf"
+    if (donnees.startswith(b"\x89PNG\r\n\x1a\n")            # PNG
+            or donnees.startswith(b"\xff\xd8\xff")            # JPEG
+            or donnees.startswith((b"II*\x00", b"MM\x00*"))   # TIFF
+            or donnees.startswith(b"BM")                      # BMP
+            or (donnees[:4] == b"RIFF" and donnees[8:12] == b"WEBP")):
+        return "image"
+    if donnees.startswith(b"PK\x03\x04"):
+        return "zip"
+    return "inconnu"
+
+
+def limiter_taille(image: np.ndarray, max_cote: int = MAX_COTE_IMAGE) -> np.ndarray:
+    """Réduit une image dont le plus grand côté dépasse `max_cote` px (sinon inchangée)."""
+    import cv2
+
+    hauteur, largeur = image.shape[:2]
+    plus_grand = max(hauteur, largeur)
+    if plus_grand <= max_cote:
+        return image
+    facteur = max_cote / plus_grand
+    return cv2.resize(image, (int(largeur * facteur), int(hauteur * facteur)),
+                      interpolation=cv2.INTER_AREA)
 
 
 def normaliser(texte: str) -> str:
@@ -258,6 +300,8 @@ class OcrService:
 
         `langue` est conservé pour compatibilité avec les anciens appels,
         mais n'est plus utilisé : la fusion lit l'arabe et le français.
+        `type_original` n'est plus utilisé non plus : le format est détecté
+        à partir du contenu du fichier (PDF ou image).
         """
         t0   = time.time()
         path = Path(pdf_path)
@@ -265,19 +309,25 @@ class OcrService:
         if not path.exists():
             return self._erreur(f"Fichier introuvable : {pdf_path}")
 
-        if type_original.lower().strip() != "pdf":
-            return self._erreur(f"Type non supporté : {type_original} (PDF uniquement)")
+        donnees = path.read_bytes()
+        format_ = detecter_format(donnees)
+        if format_ not in ("pdf", "image"):
+            logger.warning("Format refusé — %s (%s, type déclaré=%s)",
+                           path.name, format_, type_original)
+            return self._erreur(MESSAGE_FORMAT_NON_SUPPORTE)
 
         # ── Cache : empreinte SHA-256 du fichier ─────────────────────────────
-        pdf_bytes = path.read_bytes()
-        cle       = hashlib.sha256(pdf_bytes).hexdigest()
-        cached    = self._cache.get(cle)
+        cle    = hashlib.sha256(donnees).hexdigest()
+        cached = self._cache.get(cle)
         if cached:
             logger.info("Cache HIT — %s (%.0fms)", path.name, (time.time() - t0) * 1000)
             return cached
 
         try:
-            result = self._detection_auto(pdf_bytes)
+            if format_ == "pdf":
+                result = self._detection_auto(donnees)
+            else:
+                result = self._ocr_image(donnees)
 
             result["duree_ms"] = round((time.time() - t0) * 1000, 1)
             logger.info("OCR terminé — cas=%s, moteur=%s, %d chars, %.0fms",
@@ -342,8 +392,24 @@ class OcrService:
             raise RuntimeError(
                 "PaddleOCR non disponible — vérifiez l'installation (paddlepaddle, paddleocr)"
             )
+        return self._ocr_images(self._pages_en_images(pdf_bytes), cas="PDF_SCAN")
 
-        images = self._pages_en_images(pdf_bytes)
+    def _ocr_image(self, donnees: bytes) -> dict:
+        """Photo ou scan image (JPG, PNG…) : décodée directement, sans passer par un PDF."""
+        import cv2
+
+        if self._ocr is None:
+            raise RuntimeError(
+                "PaddleOCR non disponible — vérifiez l'installation (paddlepaddle, paddleocr)"
+            )
+        # IMREAD_COLOR : BGR (format attendu par PaddleOCR), orientation EXIF appliquée
+        image = cv2.imdecode(np.frombuffer(donnees, dtype=np.uint8), cv2.IMREAD_COLOR)
+        if image is None:
+            raise ValueError("Image illisible ou corrompue")
+        return self._ocr_images([limiter_taille(image)], cas="IMAGE")
+
+    def _ocr_images(self, images: list, cas: str) -> dict:
+        """OCR PaddleOCR (fusion arabe + latin) d'une liste d'images BGR, une par page."""
         fusion = self._rec_latin is not None
 
         lignes, confidences, nb_ecartees = [], [], 0
@@ -366,7 +432,7 @@ class OcrService:
             "texte":          texte,
             "nb_pages":       len(images),
             "confidence":     round(confidence, 4),
-            "cas":            "PDF_SCAN",
+            "cas":            cas,
             "moteur":         moteur,
             "langue_detectee": ("ar" if est_arabe(texte) else "fr") if texte else None,
             "zones_ecartees": nb_ecartees,

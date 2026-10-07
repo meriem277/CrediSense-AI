@@ -110,6 +110,11 @@ export class UploadSection implements OnChanges {
 
   // ✅ Message affiché au-dessus du fichier — "CIN vérifié et validé", etc.
   getMessageVerification(fichier: any): string {
+    // L'OCR a échoué (format non supporté, image illisible, service indisponible…) :
+    // on affiche la raison plutôt qu'un « en attente » trompeur.
+    if (fichier.ocrStatut === 'FAILED') {
+      return `Lecture impossible : ${fichier.ocrErreur || 'document illisible'}`;
+    }
     if (!this.estVerifie(fichier)) {
       return 'En attente de vérification';
     }
