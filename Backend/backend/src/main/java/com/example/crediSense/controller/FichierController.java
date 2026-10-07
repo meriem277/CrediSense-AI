@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -103,10 +104,53 @@ public class FichierController {
                 .body(resource);
     }
 
-    // ── Analyse dossier ───────────────────────────────────────────────
+    // ── Étape 1 : vérifier les documents (OCR + extraction + cohérence du CIN) ──
+    @PostMapping("/verifier-dossier/{dossierId}")
+    public ResponseEntity<Map<String, Object>> verifierDossier(
+            @PathVariable UUID dossierId) {
+        try {
+            List<Fichier> fichiers = fichierService.getByDossierId(dossierId);
+
+            if (fichiers == null || fichiers.isEmpty()) {
+                return ResponseEntity.ok(Map.of(
+                        "message", "Aucun fichier à vérifier",
+                        "success", false
+                ));
+            }
+
+            String cin = fichiers.get(0).getCin() != null
+                    ? fichiers.get(0).getCin() : "";
+
+            Map resultat = fichierService.verifierDossier(cin, dossierId.toString());
+            int echecs = resultat.get("echecs") instanceof Number n ? n.intValue() : 0;
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success",        true);
+            response.put("total",          fichiers.size());
+            response.put("echecs",         echecs);
+            response.put("cinIncoherents", resultat.get("cinIncoherents"));
+            response.put("message", echecs == 0
+                    ? fichiers.size() + " document(s) vérifié(s)"
+                    : (fichiers.size() - echecs) + "/" + fichiers.size()
+                      + " document(s) vérifié(s) — " + echecs + " non lisible(s)");
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            log.error("Erreur vérification dossier {}: {}", dossierId, e.getMessage());
+            return ResponseEntity.ok(Map.of(
+                    "message", "Erreur : " + e.getMessage(),
+                    "success", false
+            ));
+        }
+    }
+
+    // ── Étape 2 : analyse (indexation + score) ────────────────────────
     @PostMapping("/analyser-dossier/{dossierId}")
     public ResponseEntity<Map<String, Object>> analyserDossier(
-            @PathVariable UUID dossierId) {
+            @PathVariable UUID dossierId,
+            @RequestParam(name = "confirmerIncoherence", defaultValue = "false")
+            boolean confirmerIncoherence) {
         try {
             List<Fichier> fichiers = fichierService.getByDossierId(dossierId);
 
@@ -121,7 +165,20 @@ public class FichierController {
                     ? fichiers.get(0).getCin() : "";
 
             // ✅ Appelle le pipeline et récupère le score
-            Map scoreResult = fichierService.analyserEtScorer(cin, dossierId.toString());
+            Map scoreResult = fichierService.analyserEtScorer(
+                    cin, dossierId.toString(), confirmerIncoherence);
+
+            // CIN incohérent et non confirmé : rien n'a été calculé, l'agent doit décider
+            if (scoreResult != null && "CIN_INCOHERENT".equals(scoreResult.get("bloque"))) {
+                Map<String, Object> bloque = new HashMap<>();
+                bloque.put("success",          false);
+                bloque.put("code",             "CIN_INCOHERENT");
+                bloque.put("typesIncoherents", scoreResult.get("typesIncoherents"));
+                bloque.put("message", "Le numéro de CIN lu ne correspond pas à celui du client "
+                        + "(" + scoreResult.get("typesIncoherents") + "). "
+                        + "Vérifiez les documents, puis confirmez pour poursuivre l'analyse.");
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(bloque);
+            }
 
             Map<String, Object> response = new HashMap<>();
             response.put("message",     fichiers.size() + " fichier(s) analysé(s)");

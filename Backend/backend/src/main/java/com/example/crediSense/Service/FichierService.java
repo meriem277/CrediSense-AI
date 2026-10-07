@@ -20,6 +20,15 @@ public interface FichierService {
 
     List<Fichier> getByDossierId(UUID dossierId);
 
+    /** Étape « Vérifier les documents » : OCR + extraction + cohérence du CIN, sans score. */
+    Map verifierDossier(String cin, String dossierId);
+
     void analyserDossierComplet(String cin, String dossierId);
-    Map analyserEtScorer(String cin, String dossierId);
+
+    /**
+     * Analyse et score le dossier. Si le CIN est incohérent sur un document et que
+     * {@code confirmerIncoherence} est faux, renvoie {"bloque": "CIN_INCOHERENT", ...}
+     * sans calculer de score.
+     */
+    Map analyserEtScorer(String cin, String dossierId, boolean confirmerIncoherence);
 }

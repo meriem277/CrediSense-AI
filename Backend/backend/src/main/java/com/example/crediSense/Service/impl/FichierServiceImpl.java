@@ -92,23 +92,93 @@ public class FichierServiceImpl implements FichierService {
         }
     }
 
+    // ── Étape « Vérifier les documents » ──────────────────────────────
+    /**
+     * Lit (OCR) et extrait chaque document, puis renvoie l'état du dossier : combien de
+     * documents n'ont pas pu être lus, et sur quels types le CIN est incohérent.
+     * Ne calcule aucun score et n'appelle pas le chatbot. Un document déjà lu et extrait
+     * n'est pas retraité : relancer cette étape ne refait que ce qui avait échoué.
+     */
+    @Override
+    public Map verifierDossier(String cin, String dossierId) {
+        UUID dossierUUID = UUID.fromString(dossierId);
+        lireEtExtraire(cin, dossierUUID);
+
+        List<Fichier> fichiers = fichierRepository.findByDossierId(dossierUUID);
+        int nbEchecs = 0;
+        List<String> cinIncoherents = new ArrayList<>();
+
+        for (Fichier f : fichiers) {
+            FichierResponse r = toResponse(f);
+            if (!Boolean.TRUE.equals(r.getVerifie())) nbEchecs++;
+            if (Boolean.FALSE.equals(r.getCinCoherent())) {
+                cinIncoherents.add(f.getTypeDocument() != null ? f.getTypeDocument() : "DOCUMENT");
+            }
+        }
+
+        Map<String, Object> resultat = new HashMap<>();
+        resultat.put("total",          fichiers.size());
+        resultat.put("echecs",         nbEchecs);
+        resultat.put("cinIncoherents", cinIncoherents);
+        return resultat;
+    }
+
     // ── Pipeline complet ──────────────────────────────────────────────
     @Override
     public void analyserDossierComplet(String cin, String dossierId) {
         try {
             UUID dossierUUID = UUID.fromString(dossierId);
+            if (lireEtExtraire(cin, dossierUUID) == 0) {
+                log.warn("Aucun texte extrait pour le dossier {}", dossierId);
+                return;
+            }
+            indexerRag(cin, dossierId, dossierUUID);
+            log.info("Pipeline complet réussi pour dossier {}", dossierId);
+        } catch (Exception e) {
+            log.error("Erreur analyse complète dossier {}: {}", dossierId, e.getMessage());
+        }
+    }
+
+    /** Un document est « vérifié » s'il a un texte OCR ET une extraction non vide. */
+    private boolean dejaVerifie(Fichier f) {
+        boolean ocrOk = ocrResultRepository.findByFichierId(f.getId())
+                .map(o -> "SUCCESS".equals(o.getStatut())
+                        && o.getTexteNettoye() != null && !o.getTexteNettoye().isBlank())
+                .orElse(false);
+        if (!ocrOk) return false;
+
+        List<JsonExtraction> extractions =
+                jsonExtractionRepository.findByFichierIdOrderByCreatedAtDesc(f.getId());
+        if (extractions == null || extractions.isEmpty()) return false;
+
+        String json = extractions.get(0).getJsonData();
+        return json != null && !json.isBlank()
+                && !"{}".equals(json.trim()) && !"null".equals(json.trim());
+    }
+
+    /**
+     * OCR + extraction JSON des documents du dossier qui ne sont pas encore vérifiés.
+     * Renvoie le nombre de documents dont le texte est disponible (lus maintenant ou avant).
+     */
+    private int lireEtExtraire(String cin, UUID dossierUUID) {
+        int nbLus = 0;
+        try {
             List<Fichier> fichiers = fichierRepository.findByDossierId(dossierUUID);
 
             if (fichiers == null || fichiers.isEmpty()) {
-                log.warn("Aucun fichier pour le dossier {}", dossierId);
-                return;
+                log.warn("Aucun fichier pour le dossier {}", dossierUUID);
+                return 0;
             }
-
-            StringBuilder texteComplet = new StringBuilder();
 
             // ── ÉTAPE 1 : OCR ─────────────────────────────────────────
             for (Fichier f : fichiers) {
                 if (f.getCheminPdf() == null) continue;
+
+                // Déjà lu et extrait : ni OCR ni appel LLM en double
+                if (dejaVerifie(f)) {
+                    nbLus++;
+                    continue;
+                }
                 try {
                     Path path = Paths.get(f.getCheminPdf());
 
@@ -158,11 +228,7 @@ public class FichierServiceImpl implements FichierService {
                             enregistrerOcr(f, texte.toString(), "SUCCESS", null);
                             log.info("OCR sauvegardé pour fichier {}", f.getNomOriginal());
 
-                            texteComplet.append("=== ")
-                                    .append(f.getTypeDocument())
-                                    .append(" ===\n")
-                                    .append(texte)
-                                    .append("\n\n");
+                            nbLus++;
 
                             // ── ÉTAPE 2 : Extraction JSON ──────────────
                             try {
@@ -185,7 +251,16 @@ public class FichierServiceImpl implements FichierService {
                                 // ✅ Persistance de l'extraction JSON, liée au fichier —
                                 // c'est cette table que toResponse() relit ensuite pour
                                 // remplir "verifie" et "jsonData" côté frontend.
-                                if (extractResponse != null) {
+                                // Une extraction en échec (LLM saturé, texte inexploitable) n'est PAS
+                                // enregistrée : sinon une extraction vide « validait » le document
+                                // à tort et empêchait de la refaire à la vérification suivante.
+                                if (extractResponse != null
+                                        && !"SUCCESS".equals(String.valueOf(extractResponse.get("statut")))) {
+                                    log.warn("Extraction JSON non aboutie pour {} : {}",
+                                            f.getNomOriginal(), extractResponse.get("erreur"));
+                                }
+                                if (extractResponse != null
+                                        && "SUCCESS".equals(String.valueOf(extractResponse.get("statut")))) {
                                     try {
                                         Object jsonData        = extractResponse.get("json_data");
                                         Object confidenceScore = extractResponse.get("confidence_score");
@@ -225,11 +300,15 @@ public class FichierServiceImpl implements FichierService {
                 }
             }
 
-            if (texteComplet.length() == 0) {
-                log.warn("Aucun texte extrait pour le dossier {}", dossierId);
-                return;
-            }
+        } catch (Exception e) {
+            log.error("Erreur lecture et extraction du dossier {}: {}", dossierUUID, e.getMessage());
+        }
+        return nbLus;
+    }
 
+    /** Indexe les textes OCR du dossier pour le chatbot (recherche dans les documents). */
+    private void indexerRag(String cin, String dossierId, UUID dossierUUID) {
+        {
             // ── ÉTAPE 3 : Indexation RAG ──────────────────────────────
             try {
                 List<String> ocrTextes = new ArrayList<>();
@@ -271,15 +350,6 @@ public class FichierServiceImpl implements FichierService {
 
             // Le score n'est PAS calculé ici : analyserEtScorer() le fait juste après
             // (avec les infos de la demande de crédit) et en enregistre le résultat.
-            // Un score calculé ici était jeté, et coûtait un appel LLM de plus par analyse
-            // (c'est ce qui obligeait à une pause de 3 s pour éviter les limites de débit).
-
-            log.info("Pipeline complet réussi pour dossier {} — {} chars",
-                    dossierId, texteComplet.length());
-
-        } catch (Exception e) {
-            log.error("Erreur analyse complète dossier {}: {}",
-                    dossierId, e.getMessage());
         }
     }
 
@@ -411,12 +481,37 @@ public class FichierServiceImpl implements FichierService {
         return s.replaceAll("[^0-9]", "");
     }
 
+    /** Types de documents dont le CIN lu ne correspond pas à celui du client. */
+    private List<String> typesCinIncoherents(UUID dossierUUID) {
+        return fichierRepository.findByDossierId(dossierUUID).stream()
+                .filter(f -> Boolean.FALSE.equals(toResponse(f).getCinCoherent()))
+                .map(f -> f.getTypeDocument() != null ? f.getTypeDocument() : "DOCUMENT")
+                .toList();
+    }
+
     @Override
-    public Map analyserEtScorer(String cin, String dossierId) {
-        analyserDossierComplet(cin, dossierId);
+    public Map analyserEtScorer(String cin, String dossierId, boolean confirmerIncoherence) {
+        UUID dossierUUID = UUID.fromString(dossierId);
+
+        // Lit seulement ce qui ne l'est pas déjà : l'étape « Vérifier » a normalement été faite
+        lireEtExtraire(cin, dossierUUID);
+
+        // CIN incohérent : pas de score (donc pas d'appel LLM) sans confirmation explicite
+        // de l'agent — c'est lui qui décide, après vérification manuelle, de poursuivre.
+        if (!confirmerIncoherence) {
+            List<String> incoherents = typesCinIncoherents(dossierUUID);
+            if (!incoherents.isEmpty()) {
+                log.warn("Analyse suspendue — CIN incohérent sur {} (dossier {})", incoherents, dossierId);
+                Map<String, Object> bloque = new HashMap<>();
+                bloque.put("bloque",           "CIN_INCOHERENT");
+                bloque.put("typesIncoherents", incoherents);
+                return bloque;
+            }
+        }
+
+        indexerRag(cin, dossierId, dossierUUID);
 
         try {
-            UUID dossierUUID = UUID.fromString(dossierId);
             List<Fichier> fichiers = fichierRepository.findByDossierId(dossierUUID);
 
             StringBuilder texteComplet = new StringBuilder();

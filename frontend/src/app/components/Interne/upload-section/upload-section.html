@@ -7,16 +7,31 @@
     [analyseEnCours]="analyseLoading"
     [analyseTerminee]="analyseTermineeEffective"
     [scoreDisponible]="scoreDisponibleEffective"
-    (etatChange)="peutAnalyser = $event.peutAnalyser"
+    (etatChange)="onEtatPipeline($event)"
   >
   </app-pipeline-analyse>
 
   <!-- Messages -->
+  <div class="analyse-success" *ngIf="verifierSuccess">
+    ✅ {{ verifierSuccess }}
+  </div>
+  <div class="analyse-error" *ngIf="verifierError">
+    ❌ {{ verifierError }}
+  </div>
   <div class="analyse-success" *ngIf="analyseSuccess">
     ✅ {{ analyseSuccess }}
   </div>
   <div class="analyse-error" *ngIf="analyseError">
     ❌ {{ analyseError }}
+  </div>
+
+  <!-- CIN incohérent : l'agent décide de poursuivre ou non -->
+  <div class="analyse-confirmation" *ngIf="confirmationIncoherence">
+    <p>⚠ {{ confirmationIncoherence }}</p>
+    <div class="analyse-confirmation-actions">
+      <button class="secondary" (click)="annulerConfirmation()">Annuler</button>
+      <button class="primary"   (click)="confirmerAnalyse()">Poursuivre malgré l'incohérence</button>
+    </div>
   </div>
 
   <!-- Loading -->
@@ -90,13 +105,28 @@
 
   <!-- Actions -->
   <div class="actions" *ngIf="fichiers.length > 0">
+    <!-- 1. Lire et contrôler les documents (OCR, extraction, cohérence du CIN) -->
     <button class="secondary"
-            (click)="handleAnalyse()"
-            [disabled]="analyseLoading">
+            (click)="handleVerifier()"
+            [disabled]="verifierLoading || analyseLoading">
+      <span *ngIf="verifierLoading" class="spinner-sm"></span>
+      {{ verifierLoading ? 'Vérification en cours...' : 'Vérifier les documents' }}
+    </button>
+
+    <!-- 2. Indexer et scorer : actif seulement quand le pipeline l'autorise -->
+    <button class="secondary"
+            (click)="onClickAnalyser()"
+            [disabled]="analyseLoading || verifierLoading || !analyseAutorisee"
+            [title]="analyseAutorisee ? '' : 'Vérifiez d\'abord les documents (étapes 1 et 2)'">
       <span *ngIf="analyseLoading" class="spinner-sm"></span>
       {{ analyseLoading ? 'Analyse en cours...' : 'Analyser' }}
     </button>
-    <button class="primary" (click)="handleScore()">
+
+    <!-- 3. Afficher le score déjà calculé (ne relance jamais l'analyse) -->
+    <button class="primary"
+            (click)="handleScore()"
+            [disabled]="!scoreDisponibleEffective"
+            [title]="scoreDisponibleEffective ? '' : 'Lancez d\'abord l\'analyse'">
       Score Crédit
     </button>
   </div>

@@ -42,7 +42,18 @@ export class UploadSection implements OnChanges {
   // ✅ Alimenté par loadFichiers() — chaque fichier avec son typeDocument,
   // son jsonData extrait, et cinCoherent, consommés par <app-pipeline-analyse>
   documentsAvecJson: DocumentPipeline[] = [];
-  peutAnalyser = false;
+
+  // Alimentés par le pipeline : les étapes 1 et 2 sont validées / seul le CIN est incohérent
+  peutAnalyser                 = false;
+  peutAnalyserAvecConfirmation = false;
+
+  // Étape « Vérifier les documents »
+  verifierLoading = false;
+  verifierSuccess = '';
+  verifierError   = '';
+
+  // Message affiché quand l'agent doit confirmer pour poursuivre malgré un CIN incohérent
+  confirmationIncoherence: string | null = null;
 
   fichiers: any[] = [];
   loading  = false;
@@ -59,7 +70,21 @@ export class UploadSection implements OnChanges {
       this.analyseDone    = false;
       this.analyseSuccess = '';
       this.analyseError   = '';
+      this.verifierSuccess = '';
+      this.verifierError   = '';
+      this.confirmationIncoherence = null;
     }
+  }
+
+  // ── État reçu du pipeline ──────────────────────────────────────────────────
+  onEtatPipeline(etat: { peutAnalyser: boolean; peutAnalyserAvecConfirmation: boolean }): void {
+    this.peutAnalyser                 = etat.peutAnalyser;
+    this.peutAnalyserAvecConfirmation = etat.peutAnalyserAvecConfirmation;
+  }
+
+  /** Le bouton « Analyser » n'est actif que si le pipeline l'autorise (directement ou après confirmation). */
+  get analyseAutorisee(): boolean {
+    return this.peutAnalyser || this.peutAnalyserAvecConfirmation;
   }
 
   // ✅ Nouveau — un dossier déjà APPROUVE/REFUSE a forcément été analysé et
@@ -104,8 +129,10 @@ export class UploadSection implements OnChanges {
   }
 
   // ✅ Est-ce que ce fichier a été identifié avec succès par le pipeline IA ?
+  // Un document dont le CIN ne correspond pas à celui du client n'est PAS « validé »,
+  // même si l'IA a pu le lire (sinon le badge contredit l'étape « Vérification CIN »).
   estVerifie(fichier: any): boolean {
-    return fichier.verifie === true;
+    return fichier.verifie === true && fichier.cinCoherent !== false;
   }
 
   // ✅ Message affiché au-dessus du fichier — "CIN vérifié et validé", etc.
@@ -114,6 +141,9 @@ export class UploadSection implements OnChanges {
     // on affiche la raison plutôt qu'un « en attente » trompeur.
     if (fichier.ocrStatut === 'FAILED') {
       return `Lecture impossible : ${fichier.ocrErreur || 'document illisible'}`;
+    }
+    if (fichier.cinCoherent === false) {
+      return 'CIN incohérent avec celui du client : vérification manuelle recommandée';
     }
     if (!this.estVerifie(fichier)) {
       return 'En attente de vérification';
@@ -125,16 +155,79 @@ export class UploadSection implements OnChanges {
     return `${libelle} vérifié et validé`;
   }
 
+  // ── Étape 1 : vérifier les documents (lecture, extraction, cohérence du CIN) ─
+  handleVerifier(): void {
+    if (!this.dossierId) return;
+
+    this.verifierLoading = true;
+    this.verifierSuccess = '';
+    this.verifierError   = '';
+    this.analyseSuccess  = '';
+    this.analyseError    = '';
+    this.confirmationIncoherence = null;
+
+    this.http.post<any>(
+      `${environment.apiUrl}/api/fichiers/verifier-dossier/${this.dossierId}`,
+      {}
+    ).subscribe({
+      next: (res) => {
+        this.verifierLoading = false;
+        if (res.success) {
+          this.verifierSuccess = res.message;
+          this.loadFichiers();   // le pipeline se met à jour avec ce qui vient d'être lu
+        } else {
+          this.verifierError = res.message || 'Erreur lors de la vérification des documents.';
+        }
+      },
+      error: (err: any) => {
+        this.verifierLoading = false;
+        this.verifierError = err.error?.message || 'Erreur lors de la vérification des documents.';
+      }
+    });
+  }
+
+  // ── Étape 2 : clic sur « Analyser » ────────────────────────────────────────
+  // Tout est validé : on lance. Seul le CIN est incohérent : on demande d'abord
+  // confirmation à l'agent (il a pu vérifier manuellement et décider de poursuivre).
+  onClickAnalyser(): void {
+    if (this.peutAnalyser) {
+      this.handleAnalyse();
+      return;
+    }
+    if (this.peutAnalyserAvecConfirmation) {
+      const types = this.documentsAvecJson
+        .filter(d => d.cinCoherent === false)
+        .map(d => LABELS_TYPE_DOCUMENT[d.typeDocument] || d.typeDocument)
+        .join(', ');
+      this.confirmationIncoherence =
+        `Le numéro de CIN lu ne correspond pas à celui du client (${types}). ` +
+        `Vérifiez les documents manuellement avant de poursuivre.`;
+    }
+  }
+
+  confirmerAnalyse(): void {
+    this.confirmationIncoherence = null;
+    this.handleAnalyse(true);
+  }
+
+  annulerConfirmation(): void {
+    this.confirmationIncoherence = null;
+  }
+
   // ── Analyser ───────────────────────────────────────────────────────────────
-  handleAnalyse(): void {
+  handleAnalyse(confirmerIncoherence = false): void {
     if (!this.dossierId) return;
 
     this.analyseLoading = true;
     this.analyseSuccess = '';
     this.analyseError   = '';
+    this.verifierSuccess = '';
+    this.verifierError   = '';
+
+    const parametre = confirmerIncoherence ? '?confirmerIncoherence=true' : '';
 
     this.http.post<any>(
-      `${environment.apiUrl}/api/fichiers/analyser-dossier/${this.dossierId}`,
+      `${environment.apiUrl}/api/fichiers/analyser-dossier/${this.dossierId}${parametre}`,
       {}
     ).subscribe({
       next: (res) => {
@@ -162,51 +255,31 @@ export class UploadSection implements OnChanges {
       },
       error: (err: any) => {
         this.analyseLoading = false;
-        this.analyseError   = '❌ ' + (err.error?.message || 'Erreur lors de l\'analyse.');
+
+        // Le serveur a suspendu l'analyse : CIN incohérent non confirmé. On demande
+        // à l'agent de décider, au lieu d'afficher une erreur.
+        if (err.status === 409 && err.error?.code === 'CIN_INCOHERENT') {
+          this.confirmationIncoherence = err.error.message;
+          this.loadFichiers();
+          return;
+        }
+
+        this.analyseError = '❌ ' + (err.error?.message || 'Erreur lors de l\'analyse.');
       }
     });
   }
 
   // ── Score Crédit ───────────────────────────────────────────────────────────
+  // Affiche le score déjà calculé. Ne lance PLUS l'analyse : le bouton est inactif
+  // tant que l'analyse n'a pas été faite (le résultat enregistré est rechargé
+  // par l'écran du résultat à l'ouverture d'un dossier déjà analysé).
   handleScore(): void {
-    if (!this.dossierId) return;
+    if (!this.dossierId || !this.scoreDisponibleEffective) return;
 
     if (this.scoreResult) {
       this._setScore(this.scoreResult);
-      this.creditState.triggerNavigateToScore();
-      return;
     }
-
-    this.analyseLoading = true;
-    this.analyseError   = '';
-    this.analyseSuccess = '';
-
-    this.http.post<any>(
-      `${environment.apiUrl}/api/fichiers/analyser-dossier/${this.dossierId}`,
-      {}
-    ).subscribe({
-      next: (res) => {
-        this.analyseLoading = false;
-
-        if (res.scoreResult && Object.keys(res.scoreResult).length > 0) {
-          this.scoreResult = res.scoreResult;
-          this._setScore(res.scoreResult);
-          this.analyseSuccess = '✅ Analyse terminée';
-          this.analyseDone    = true;
-
-          // ✅ FIX — même raison que dans handleAnalyse()
-          this.loadFichiers();
-
-          this.analysisComplete.emit(); // ✅ rafraîchit la liste
-        }
-
-        this.creditState.triggerNavigateToScore();
-      },
-      error: () => {
-        this.analyseLoading = false;
-        this.creditState.triggerNavigateToScore();
-      }
-    });
+    this.creditState.triggerNavigateToScore();
   }
 
   // ── Helper ─────────────────────────────────────────────────────────────────
@@ -219,6 +292,9 @@ export class UploadSection implements OnChanges {
       risks:            score.risks                                    || [],
       recommendedPlan:  score.recommendedPlan  || score.recommended_plan  || [],
       documentSources:  score.documentSources  || score.document_sources  || [],
+      avertissements:   score.avertissements                               || [],
+      alerteIdentite:   score.alerteIdentite,
+      messageIdentite:  score.messageIdentite,
       rawExplanation:   score.rawExplanation   || score.explanation        || ''
     });
   }

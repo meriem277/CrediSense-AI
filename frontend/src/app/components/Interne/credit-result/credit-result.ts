@@ -79,6 +79,9 @@ export class CreditResult implements OnInit, OnDestroy, OnChanges {
             risks:            data.risks                                     || [],
             recommendedPlan:  data.recommendedPlan  || data.recommended_plan   || [],
             documentSources:  data.documentSources  || data.document_sources   || [],
+            avertissements:   data.avertissements                              || [],
+            alerteIdentite:   data.alerteIdentite,
+            messageIdentite:  data.messageIdentite,
             rawExplanation:   data.rawExplanation   || data.explanation         || ''
           });
         },

@@ -42,18 +42,31 @@ export class PipelineAnalyseComponent implements OnChanges {
   @Input() analyseTerminee = false;
   @Input() scoreDisponible = false;
 
-  // ── Sortie : signale au parent que le bouton "Analyser" peut être activé ──
-  @Output() etatChange = new EventEmitter<{ peutAnalyser: boolean }>();
+  // ── Sortie : ce que le parent peut autoriser ──────────────────────────────
+  //  - peutAnalyser : les étapes 1 et 2 sont validées
+  //  - peutAnalyserAvecConfirmation : seul le CIN est incohérent (tout est lu et les
+  //    documents requis sont là) : l'agent peut poursuivre APRÈS avoir confirmé
+  @Output() etatChange = new EventEmitter<{
+    peutAnalyser: boolean;
+    peutAnalyserAvecConfirmation: boolean;
+  }>();
 
   etapes: EtapePipeline[] = [];
 
+  /** Vrai quand l'étape CIN est en erreur uniquement à cause d'une incohérence de numéro. */
+  private cinIncoherenceSeule = false;
+
   ngOnChanges(_: SimpleChanges): void {
     this.calculerEtapes();
-    this.etatChange.emit({ peutAnalyser: this.peutLancerAnalyse });
+    this.etatChange.emit({
+      peutAnalyser: this.peutLancerAnalyse,
+      peutAnalyserAvecConfirmation: this.peutLancerAvecConfirmation
+    });
   }
 
   // ── Calcul de l'état des 4 étapes ─────────────────────────────────────
   private calculerEtapes(): void {
+    this.cinIncoherenceSeule = false;
     const etapeCin     = this.evaluerEtapeCin();
     const etapeDocs     = this.evaluerEtapeDocuments(etapeCin.statut === 'valide');
     const etapeAnalyse = this.evaluerEtapeAnalyse(etapeDocs.statut === 'valide');
@@ -69,6 +82,17 @@ export class PipelineAnalyseComponent implements OnChanges {
 
     if (!cin) {
       return { id: 'cin', titre: 'Vérification CIN', statut: 'attente', detail: 'En attente du document CIN' };
+    }
+
+    // Document présent mais pas encore lu par l'IA : ce n'est pas une erreur, c'est
+    // l'étape « Vérifier les documents » qui n'a pas encore été lancée
+    if (!cin.jsonData) {
+      return {
+        id: 'cin',
+        titre: 'Vérification CIN',
+        statut: 'attente',
+        detail: 'Documents à vérifier — cliquez sur « Vérifier les documents »'
+      };
     }
 
     const donnees  = cin.jsonData;
@@ -97,6 +121,7 @@ export class PipelineAnalyseComponent implements OnChanges {
     const incoherents = this.documents.filter(d => d.cinCoherent === false);
 
     if (incoherents.length > 0) {
+      this.cinIncoherenceSeule = true;
       const types = incoherents.map(d => d.typeDocument).join(', ');
       return {
         id: 'cin',
@@ -125,8 +150,7 @@ export class PipelineAnalyseComponent implements OnChanges {
       };
     }
 
-    const presents  = TYPES_REQUIS.map(type => this.documents.some(d => d.typeDocument === type));
-    const manquants = TYPES_REQUIS.filter((_, i) => !presents[i]);
+    const manquants = this.typesRequisManquants();
 
     if (manquants.length === 0) {
       return {
@@ -141,8 +165,15 @@ export class PipelineAnalyseComponent implements OnChanges {
       id: 'docs',
       titre: 'Validation des documents',
       statut: 'en_cours',
-      detail: `Manquant : ${manquants.join(', ')}`
+      detail: `Manquant ou non vérifié : ${manquants.join(', ')}`
     };
+  }
+
+  /** Types requis absents, ou présents mais pas encore lus par l'IA (pas de jsonData). */
+  private typesRequisManquants(): string[] {
+    return TYPES_REQUIS.filter(type =>
+      !this.documents.some(d => d.typeDocument === type && !!d.jsonData)
+    );
   }
 
   // ── Étape 3 : analyse (OCR + extraction + RAG + agent) ────────────────
@@ -176,5 +207,13 @@ export class PipelineAnalyseComponent implements OnChanges {
   get peutLancerAnalyse(): boolean {
     const docsEtape = this.etapes.find(e => e.id === 'docs');
     return docsEtape?.statut === 'valide' && !this.analyseEnCours && !this.analyseTerminee;
+  }
+
+  // ── Seul le CIN est incohérent : l'agent peut poursuivre en confirmant ───
+  get peutLancerAvecConfirmation(): boolean {
+    return this.cinIncoherenceSeule
+      && this.typesRequisManquants().length === 0
+      && !this.analyseEnCours
+      && !this.analyseTerminee;
   }
 }
