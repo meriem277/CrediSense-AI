@@ -5,6 +5,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -32,16 +34,23 @@ public class ChatbotController {
         String reponse = chatbotService.poserQuestion(
                 request.cin(),
                 dossierId,
-                request.question()
+                request.question(),
+                request.historique()
         );
 
         return ResponseEntity.ok(new ChatbotResponse(reponse));
     }
 
+    /**
+     * `historique` : les derniers messages de la conversation, du plus ancien au plus récent,
+     * sans la question en cours : [{"role": "user" | "assistant", "content": "..."}].
+     * Facultatif : sans lui, chaque question est traitée seule (comportement d'avant).
+     */
     public record ChatbotRequest(
             String cin,
             String dossierId,
-            String question
+            String question,
+            List<Map<String, String>> historique
     ) {}
 
     public record ChatbotResponse(

@@ -68,6 +68,7 @@ class ChatRequest(BaseModel):
     cin:        str            = ""
     json_data:  Optional[dict] = None
     ocr_textes: Optional[list] = None
+    historique: Optional[list] = None   # derniers messages [{"role": "user|assistant", "content": "..."}]
 
 class IndexRequest(BaseModel):
     dossier_id: str
@@ -252,7 +253,8 @@ def poser_question(request: ChatRequest):
             dossier_id=request.dossier_id,
             cin=request.cin,
             json_data=request.json_data,
-            ocr_textes=request.ocr_textes
+            ocr_textes=request.ocr_textes,
+            historique=request.historique
         )
     except Exception as e:
         logger.error(f"Erreur /ai/chat : {e}")

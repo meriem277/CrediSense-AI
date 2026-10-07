@@ -7,6 +7,7 @@
     [analyseEnCours]="analyseLoading"
     [analyseTerminee]="analyseTermineeEffective"
     [scoreDisponible]="scoreDisponibleEffective"
+    [incoherenceConfirmee]="incoherenceConfirmee"
     (etatChange)="onEtatPipeline($event)"
   >
   </app-pipeline-analyse>
@@ -85,9 +86,17 @@
           <span class="fichier-nom">{{ f.nomOriginal }}</span>
           <span class="fichier-type">{{ f.typeDocument }}</span>
           <span class="fichier-date">{{ f.createdAt | slice:0:10 }}</span>
+          <!-- Ce que la classification a trouvé, visible sans ouvrir le détail -->
+          <span class="fichier-classif" [ngClass]="'classif-' + verdictClassification(f).code">
+            {{ resumeClassification(f) }}
+          </span>
         </div>
 
         <div class="fichier-actions">
+          <button type="button" class="btn-detail" (click)="ouvrirDetail(f)"
+                  title="Voir comment le type de ce document a été déterminé">
+            Détail de la classification
+          </button>
           <a [href]="getFileUrl(f.cheminPdf)" target="_blank"
              class="btn-voir" *ngIf="f.cheminPdf">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
@@ -129,5 +138,153 @@
             [title]="scoreDisponibleEffective ? '' : 'Lancez d\'abord l\'analyse'">
       Score Crédit
     </button>
+  </div>
+
+  <!-- Popup : comment le type de ce document a été déterminé -->
+  <div class="modal-overlay" *ngIf="fichierDetail" (click)="fermerDetail()">
+    <div class="modal-classif" role="dialog" aria-modal="true" aria-labelledby="modal-classif-titre"
+         (click)="$event.stopPropagation()">
+
+      <div class="modal-entete">
+        <div>
+          <h4 id="modal-classif-titre">Détail de la classification</h4>
+          <span class="modal-sous-titre">{{ fichierDetail.nomOriginal }}</span>
+        </div>
+        <button type="button" class="modal-fermer" (click)="fermerDetail()" aria-label="Fermer">×</button>
+      </div>
+
+      <div class="modal-corps">
+
+        <!-- Résumé -->
+        <div class="modal-bloc">
+          <div class="modal-ligne">
+            <span>Type déclaré par le client</span>
+            <b>{{ libelleType(fichierDetail.typeDocument) }}</b>
+          </div>
+          <div class="modal-ligne">
+            <span>Type détecté dans le contenu</span>
+            <b>{{ fichierDetail.typeDetecte ? libelleType(fichierDetail.typeDetecte) : '—' }}</b>
+          </div>
+          <div class="modal-ligne" *ngIf="fichierDetail.classification?.controle?.typeRetenu">
+            <span>Type utilisé pour l'extraction</span>
+            <b>{{ libelleType(fichierDetail.classification.controle.typeRetenu) }}</b>
+          </div>
+          <div class="modal-ligne">
+            <span>Verdict</span>
+            <span class="verdict" [ngClass]="'classif-' + verdictClassification(fichierDetail).code">
+              {{ verdictClassification(fichierDetail).libelle }}
+            </span>
+          </div>
+          <p class="modal-explication">{{ verdictClassification(fichierDetail).explication }}</p>
+        </div>
+
+        <!-- Cascade : niveau par niveau -->
+        <h5>Comment le type a été trouvé</h5>
+        <p class="modal-aide">
+          Trois niveaux, du plus rapide au plus coûteux. Dès qu'un niveau est sûr de lui,
+          les suivants ne sont pas consultés.
+        </p>
+
+        <ol class="cascade" *ngIf="aTrace(fichierDetail); else sansTrace">
+          <li *ngFor="let n of niveauxCascade(fichierDetail)" class="cascade-niveau"
+              [class.cascade-decisif]="n.decisif" [class.cascade-absent]="!n.consulte">
+            <div class="cascade-tete">
+              <span class="cascade-icone">{{ n.consulte ? (n.decisif ? '✔' : '✖') : '–' }}</span>
+              <b>{{ n.numero }}. {{ n.libelle }}</b>
+              <span class="cascade-etat">{{ n.etat }}</span>
+            </div>
+            <p class="cascade-raison">{{ n.raison }}</p>
+
+            <ng-container *ngIf="n.consulte && n.detail" [ngSwitch]="n.cle">
+
+              <!-- Règles : mots-clés trouvés et classement -->
+              <div *ngSwitchCase="'regles'" class="cascade-detail">
+                <div *ngIf="n.detail.mots_cles?.length">
+                  Mots-clés reconnus pour « {{ libelleType(n.detail.type) }} » :
+                  <span class="puce" *ngFor="let m of n.detail.mots_cles">{{ m }}</span>
+                </div>
+                <div *ngIf="n.detail.classement?.length">
+                  Classement :
+                  <span class="puce puce-score" *ngFor="let c of n.detail.classement">
+                    {{ libelleType(c.type) }} : {{ c.score }}
+                  </span>
+                </div>
+                <div class="cascade-seuil">
+                  Pour trancher : score d'au moins {{ n.detail.seuil_score }} et
+                  {{ n.detail.seuil_ecart }} points d'avance sur le 2e type.
+                </div>
+              </div>
+
+              <!-- Embeddings : similarité et candidats -->
+              <div *ngSwitchCase="'embeddings'" class="cascade-detail">
+                <div>
+                  Meilleur candidat : <b>{{ libelleType(n.detail.type) }}</b>
+                  (similarité {{ similarite(n.detail.confiance) }}, seuil {{ similarite(n.detail.seuil) }})
+                </div>
+                <div *ngIf="n.detail.top3?.length">
+                  Candidats :
+                  <span class="puce puce-score" *ngFor="let c of n.detail.top3">
+                    {{ libelleType(c.label) }} : {{ similarite(c.score) }}
+                  </span>
+                </div>
+              </div>
+
+              <!-- LLM : réponse et justification -->
+              <div *ngSwitchCase="'llm'" class="cascade-detail">
+                <ng-container *ngIf="!n.detail.echec">
+                  <div>
+                    Réponse : <b>{{ libelleType(n.detail.type) }}</b>
+                    (confiance {{ pourcent(n.detail.confiance) }})
+                    <span *ngIf="n.detail.fournisseur">, via {{ n.detail.fournisseur }}</span>
+                  </div>
+                  <div *ngIf="n.detail.justification">Justification : « {{ n.detail.justification }} »</div>
+                </ng-container>
+              </div>
+
+            </ng-container>
+          </li>
+        </ol>
+        <ng-template #sansTrace>
+          <p class="modal-aide" *ngIf="fichierDetail.classification">
+            Méthode : {{ libelleMethode(fichierDetail.classification.methode) }}.
+            Le détail niveau par niveau n'est pas disponible pour ce document :
+            relancez « Vérifier les documents » pour l'obtenir.
+          </p>
+          <p class="modal-aide" *ngIf="!fichierDetail.classification">
+            Ce document n'a pas encore été classé : lancez « Vérifier les documents ».
+          </p>
+        </ng-template>
+
+        <!-- Autres contrôles -->
+        <h5>Autres vérifications de ce document</h5>
+        <div class="modal-bloc">
+          <div class="modal-ligne">
+            <span>CIN lu dans le document</span>
+            <b>{{ cinLu(fichierDetail) || '—' }}</b>
+          </div>
+          <div class="modal-ligne">
+            <span>CIN du client</span>
+            <b>{{ cin || '—' }}</b>
+          </div>
+          <div class="modal-ligne">
+            <span>Cohérence du CIN</span>
+            <span class="verdict"
+                  [ngClass]="fichierDetail.cinCoherent === false ? 'classif-conflit'
+                           : fichierDetail.cinCoherent === true ? 'classif-concordant' : 'classif-incertain'">
+              {{ fichierDetail.cinCoherent === false ? 'Incohérent'
+               : fichierDetail.cinCoherent === true  ? 'Cohérent' : 'Sans objet (aucun CIN lu)' }}
+            </span>
+          </div>
+          <div class="modal-ligne" *ngIf="fichierDetail.ocrStatut">
+            <span>Lecture du document (OCR)</span>
+            <b>{{ fichierDetail.ocrStatut === 'SUCCESS' ? 'Réussie' : 'Échec' }}</b>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-pied">
+        <button type="button" class="primary" (click)="fermerDetail()">Fermer</button>
+      </div>
+    </div>
   </div>
 </div>

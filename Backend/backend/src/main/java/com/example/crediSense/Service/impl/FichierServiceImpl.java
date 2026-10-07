@@ -342,6 +342,11 @@ public class FichierServiceImpl implements FichierService {
             f.setConfianceType(controle.get("confiance") instanceof Number n ? n.doubleValue() : null);
             f.setMethodeType(controle.get("methode") != null ? controle.get("methode").toString() : null);
             f.setTypeConflit(concordant == null ? null : !concordant);
+            try {
+                f.setClassificationJson(objectMapper.writeValueAsString(reponse));
+            } catch (Exception e) {
+                log.warn("Détail de classification non conservé pour {} : {}", f.getNomOriginal(), e.getMessage());
+            }
 
             // Type non déclaré (« AUTRE ») et verdict fiable : le type détecté devient le type du document
             boolean nonDeclare = declare == null || declare.isBlank() || "AUTRE".equalsIgnoreCase(declare);

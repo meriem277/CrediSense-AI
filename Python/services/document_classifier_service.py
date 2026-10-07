@@ -24,7 +24,7 @@ jamais appeler le LLM ; seuls les cas ambigus consomment un appel.
 
 import logging
 
-from services.classification_regles import classer_par_regles
+from services.classification_regles import diagnostiquer_regles, verdict_depuis_diagnostic
 from services.nlp_service import NLPClassifier
 from services.llm_classifier_service import LLMClassifierService
 
@@ -57,17 +57,39 @@ class DocumentClassifierService:
         - "embeddings_llm_indisponible" → zone grise, LLM en échec,
                                           verdict des embeddings conservé
         """
-        verdict_regles = classer_par_regles(texte_ocr)
+        # La « trace » raconte la cascade niveau par niveau (consulté ou non, résultat, raison) :
+        # elle est conservée avec le document et affichée à l'agent.
+        trace = []
+
+        # ── Niveau 0 : règles par mots-clés ───────────────────────────────────
+        diagnostic = diagnostiquer_regles(texte_ocr)
+        trace.append({"niveau": "regles", "libelle": "Règles par mots-clés", "decisif": diagnostic["decisif"],
+                      "type": diagnostic["type"], "score": diagnostic["score"],
+                      "seuil_score": diagnostic["seuil_score"], "seuil_ecart": diagnostic["seuil_ecart"],
+                      "mots_cles": diagnostic["mots_cles"], "classement": diagnostic["classement"],
+                      "raison": diagnostic["raison"]})
+        verdict_regles = verdict_depuis_diagnostic(diagnostic)
         if verdict_regles is not None:
             logger.info(
                 "Classification tranchée par règles (%s, score=%s, mots=%s, dossier=%s)",
                 verdict_regles["type_document"], verdict_regles["score_regles"],
                 verdict_regles["mots_cles"], dossier_id
             )
-            return verdict_regles
+            return {**verdict_regles, "trace": trace}
 
+        # ── Niveau 1 : embeddings ─────────────────────────────────────────────
         resultat_embeddings = self.embeddings_classifier.classify(texte_ocr, dossier_id)
         confiance = resultat_embeddings["confiance"]
+        trace.append({"niveau": "embeddings", "libelle": "Embeddings (similarité de sens)",
+                      "decisif": confiance >= SEUIL_CONFIANCE_ELEVEE,
+                      "type": resultat_embeddings.get("type_document"), "confiance": confiance,
+                      "seuil": SEUIL_CONFIANCE_ELEVEE, "seuil_bas": SEUIL_CONFIANCE_BASSE,
+                      "top3": resultat_embeddings.get("top3", []),
+                      "raison": (f"similarité {confiance:.2f} au-dessus du seuil {SEUIL_CONFIANCE_ELEVEE}"
+                                 if confiance >= SEUIL_CONFIANCE_ELEVEE else
+                                 f"similarité {confiance:.2f} sous le seuil {SEUIL_CONFIANCE_ELEVEE} : "
+                                 + ("trop basse pour appeler le LLM" if confiance < SEUIL_CONFIANCE_BASSE
+                                    else "zone grise, le LLM est consulté"))})
 
         if confiance >= SEUIL_CONFIANCE_ELEVEE:
             logger.info(
@@ -77,6 +99,7 @@ class DocumentClassifierService:
             return {
                 **resultat_embeddings,
                 "methode": "embeddings",
+                "trace": trace,
             }
 
         if confiance < SEUIL_CONFIANCE_BASSE:
@@ -87,8 +110,10 @@ class DocumentClassifierService:
             return {
                 **resultat_embeddings,
                 "methode": "embeddings_faible_confiance",
+                "trace": trace,
             }
 
+        # ── Niveau 2 : LLM (zone grise uniquement) ────────────────────────────
         logger.info(
             "Zone grise (confiance=%.2f) — appel LLM pour validation, dossier=%s",
             confiance, dossier_id
@@ -101,14 +126,23 @@ class DocumentClassifierService:
                 "(%s, confiance=%.2f, dossier=%s)",
                 resultat_embeddings.get("type_document"), confiance, dossier_id
             )
+            trace.append({"niveau": "llm", "libelle": "Modèle de langage", "decisif": False, "echec": True,
+                          "raison": resultat_llm.get("justification") or "modèle de langage indisponible"})
             return {
                 **resultat_embeddings,
                 "methode": "embeddings_llm_indisponible",
                 "raison_llm": resultat_llm.get("justification"),
+                "trace": trace,
             }
 
+        trace.append({"niveau": "llm", "libelle": "Modèle de langage", "decisif": True, "echec": False,
+                      "type": resultat_llm.get("type_document"), "confiance": resultat_llm.get("confiance"),
+                      "justification": resultat_llm.get("justification"),
+                      "fournisseur": resultat_llm.get("provider"),
+                      "raison": "le modèle de langage a tranché"})
         return {
             **resultat_llm,
             "methode": "llm_fallback",
             "confiance_embeddings_initiale": confiance,
+            "trace": trace,
         }

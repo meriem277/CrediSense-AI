@@ -32,6 +32,11 @@ public class Fichier {
     private String  methodeType;
     private Boolean typeConflit;
 
+    // Réponse complète de la classification (méthode, mots-clés trouvés, trace de la cascade
+    // règles / embeddings / LLM) : conservée pour que l'agent voie exactement ce qui s'est passé.
+    @Column(columnDefinition = "TEXT")
+    private String  classificationJson;
+
     private String cheminPdf;
 
     @CreationTimestamp

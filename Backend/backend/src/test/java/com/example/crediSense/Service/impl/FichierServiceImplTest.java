@@ -286,6 +286,10 @@ class FichierServiceImplTest {
         assertEquals(Boolean.TRUE, fichier.getTypeConflit());
         assertEquals("RELEVE_BANCAIRE", fichier.getTypeDetecte());
         assertEquals("FICHE_PAIE", fichier.getTypeDocument());         // le type déclaré n'est pas écrasé
+        // la réponse complète de la classification est conservée pour le popup de l'agent
+        assertNotNull(fichier.getClassificationJson());
+        assertTrue(fichier.getClassificationJson().contains("\"controle\""));
+        assertTrue(fichier.getClassificationJson().contains("RELEVE_BANCAIRE"));
         assertEquals(List.of("FICHE_PAIE → RELEVE_BANCAIRE"), resultat.get("typesEnConflit"));
         // le contenu est un relevé : l'extraction est faite comme pour un relevé
         assertEquals("RELEVE_BANCAIRE", corpsExtraction().get("type_document"));

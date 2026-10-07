@@ -1,4 +1,4 @@
-import { Component, Input, OnChanges, SimpleChanges, Output, EventEmitter } from '@angular/core';
+import { Component, Input, OnChanges, SimpleChanges, Output, EventEmitter, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { environment }         from '../../../../environments/environment';
@@ -19,6 +19,41 @@ const LABELS_TYPE_DOCUMENT: Record<string, string> = {
   JUSTIFICATIF_DOMICILE:  'Justificatif de domicile',
   TITRE_SEJOUR:           'Titre de séjour',
 };
+
+/** Les trois niveaux de la cascade de classification, dans l'ordre où ils sont consultés. */
+const NIVEAUX_CASCADE = [
+  { cle: 'regles',     numero: 1, libelle: 'Règles par mots-clés',
+    absent: 'Non consulté' },
+  { cle: 'embeddings', numero: 2, libelle: 'Embeddings (similarité de sens)',
+    absent: 'Non consulté : les règles ont tranché.' },
+  { cle: 'llm',        numero: 3, libelle: 'Modèle de langage (LLM)',
+    absent: 'Non consulté : un niveau précédent a tranché, ou la similarité était trop basse pour le justifier.' },
+] as const;
+
+const LIBELLES_METHODE: Record<string, string> = {
+  regles:                        'Règles par mots-clés',
+  embeddings:                    'Embeddings (similarité de sens)',
+  embeddings_faible_confiance:   'Embeddings (confiance trop basse pour conclure)',
+  embeddings_llm_indisponible:   'Embeddings (modèle de langage indisponible)',
+  llm_fallback:                  'Modèle de langage (LLM)',
+};
+
+export interface NiveauCascade {
+  cle: string;
+  numero: number;
+  libelle: string;
+  consulte: boolean;
+  decisif: boolean;
+  etat: string;
+  raison: string;
+  detail: any;
+}
+
+export interface VerdictClassification {
+  code: 'non_classe' | 'concordant' | 'conflit' | 'incertain' | 'complete';
+  libelle: string;
+  explication: string;
+}
 
 @Component({
   selector: 'app-upload-section',
@@ -56,6 +91,12 @@ export class UploadSection implements OnChanges {
   // Message affiché quand l'agent doit confirmer pour poursuivre malgré un CIN incohérent
   confirmationIncoherence: string | null = null;
 
+  // L'agent a confirmé qu'il poursuit malgré l'incohérence : le pipeline passe au vert
+  incoherenceConfirmee = false;
+
+  // Document dont le popup « Détail de la classification » est ouvert
+  fichierDetail: any | null = null;
+
   fichiers: any[] = [];
   loading  = false;
 
@@ -74,6 +115,8 @@ export class UploadSection implements OnChanges {
       this.verifierSuccess = '';
       this.verifierError   = '';
       this.confirmationIncoherence = null;
+      this.incoherenceConfirmee    = false;
+      this.fichierDetail           = null;
     }
   }
 
@@ -138,8 +181,101 @@ export class UploadSection implements OnChanges {
     return fichier.verifie === true && fichier.cinCoherent !== false && fichier.typeConflit !== true;
   }
 
-  private libelleType(type: string): string {
+  libelleType(type: string | null | undefined): string {
+    if (!type) return '—';
     return LABELS_TYPE_DOCUMENT[type] || type;
+  }
+
+  // ── Popup « Détail de la classification » ──────────────────────────────────
+  ouvrirDetail(fichier: any): void { this.fichierDetail = fichier; }
+
+  @HostListener('document:keydown.escape')
+  fermerDetail(): void { this.fichierDetail = null; }
+
+  /** Le service IA a renvoyé le détail niveau par niveau (documents lus avec une version récente). */
+  aTrace(fichier: any): boolean {
+    return Array.isArray(fichier?.classification?.trace) && fichier.classification.trace.length > 0;
+  }
+
+  libelleMethode(methode: string | null | undefined): string {
+    return (methode && LIBELLES_METHODE[methode]) || methode || 'inconnue';
+  }
+
+  pourcent(valeur: number | null | undefined): string {
+    return valeur == null ? '—' : `${Math.round(valeur * 100)} %`;
+  }
+
+  /** Les embeddings donnent une similarité (0 à 1), pas une probabilité : on ne l'affiche pas en %. */
+  similarite(valeur: number | null | undefined): string {
+    return valeur == null ? '—' : valeur.toFixed(2).replace('.', ',');
+  }
+
+  /** La confiance, dans l'unité qui a du sens pour la méthode qui a tranché. */
+  confianceLisible(fichier: any): string {
+    const c = fichier?.classification;
+    if (!c) return '';
+    return (c.methode || '').startsWith('embeddings')
+      ? `similarité ${this.similarite(c.confiance)}`
+      : `confiance ${this.pourcent(c.confiance)}`;
+  }
+
+  /** Une ligne lisible sans ouvrir le popup : « Détecté : Relevé bancaire · règles par mots-clés · confiance 90 % ». */
+  resumeClassification(fichier: any): string {
+    const verdict = this.verdictClassification(fichier);
+    if (verdict.code === 'non_classe') return 'Classification : en attente de vérification';
+    const detecte = `Détecté : ${this.libelleType(fichier.typeDetecte)}`;
+    const methode = this.libelleMethode(fichier.classification?.methode || fichier.methodeType).toLowerCase();
+    const confiance = this.confianceLisible(fichier);
+    return [detecte, methode, confiance].filter(Boolean).join(' · ');
+  }
+
+  verdictClassification(fichier: any): VerdictClassification {
+    const controle = fichier?.classification?.controle;
+
+    if (!fichier?.typeDetecte && !fichier?.classification) {
+      return { code: 'non_classe', libelle: 'Pas encore classé',
+               explication: 'Lancez « Vérifier les documents » pour que le contenu soit analysé.' };
+    }
+    if (fichier.typeConflit === true) {
+      return { code: 'conflit', libelle: 'Contradiction',
+               explication: `Le contenu ressemble à « ${this.libelleType(fichier.typeDetecte)} » alors que le client ` +
+                            `l'a déposé comme « ${this.libelleType(fichier.typeDocument)} ». Vérifiez le document ; ` +
+                            `l'analyse demandera votre confirmation.` };
+    }
+    if (fichier.typeConflit === false) {
+      return { code: 'concordant', libelle: 'Conforme',
+               explication: 'Le contenu du document correspond au type choisi par le client.' };
+    }
+    if (controle?.fiable === true) {
+      return { code: 'complete', libelle: 'Type complété',
+               explication: 'Le client n\'avait pas précisé le type : celui détecté dans le contenu est retenu.' };
+    }
+    return { code: 'incertain', libelle: 'Sans conclusion',
+             explication: 'La classification n\'est pas assez sûre pour contredire le client : ' +
+                          'le type déclaré est conservé et rien n\'est bloqué.' };
+  }
+
+  /** Les trois niveaux de la cascade, avec ce qui s'est passé à chacun (ou « non consulté »). */
+  niveauxCascade(fichier: any): NiveauCascade[] {
+    const trace: any[] = fichier?.classification?.trace ?? [];
+    return NIVEAUX_CASCADE.map(niveau => {
+      const etape = trace.find(t => t.niveau === niveau.cle);
+      const etat = !etape ? 'Non consulté'
+                 : etape.echec ? 'Indisponible'
+                 : etape.decisif ? 'A tranché' : 'N\'a pas tranché';
+      return {
+        cle: niveau.cle, numero: niveau.numero, libelle: niveau.libelle,
+        consulte: !!etape, decisif: !!etape?.decisif, etat,
+        raison: etape ? (etape.raison || '') : niveau.absent,
+        detail: etape ?? null,
+      };
+    });
+  }
+
+  /** CIN lu dans le document (champ « cin » de l'extraction), s'il y en a un. */
+  cinLu(fichier: any): string | null {
+    const cin = fichier?.jsonData?.cin;
+    return cin ? String(cin) : null;
   }
 
   // ✅ Message affiché au-dessus du fichier — "CIN vérifié et validé", etc.
@@ -203,7 +339,8 @@ export class UploadSection implements OnChanges {
   // confirmation à l'agent (il a pu vérifier manuellement et décider de poursuivre).
   onClickAnalyser(): void {
     if (this.peutAnalyser) {
-      this.handleAnalyse();
+      // Si l'agent a déjà confirmé (analyse relancée après une erreur), le serveur n'a pas à redemander
+      this.handleAnalyse(this.incoherenceConfirmee);
       return;
     }
     if (this.peutAnalyserAvecConfirmation) {
@@ -233,6 +370,7 @@ export class UploadSection implements OnChanges {
 
   confirmerAnalyse(): void {
     this.confirmationIncoherence = null;
+    this.incoherenceConfirmee    = true;   // son contrôle manuel vaut validation : les étapes passent au vert
     this.handleAnalyse(true);
   }
 

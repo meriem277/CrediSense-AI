@@ -187,6 +187,7 @@ public class DossierController {
         map.put("typeDetecte",   f.getTypeDetecte());
         map.put("confianceType", f.getConfianceType());
         map.put("typeConflit",   f.getTypeConflit());
+        map.put("classification", lireClassification(f));
         map.put("cheminPdf",    f.getCheminPdf() != null ? f.getCheminPdf() : "");
         map.put("createdAt",    f.getCreatedAt() != null ? f.getCreatedAt().toString() : "");
         map.put("verifie",      f.getOcrResult() != null
@@ -234,6 +235,17 @@ public class DossierController {
         }
 
         return map;
+    }
+
+    /** Détail de la classification (méthode, mots-clés, trace de la cascade) ; null si absent ou illisible. */
+    private Map<String, Object> lireClassification(Fichier f) {
+        if (f.getClassificationJson() == null || f.getClassificationJson().isBlank()) return null;
+        try {
+            return objectMapper.readValue(f.getClassificationJson(), new TypeReference<Map<String, Object>>() {});
+        } catch (Exception e) {
+            log.warn("Détail de classification illisible pour fichier {} : {}", f.getId(), e.getMessage());
+            return null;
+        }
     }
 
     // ✅ Normalise un numéro CIN pour comparaison — garde uniquement les chiffres.

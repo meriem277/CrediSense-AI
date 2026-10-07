@@ -2,12 +2,17 @@
 """
 Service RAG Chatbot CrediSense — inspiré du notebook RAG professionnel
 Architecture :
-  1. Chunking intelligent des documents du dossier
+  1. Découpage STRUCTUREL et SÉMANTIQUE des documents (services/decoupage_rag.py) :
+     un relevé par opération, un document court en un seul chunk, un texte libre aux
+     changements de sujet
   2. Embeddings avec sentence-transformers
-  3. Index FAISS pour recherche vectorielle
-  4. Récupération top-k des chunks pertinents, AVEC couverture de chaque
-     document du dossier (indispensable pour les questions multi-documents)
-  5. Génération via le routeur LLM multi-fournisseurs (services/llm_client.py)
+  3. Index FAISS pour recherche vectorielle + index BM25 pour la recherche par mots exacts
+  4. Récupération HYBRIDE (sens + mots exacts, fusion RRF — services/recherche_hybride.py),
+     AVEC couverture de chaque document du dossier (indispensable pour les questions
+     multi-documents)
+  5. Génération via le routeur LLM multi-fournisseurs (services/llm_client.py), avec la
+     MÉMOIRE DE CONVERSATION : les derniers échanges sont donnés au modèle, et une question de
+     suivi (« Et le mois précédent ? ») est complétée avec la question précédente pour la recherche
   6. Garde-fous :
      - périmètre : refus des questions hors sujet
      - confidentialité : refus de divulguer les identifiants complets,
@@ -22,12 +27,15 @@ Architecture :
 import logging
 import time
 import re
+import unicodedata
 from typing import Optional
 
 import faiss
 from sentence_transformers import SentenceTransformer
 
 from services.llm_client import chat_completion, LLMUnavailableError
+from services.decoupage_rag import decouper_document
+from services.recherche_hybride import Bm25, tokeniser, fusion_rrf
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +47,17 @@ EXPAND_FORWARD      = 3     # contexte après
 TOP_K               = 12    # chunks récupérés au total
 CHUNKS_MIN_PAR_DOC  = 2     # chaque document du dossier fournit au moins 2 extraits
 MAX_RESPONSE_TOKENS = 1500  # marge suffisante : évite les réponses coupées
+
+# ── Mémoire de conversation ───────────────────────────────────────────────────
+HISTORIQUE_MAX_MESSAGES = 6    # derniers messages (questions et réponses) conservés
+HISTORIQUE_MAX_CHARS    = 600  # taille maximale d'un message de l'historique
+# Une question est une « relance » (elle dépend de la précédente) si elle est courte, commence
+# par un mot de liaison, ou renvoie à autre chose par un mot comme « précédent » ou « même »
+RELANCE_MAX_MOTS     = 6
+RELANCE_DEBUTS       = {"et", "mais", "donc", "alors", "aussi", "pourquoi", "sinon", "ensuite"}
+RELANCE_RENVOIS      = {"ca", "cela", "celui", "celle", "ceux", "precedent", "precedente", "precedents",
+                        "meme", "idem", "dernier", "derniere", "ci-dessus"}
+RELANCES_REMONTEES   = 2       # nombre maximal de questions précédentes ajoutées à une relance
 
 # ── Détection du type de document à partir du texte OCR ───────────────────────
 # Sert uniquement à étiqueter les extraits (« Fiche de paie », « Relevé bancaire »...)
@@ -75,6 +94,12 @@ def detecter_type_document(texte: str) -> str:
     meilleur = max(scores, key=scores.get)
     return meilleur if scores[meilleur] > 0 else "Document"
 
+def _sans_accents(texte: str) -> str:
+    """Minuscules sans accents : « Précédent » → « precedent »."""
+    decompose = unicodedata.normalize("NFKD", texte or "")
+    return "".join(c for c in decompose if not unicodedata.combining(c)).lower()
+
+
 # ── Ancres financières ────────────────────────────────────────────────────────
 ANCHOR_PATTERNS = {
     "revenu":      re.compile(r"\b(?:salaire|revenu|net|brut|rémunération|راتب|دخل)\b", re.I),
@@ -108,6 +133,7 @@ TRAÇABILITÉ DES DONNÉES (règle stricte) :
   2. Effectuer le calcul demandé en la traitant comme une hypothèse, jamais en la fusionnant silencieusement avec les données du dossier
   3. Séparer clairement dans ta réponse ce qui vient du dossier (à citer avec sa source) de ce qui vient de l'hypothèse de la question
 - Ne jamais présenter une donnée non vérifiée comme si elle provenait d'un document officiel du dossier
+- Les messages précédents de la conversation servent uniquement à comprendre une question de suivi : une valeur citée dans un message précédent n'est une donnée du dossier que si elle figure aussi dans le contexte fourni
 - En cas de doute sur l'origine d'une donnée, préfère la prudence et demande une clarification plutôt que de supposer
 
 PÉRIMÈTRE (règle stricte) :
@@ -196,10 +222,14 @@ class ChatbotService:
         dossier_id: str,
         cin:        str,
         json_data:  Optional[dict] = None,
-        ocr_textes: Optional[list] = None
+        ocr_textes: Optional[list] = None,
+        historique: Optional[list] = None
     ) -> dict:
         """
         Répond à une question sur le dossier via RAG.
+
+        `historique` : les derniers messages de la conversation [{"role": "user"|"assistant",
+        "content": "..."}], du plus ancien au plus récent, SANS la question en cours.
 
         Returns:
             {
@@ -231,8 +261,14 @@ class ChatbotService:
                 return self._reponse_vide()
             self._construire_index(dossier_id, json_data, ocr_textes)
 
+        # 1 bis. Mémoire : historique nettoyé, et question de recherche complétée si c'est une relance
+        historique = self._nettoyer_historique(historique)
+        requete    = self._question_de_recherche(question, historique)
+        if requete != question:
+            logger.info("Relance détectée — recherche avec : %s", requete)
+
         # 2. Récupérer les chunks pertinents
-        chunks_pertinents = self._retriever(question, dossier_id)
+        chunks_pertinents = self._retriever(requete, dossier_id)
 
         if not chunks_pertinents:
             return {
@@ -254,7 +290,7 @@ class ChatbotService:
 
         # 4. Appeler le LLM avec le contexte
         try:
-            reponse_llm = self._appeler_llm(question, contexte, cin)
+            reponse_llm = self._appeler_llm(question, contexte, cin, historique)
         except LLMUnavailableError as e:
             logger.error("Chatbot — LLM indisponible : %s", str(e))
             return {
@@ -273,13 +309,16 @@ class ChatbotService:
         if reponse_finale != reponse_llm.content:
             logger.warning("Chatbot — identifiant sensible masqué dans la réponse (dossier=%s)", dossier_id)
 
-        return {
+        resultat = {
             "reponse":  reponse_finale,
             "sources":  sources,
             "statut":   "SUCCESS",
             "provider": reponse_llm.provider,
             "duree_ms": duree_ms
         }
+        if requete != question:
+            resultat["requete_recherche"] = requete   # transparence : ce qui a vraiment été cherché
+        return resultat
 
     # ── Construction index FAISS ──────────────────────────────────────────────
 
@@ -293,28 +332,36 @@ class ChatbotService:
         logger.info("Construction index FAISS — dossier=%s", dossier_id)
         t0 = time.time()
 
-        # 1. Générer les paragraphes depuis JSON + OCR
+        # 1. Synthèse JSON (rare) : ancien découpage par fenêtre, ce sont déjà des blocs courts
         paragraphes = []
-
         if json_data:
             paragraphes += self._json_to_paragraphes(json_data)
+        chunks = self._chunker(paragraphes) if paragraphes else []
 
+        # 2. Documents OCR : découpage structurel et sémantique, un document à la fois
         if ocr_textes:
             for num_doc, texte in enumerate(ocr_textes):
-                if texte and texte.strip():
-                    type_doc = detecter_type_document(texte)
-                    logger.info("Document %d détecté comme : %s", num_doc, type_doc)
-                    paragraphes += self._texte_to_paragraphes(
-                        texte, prefixe=f"doc{num_doc}", document=f"{type_doc} (doc {num_doc + 1})"
-                    )
+                if not (texte and texte.strip()):
+                    continue
+                type_doc = detecter_type_document(texte)
+                logger.info("Document %d détecté comme : %s", num_doc, type_doc)
+                etiquette = f"{type_doc} (doc {num_doc + 1})"
+                morceaux = decouper_document(
+                    texte, embed_fn=self._encoder_lignes, ancres_fn=self._detect_anchors
+                )
+                for k, morceau in enumerate(morceaux):
+                    chunks.append({
+                        "chunk_id":   f"doc{num_doc}_chunk_{k:03d}",
+                        "chunk_type": morceau["chunk_type"],
+                        "document":   etiquette,
+                        "text":       morceau["text"],
+                        "anchors":    morceau["anchors"],
+                    })
 
-        if not paragraphes:
-            logger.warning("Aucun paragraphe pour dossier=%s", dossier_id)
+        if not chunks:
+            logger.warning("Aucun chunk pour dossier=%s", dossier_id)
             return
-
-        # 2. Chunking intelligent
-        chunks = self._chunker(paragraphes)
-        logger.info("%d paragraphes → %d chunks", len(paragraphes), len(chunks))
+        logger.info("dossier=%s → %d chunks", dossier_id, len(chunks))
 
         # 3. Générer les embeddings
         textes_embed = [self._build_embedding_text(c) for c in chunks]
@@ -330,13 +377,23 @@ class ChatbotService:
         index = faiss.IndexFlatIP(dim)
         index.add(embeddings)
 
+        # Index lexical (BM25) : mêmes chunks, recherche par mots exacts (montants, noms, numéros)
+        bm25 = Bm25([tokeniser(f"{c.get('document', '')} {c['text']}") for c in chunks])
+
         self._indexes[dossier_id] = {
             "index":  index,
-            "chunks": chunks
+            "chunks": chunks,
+            "bm25":   bm25,
         }
 
         logger.info("Index FAISS construit — %d vecteurs en %.0fms",
                     index.ntotal, (time.time()-t0)*1000)
+
+    def _encoder_lignes(self, lignes: list):
+        """Embeddings normalisés d'une liste de lignes (sert au découpage aux changements de sujet)."""
+        return self._embedding_model.encode(
+            lignes, convert_to_numpy=True, normalize_embeddings=True, show_progress_bar=False
+        ).astype("float32")
 
     # ── JSON → paragraphes ────────────────────────────────────────────────────
 
@@ -484,13 +541,30 @@ class ChatbotService:
         total = store["index"].ntotal
         scores, indices = store["index"].search(query_vec, total)
 
+        # Recherche sémantique : classement par similarité (déjà trié par score décroissant)
+        rang_dense = [int(i) for i in indices[0] if i != -1]
+        score_dense = {int(i): float(s) for i, s in zip(indices[0], scores[0]) if i != -1}
+
+        # Recherche lexicale (BM25) sur la question telle qu'écrite : montants, noms, numéros
+        rang_lexical, score_lexical = [], {}
+        bm25 = store.get("bm25")
+        if bm25 is not None:
+            scores_bm25 = bm25.scores(tokeniser(question))
+            ordre = sorted((i for i in range(len(scores_bm25)) if scores_bm25[i] > 0),
+                           key=lambda i: scores_bm25[i], reverse=True)
+            rang_lexical = ordre
+            score_lexical = {i: float(scores_bm25[i]) for i in ordre}
+
+        # Fusion des deux classements (RRF) : un chunk bien classé par l'un OU l'autre remonte
+        fusion = fusion_rrf([rang_dense, rang_lexical])
+
         classes = []
-        for idx, score in zip(indices[0], scores[0]):
-            if idx == -1:
-                continue
+        for idx in sorted(fusion, key=fusion.get, reverse=True):
             chunk = store["chunks"][idx].copy()
-            chunk["score"] = float(score)
-            classes.append(chunk)   # déjà triés par score décroissant
+            chunk["score"]         = score_dense.get(idx, 0.0)   # similarité sémantique (cosinus)
+            chunk["score_lexical"] = score_lexical.get(idx, 0.0)
+            chunk["score_fusion"]  = fusion[idx]
+            classes.append(chunk)   # triés par score de fusion décroissant
 
         # 1. Les meilleurs extraits de CHAQUE document (questions multi-documents)
         retenus, deja = [], set()
@@ -510,8 +584,8 @@ class ChatbotService:
                 retenus.append(c)
                 deja.add(c["chunk_id"])
 
-        # Ordre final : par score, le plus pertinent d'abord
-        retenus.sort(key=lambda c: c["score"], reverse=True)
+        # Ordre final : le plus pertinent d'abord (score de fusion sens + mots exacts)
+        retenus.sort(key=lambda c: c["score_fusion"], reverse=True)
         return retenus
 
     # ── Normalisation question ────────────────────────────────────────────────
@@ -552,7 +626,7 @@ class ChatbotService:
 
     # ── Appel LLM ─────────────────────────────────────────────────────────────
 
-    def _appeler_llm(self, question: str, contexte: str, cin: str):
+    def _appeler_llm(self, question: str, contexte: str, cin: str, historique: Optional[list] = None):
         user_prompt = (
             f"Contexte du dossier (client CIN se terminant par {str(cin)[-3:]}) — SOURCE DE VÉRITÉ UNIQUE, "
             f"toute donnée chiffrée absente d'ici doit être signalée comme "
@@ -565,11 +639,64 @@ class ChatbotService:
             task="chat",
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
+                *(historique or []),
                 {"role": "user",   "content": user_prompt}
             ],
             temperature=0.3,
             max_tokens=MAX_RESPONSE_TOKENS
         )
+
+    # ── Mémoire de conversation ───────────────────────────────────────────────
+
+    @staticmethod
+    def _nettoyer_historique(historique: Optional[list]) -> list:
+        """
+        Historique sûr à donner au modèle. Il vient du navigateur : on ne lui fait pas confiance.
+          - seuls les rôles « user » et « assistant » sont gardés : un faux message « system »
+            glissé dans l'historique ne peut pas modifier les règles du prompt système ;
+          - les CIN, RIB et IBAN sont masqués (une question peut en contenir un) ;
+          - chaque message est tronqué, et seuls les derniers messages sont conservés.
+        """
+        if not isinstance(historique, list):
+            return []
+        propres = []
+        for message in historique:
+            if not isinstance(message, dict):
+                continue
+            role, contenu = message.get("role"), message.get("content")
+            if role not in ("user", "assistant") or not isinstance(contenu, str) or not contenu.strip():
+                continue
+            contenu = masquer_donnees_sensibles(contenu.strip())[:HISTORIQUE_MAX_CHARS]
+            propres.append({"role": role, "content": contenu})
+        return propres[-HISTORIQUE_MAX_MESSAGES:]
+
+    @staticmethod
+    def _est_relance(question: str) -> bool:
+        """Une question qui ne se comprend pas seule : courte, ou qui renvoie à la précédente."""
+        mots = re.findall(r"[\w'-]+", _sans_accents(question or ""))
+        if not mots:
+            return False
+        return (len(mots) <= RELANCE_MAX_MOTS
+                or mots[0] in RELANCE_DEBUTS
+                or any(m in RELANCE_RENVOIS for m in mots))
+
+    def _question_de_recherche(self, question: str, historique: list) -> str:
+        """
+        Question utilisée pour CHERCHER les passages. Une relance (« Et le mois précédent ? »)
+        ne contient aucun mot utile pour la recherche : on y ajoute la ou les questions
+        précédentes de l'agent. Une question qui se comprend seule est cherchée telle quelle.
+        """
+        if not self._est_relance(question):
+            return question
+
+        precedentes = []
+        for message in reversed(historique):
+            if message["role"] != "user":
+                continue
+            precedentes.insert(0, message["content"])
+            if len(precedentes) >= RELANCES_REMONTEES or not self._est_relance(message["content"]):
+                break
+        return " ".join([*precedentes, question]) if precedentes else question
 
     # ── Invalidation et réindexation ──────────────────────────────────────────
 

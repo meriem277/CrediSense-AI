@@ -8,7 +8,18 @@ export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
+  /** Message d'interface (salutation, erreur) : affiché, mais jamais envoyé comme historique. */
+  technique?: boolean;
 }
+
+/** Message de l'historique envoyé au serveur avec chaque question. */
+export interface MessageHistorique {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+/** Nombre de derniers messages envoyés avec chaque question (le serveur applique la même limite). */
+export const HISTORIQUE_MAX_MESSAGES = 6;
 
 @Component({
   selector: 'app-chat-assistant',
@@ -37,7 +48,8 @@ export class ChatAssistant implements AfterViewInit {
         this.messages = [{
           role: 'assistant',
           content: 'Bonjour ! Je suis CrediSense. Posez-moi une question sur ce dossier de crédit.',
-          timestamp: new Date()
+          timestamp: new Date(),
+          technique: true
         }];
         this.cdr.detectChanges();
       }
@@ -52,11 +64,15 @@ export class ChatAssistant implements AfterViewInit {
       this.messages.push({
         role: 'assistant',
         content: 'Erreur : aucun dossier sélectionné.',
-        timestamp: new Date()
+        timestamp: new Date(),
+        technique: true
       });
       this.cdr.detectChanges();
       return;
     }
+
+    // Mémoire de conversation : les derniers échanges, SANS la question en cours (envoyée à part)
+    const historique = this.historiquePourEnvoi();
 
     this.messages.push({ role: 'user', content: q, timestamp: new Date() });
     this.question = '';
@@ -68,7 +84,8 @@ export class ChatAssistant implements AfterViewInit {
       {
         cin:       this.cin       || null,
         dossierId: this.dossierId || null,
-        question:  q
+        question:  q,
+        historique
       }
     ).subscribe({
       next: (res) => {
@@ -86,12 +103,24 @@ export class ChatAssistant implements AfterViewInit {
         this.messages.push({
           role: 'assistant',
           content: 'Désolé, une erreur est survenue. Veuillez réessayer.',
-          timestamp: new Date()
+          timestamp: new Date(),
+          technique: true
         });
         this.loading = false;
         this.cdr.detectChanges();
       }
     });
+  }
+
+  /**
+   * Derniers échanges réels de la conversation, du plus ancien au plus récent. La salutation et
+   * les messages d'erreur n'en font pas partie : ils n'ont pas été dits au modèle.
+   */
+  historiquePourEnvoi(): MessageHistorique[] {
+    return this.messages
+      .filter(m => !m.technique && !!m.content?.trim())
+      .slice(-HISTORIQUE_MAX_MESSAGES)
+      .map(m => ({ role: m.role, content: m.content }));
   }
 
   onKeyDown(event: KeyboardEvent): void {

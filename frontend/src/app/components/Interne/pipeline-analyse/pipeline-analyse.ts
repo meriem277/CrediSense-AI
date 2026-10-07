@@ -45,6 +45,9 @@ export class PipelineAnalyseComponent implements OnChanges {
   @Input() analyseEnCours = false;
   @Input() analyseTerminee = false;
   @Input() scoreDisponible = false;
+  // L'agent a confirmé qu'il poursuit malgré une incohérence (CIN ou type de document) : son
+  // contrôle manuel vaut validation, les étapes 1 et 2 passent au vert avec une mention explicite.
+  @Input() incoherenceConfirmee = false;
 
   // ── Sortie : ce que le parent peut autoriser ──────────────────────────────
   //  - peutAnalyser : les étapes 1 et 2 sont validées
@@ -62,6 +65,15 @@ export class PipelineAnalyseComponent implements OnChanges {
 
   /** Vrai quand le CIN est valide mais qu'un document ne correspond pas à son type déclaré. */
   private typeConflitSeul = false;
+
+  /**
+   * Une incohérence est « levée » par l'agent : il l'a confirmée, ou l'analyse est déjà faite
+   * (le serveur refuse d'analyser un dossier incohérent sans cette confirmation, donc un dossier
+   * analysé a forcément été confirmé).
+   */
+  private get confirmeParAgent(): boolean {
+    return this.incoherenceConfirmee || this.analyseTerminee;
+  }
 
   ngOnChanges(_: SimpleChanges): void {
     this.calculerEtapes();
@@ -129,8 +141,19 @@ export class PipelineAnalyseComponent implements OnChanges {
     const incoherents = this.documents.filter(d => d.cinCoherent === false);
 
     if (incoherents.length > 0) {
-      this.cinIncoherenceSeule = true;
       const types = incoherents.map(d => d.typeDocument).join(', ');
+
+      if (this.confirmeParAgent) {
+        return {
+          id: 'cin',
+          titre: 'Vérification CIN',
+          statut: 'valide',
+          detail: `${donnees!.prenomClient} ${donnees!.nomClient} — CIN ${donnees!.cin} : ` +
+                  `incohérence sur ${types} confirmée manuellement par l'agent`
+        };
+      }
+
+      this.cinIncoherenceSeule = true;
       return {
         id: 'cin',
         titre: 'Vérification CIN',
@@ -164,8 +187,18 @@ export class PipelineAnalyseComponent implements OnChanges {
     // déposé comme « fiche de paie ») ne peut pas être validé : l'agent doit confirmer.
     const enConflit = this.documents.filter(d => d.typeConflit === true);
     if (manquants.length === 0 && enConflit.length > 0) {
-      this.typeConflitSeul = true;
       const liste = enConflit.map(d => `${d.typeDocument} → ${d.typeDetecte}`).join(', ');
+
+      if (this.confirmeParAgent) {
+        return {
+          id: 'docs',
+          titre: 'Validation des documents',
+          statut: 'valide',
+          detail: `Type incohérent (${liste}) confirmé manuellement par l'agent`
+        };
+      }
+
+      this.typeConflitSeul = true;
       return {
         id: 'docs',
         titre: 'Validation des documents',

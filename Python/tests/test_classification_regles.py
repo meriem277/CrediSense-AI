@@ -19,7 +19,7 @@ _stub.LLMUnavailableError = type("LLMUnavailableError", (RuntimeError,), {})
 _stub.etat = lambda: {}
 sys.modules.setdefault("services.llm_client", _stub)
 
-from services.classification_regles import classer_par_regles, normaliser  # noqa: E402
+from services.classification_regles import classer_par_regles, diagnostiquer_regles, normaliser  # noqa: E402
 from services.controle_type import evaluer_type  # noqa: E402
 
 CIN = """République Tunisienne
@@ -172,6 +172,114 @@ class CascadeTest(unittest.TestCase):
         self.assertEqual(appels["embeddings"], 1)
         self.assertEqual(appels["llm"], 1)
         self.assertEqual(resultat["methode"], "llm_fallback")
+
+
+class DiagnosticTest(unittest.TestCase):
+    """Le diagnostic explique la décision des règles, même quand elles s'abstiennent."""
+
+    def test_verdict_net_avec_les_mots_cles_trouves(self):
+        d = diagnostiquer_regles(RELEVE)
+        self.assertTrue(d["decisif"])
+        self.assertEqual(d["type"], "RELEVE_BANCAIRE")
+        self.assertIn("releve de compte", d["mots_cles"])
+        self.assertIn("verdict net", d["raison"])
+        self.assertEqual(d["classement"][0]["type"], "RELEVE_BANCAIRE")
+
+    def test_abstention_expliquee(self):
+        d = diagnostiquer_regles(ATTESTATION_ECOLE)
+        self.assertFalse(d["decisif"])
+        self.assertTrue("score trop bas" in d["raison"] or "écart insuffisant" in d["raison"], d["raison"])
+        self.assertEqual(d["seuil_score"], 5)
+        self.assertEqual(d["seuil_ecart"], 3)
+
+    def test_texte_court(self):
+        d = diagnostiquer_regles("court")
+        self.assertFalse(d["decisif"])
+        self.assertIn("trop court", d["raison"])
+        self.assertEqual(d["classement"], [])
+
+    def test_aucun_mot_cle(self):
+        d = diagnostiquer_regles("Le chat dort sur le canapé du salon toute la journée, il fait beau.")
+        self.assertFalse(d["decisif"])
+        self.assertIn("aucun mot-clé", d["raison"])
+        self.assertIsNone(d["type"])
+
+    def test_le_classement_ne_garde_que_les_candidats_qui_ont_un_score(self):
+        for candidat in diagnostiquer_regles(FICHE_PAIE)["classement"]:
+            self.assertGreater(candidat["score"], 0)
+
+
+class TraceTest(unittest.TestCase):
+    """La trace raconte la cascade niveau par niveau : c'est ce que voit l'agent dans le popup."""
+
+    def creer(self, confiance=0.40, llm_echec=False):
+        from services.document_classifier_service import DocumentClassifierService
+
+        class FauxEmbeddings:
+            def classify(self_, texte, dossier_id=None):
+                return {"type_document": "CIN", "confiance": confiance,
+                        "top3": [{"label": "CIN", "score": confiance}], "alertes": []}
+
+        class FauxLLM:
+            def classify(self_, texte, dossier_id=None):
+                if llm_echec:
+                    return {"type_document": "AUTRE", "confiance": 0.0, "echec": True,
+                            "justification": "quota dépassé"}
+                return {"type_document": "AUTRE", "confiance": 0.9, "echec": False,
+                        "justification": "attestation de réussite d'une école", "provider": "groq"}
+
+        service = object.__new__(DocumentClassifierService)
+        service.embeddings_classifier = FauxEmbeddings()
+        service.llm_classifier = FauxLLM()
+        return service
+
+    def niveaux(self, resultat):
+        return [t["niveau"] for t in resultat["trace"]]
+
+    def test_regles_decisives_un_seul_niveau(self):
+        resultat = self.creer().classify(RELEVE)
+        self.assertEqual(self.niveaux(resultat), ["regles"])
+        etape = resultat["trace"][0]
+        self.assertTrue(etape["decisif"])
+        self.assertIn("releve de compte", etape["mots_cles"])
+
+    def test_regles_puis_llm_trois_niveaux(self):
+        resultat = self.creer(confiance=0.40).classify(ATTESTATION_ECOLE)
+        self.assertEqual(self.niveaux(resultat), ["regles", "embeddings", "llm"])
+        regles, embeddings, llm = resultat["trace"]
+        self.assertFalse(regles["decisif"])
+        self.assertTrue(regles["raison"])                       # pourquoi les règles se sont abstenues
+        self.assertFalse(embeddings["decisif"])
+        self.assertEqual(embeddings["seuil"], 0.55)
+        self.assertIn("zone grise", embeddings["raison"])
+        self.assertTrue(llm["decisif"])
+        self.assertEqual(llm["justification"], "attestation de réussite d'une école")
+
+    def test_embeddings_surs_le_llm_n_est_pas_consulte(self):
+        resultat = self.creer(confiance=0.70).classify(ATTESTATION_ECOLE)
+        self.assertEqual(self.niveaux(resultat), ["regles", "embeddings"])
+        self.assertTrue(resultat["trace"][1]["decisif"])
+        self.assertEqual(resultat["methode"], "embeddings")
+
+    def test_similarite_tres_basse_le_llm_n_est_pas_consulte(self):
+        resultat = self.creer(confiance=0.10).classify(ATTESTATION_ECOLE)
+        self.assertEqual(self.niveaux(resultat), ["regles", "embeddings"])
+        self.assertIn("trop basse", resultat["trace"][1]["raison"])
+        self.assertEqual(resultat["methode"], "embeddings_faible_confiance")
+
+    def test_llm_en_panne_la_trace_le_dit(self):
+        resultat = self.creer(confiance=0.40, llm_echec=True).classify(ATTESTATION_ECOLE)
+        self.assertEqual(self.niveaux(resultat), ["regles", "embeddings", "llm"])
+        llm = resultat["trace"][2]
+        self.assertTrue(llm["echec"])
+        self.assertFalse(llm["decisif"])
+        self.assertIn("quota", llm["raison"])
+        self.assertEqual(resultat["methode"], "embeddings_llm_indisponible")
+
+    def test_la_trace_est_serialisable_en_json(self):
+        import json
+        resultat = self.creer(confiance=0.40).classify(ATTESTATION_ECOLE)
+        json.dumps(resultat["trace"])    # le backend la stocke telle quelle : pas d'objet exotique
 
 
 if __name__ == "__main__":

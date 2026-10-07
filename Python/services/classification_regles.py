@@ -169,26 +169,62 @@ def scorer(texte_normalise: str) -> dict[str, dict]:
     return resultats
 
 
+def diagnostiquer_regles(texte: str) -> dict:
+    """
+    Analyse complète des règles, décisive ou non, pour expliquer ce qui s'est passé :
+      decisif    : les règles tranchent (score assez haut ET écart suffisant avec le 2e type)
+      type, score, mots_cles : le meilleur candidat et les mots-clés qui l'ont fait gagner
+      classement : les 3 meilleurs candidats avec leur score (pour comprendre une abstention)
+      raison     : phrase lisible (« verdict net », « écart insuffisant… »)
+    """
+    seuils = {"seuil_score": SCORE_MIN, "seuil_ecart": ECART_MIN}
+    if not texte or len(texte.strip()) < 20:
+        return {"decisif": False, "type": None, "score": 0, "mots_cles": [], "classement": [],
+                "raison": "texte trop court pour appliquer les règles", **seuils}
+
+    scores = scorer(normaliser(texte))
+    classement = sorted(scores.items(), key=lambda kv: kv[1]["score"], reverse=True)
+    (meilleur, infos), (_, second) = classement[0], classement[1]
+    ecart = infos["score"] - second["score"]
+
+    if infos["score"] == 0:
+        decisif, raison = False, "aucun mot-clé de type de document reconnu"
+    elif infos["score"] < SCORE_MIN:
+        decisif, raison = False, f"score trop bas ({infos['score']} : {SCORE_MIN} requis)"
+    elif ecart < ECART_MIN:
+        decisif, raison = False, f"écart insuffisant avec le 2e type ({ecart} : {ECART_MIN} requis)"
+    else:
+        decisif, raison = True, f"verdict net (score {infos['score']}, écart {ecart} avec le 2e type)"
+
+    return {
+        "decisif":    decisif,
+        "type":       meilleur if infos["score"] else None,
+        "score":      infos["score"],
+        "mots_cles":  infos["mots_cles"],
+        "classement": [{"type": t, "score": i["score"], "mots_cles": i["mots_cles"]}
+                       for t, i in classement[:3] if i["score"] > 0],
+        "raison":     raison,
+        **seuils,
+    }
+
+
+def verdict_depuis_diagnostic(diagnostic: dict) -> Optional[dict]:
+    """Le verdict (même forme que les autres classifieurs) si les règles sont décisives, sinon None."""
+    if not diagnostic["decisif"]:
+        return None
+    return {
+        "type_document": diagnostic["type"],
+        "confiance":     CONFIANCE_REGLES,
+        "methode":       "regles",
+        "score_regles":  diagnostic["score"],
+        "mots_cles":     diagnostic["mots_cles"],
+        "alertes":       [],
+    }
+
+
 def classer_par_regles(texte: str) -> Optional[dict]:
     """
     Renvoie un verdict si les règles sont sûres d'elles, sinon None (la cascade continue).
     Le verdict a la même forme que celui des autres classifieurs, avec methode = « regles ».
     """
-    if not texte or len(texte.strip()) < 20:
-        return None
-
-    scores = scorer(normaliser(texte))
-    classement = sorted(scores.items(), key=lambda kv: kv[1]["score"], reverse=True)
-    (meilleur, infos), (_, second) = classement[0], classement[1]
-
-    if infos["score"] < SCORE_MIN or infos["score"] - second["score"] < ECART_MIN:
-        return None
-
-    return {
-        "type_document": meilleur,
-        "confiance":     CONFIANCE_REGLES,
-        "methode":       "regles",
-        "score_regles":  infos["score"],
-        "mots_cles":     infos["mots_cles"],
-        "alertes":       [],
-    }
+    return verdict_depuis_diagnostic(diagnostiquer_regles(texte))

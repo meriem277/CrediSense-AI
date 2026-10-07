@@ -182,3 +182,85 @@ describe('PipelineAnalyseComponent — type de document contredit', () => {
     expect(etat.peutAnalyserAvecConfirmation).toBe(false);
   });
 });
+
+describe("PipelineAnalyseComponent — confirmation de l'agent", () => {
+
+  const fichePaieEnConflit = (): DocumentPipeline[] => {
+    const docs = documentsRequisLus();
+    docs[0] = { ...doc('FICHE_PAIE', { revenuMensuelNet: 1820 }), typeDetecte: 'RELEVE_BANCAIRE', typeConflit: true };
+    return docs;
+  };
+
+  /** Crée le composant avec la confirmation de l'agent, et renvoie un accès aux étapes et à l'état émis. */
+  function evaluerAvecConfirmation(documents: DocumentPipeline[], confirmee: boolean, terminee = false) {
+    const composant = new PipelineAnalyseComponent();
+    composant.documents = documents;
+    composant.incoherenceConfirmee = confirmee;
+    composant.analyseTerminee = terminee;
+    let etat: { peutAnalyser: boolean; peutAnalyserAvecConfirmation: boolean } | undefined;
+    composant.etatChange.subscribe(e => (etat = e));
+    composant.ngOnChanges({});
+    return { etat: etat!, etape: (id: string) => composant.etapes.find(e => e.id === id)! };
+  }
+
+  it("CIN incohérent, pas encore confirmé : rouge et verrouillé (comportement d'avant)", () => {
+    const { etape, etat } = evaluerAvecConfirmation([doc('CIN', IDENTITE, false), ...documentsRequisLus()], false);
+
+    expect(etape('cin').statut).toBe('erreur');
+    expect(etape('docs').statut).toBe('attente');
+    expect(etat.peutAnalyserAvecConfirmation).toBe(true);
+  });
+
+  it("CIN incohérent confirmé par l'agent : les étapes 1 et 2 passent au vert, avec la mention", () => {
+    const { etape } = evaluerAvecConfirmation([doc('CIN', IDENTITE, false), ...documentsRequisLus()], true);
+
+    expect(etape('cin').statut).toBe('valide');
+    expect(etape('cin').detail).toContain("confirmée manuellement par l'agent");
+    expect(etape('docs').statut).toBe('valide');
+  });
+
+  it("une fois confirmé, l'analyse peut être (re)lancée sans redemander", () => {
+    const { etat } = evaluerAvecConfirmation([doc('CIN', IDENTITE, false), ...documentsRequisLus()], true);
+
+    expect(etat.peutAnalyser).toBe(true);
+    expect(etat.peutAnalyserAvecConfirmation).toBe(false);
+  });
+
+  it("analyse terminée sur un CIN incohérent : tout est vert (le serveur exige la confirmation)", () => {
+    const { etape } = evaluerAvecConfirmation([doc('CIN', IDENTITE, false), ...documentsRequisLus()], false, true);
+
+    expect(etape('cin').statut).toBe('valide');
+    expect(etape('docs').statut).toBe('valide');
+    expect(etape('analyse').statut).toBe('valide');
+  });
+
+  it("type contredit confirmé : l'étape documents passe au vert avec la mention", () => {
+    const { etape } = evaluerAvecConfirmation([doc('CIN', IDENTITE, true), ...fichePaieEnConflit()], true);
+
+    expect(etape('docs').statut).toBe('valide');
+    expect(etape('docs').detail).toContain('FICHE_PAIE → RELEVE_BANCAIRE');
+    expect(etape('docs').detail).toContain("confirmé manuellement par l'agent");
+  });
+
+  it("CIN ET type contredits, confirmés : une seule confirmation rend les deux étapes vertes", () => {
+    const { etape } = evaluerAvecConfirmation([doc('CIN', IDENTITE, false), ...fichePaieEnConflit()], true);
+
+    expect(etape('cin').statut).toBe('valide');
+    expect(etape('docs').statut).toBe('valide');
+  });
+
+  it("la confirmation ne masque PAS une information d'identité manquante", () => {
+    const { etape } = evaluerAvecConfirmation(
+      [doc('CIN', { ...IDENTITE, nomClient: '' }, false), ...documentsRequisLus()], true);
+
+    expect(etape('cin').statut).toBe('erreur');
+  });
+
+  it("la confirmation ne remplace PAS un document requis manquant", () => {
+    const docs = documentsRequisLus().filter(d => d.typeDocument !== 'RELEVE_BANCAIRE');
+    const { etape } = evaluerAvecConfirmation([doc('CIN', IDENTITE, false), ...docs], true);
+
+    expect(etape('docs').statut).toBe('en_cours');
+    expect(etape('docs').detail).toContain('RELEVE_BANCAIRE');
+  });
+});

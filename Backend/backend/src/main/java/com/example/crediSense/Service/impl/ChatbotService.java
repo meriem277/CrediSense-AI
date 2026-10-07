@@ -11,6 +11,7 @@ import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -42,7 +43,18 @@ public class ChatbotService {
     // ─── Point d'entrée ───────────────────────────────────────────────────────
 
 
+    // Mémoire de conversation : on ne garde que les derniers messages, courts, de rôle connu.
+    // Le service IA refait ce nettoyage (il ne fait pas confiance à ce qu'il reçoit) ; le faire
+    // ici évite surtout d'envoyer inutilement un historique énorme sur le réseau interne.
+    static final int HISTORIQUE_MAX_MESSAGES = 6;
+    static final int HISTORIQUE_MAX_CHARS    = 600;
+
     public String poserQuestion(String cin, UUID dossierId, String question) {
+        return poserQuestion(cin, dossierId, question, null);
+    }
+
+    public String poserQuestion(String cin, UUID dossierId, String question,
+                                List<Map<String, String>> historique) {
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
@@ -51,6 +63,7 @@ public class ChatbotService {
             body.put("question",   question);
             body.put("dossier_id", dossierId != null ? dossierId.toString() : "");  // ✅ UUID → String
             body.put("cin",        cin != null ? cin : "");
+            body.put("historique", nettoyerHistorique(historique));
 
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
 
@@ -69,6 +82,29 @@ public class ChatbotService {
             return "Erreur lors de la communication avec le chatbot IA.";
         }
     }
+
+    /** Derniers messages « user » / « assistant » non vides, tronqués ; jamais null. */
+    static List<Map<String, String>> nettoyerHistorique(List<Map<String, String>> historique) {
+        List<Map<String, String>> propres = new ArrayList<>();
+        if (historique == null) return propres;
+
+        for (Map<String, String> message : historique) {
+            if (message == null) continue;
+            String role    = message.get("role");
+            String contenu = message.get("content");
+            if (!"user".equals(role) && !"assistant".equals(role)) continue;
+            if (contenu == null || contenu.isBlank()) continue;
+
+            contenu = contenu.strip();
+            if (contenu.length() > HISTORIQUE_MAX_CHARS) {
+                contenu = contenu.substring(0, HISTORIQUE_MAX_CHARS);
+            }
+            propres.add(Map.of("role", role, "content", contenu));
+        }
+        int debut = Math.max(0, propres.size() - HISTORIQUE_MAX_MESSAGES);
+        return new ArrayList<>(propres.subList(debut, propres.size()));
+    }
+
     private String construireContexte(UUID dossierId) {
         if (dossierId == null) return "";
 
