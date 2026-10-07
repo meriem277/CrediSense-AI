@@ -173,6 +173,39 @@
   }
 }
 
+/* ── Avertissements d'analyse (ex : document raccourci) — orange, pas rouge ── */
+.cr-avertissements {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: #fff7e6;
+  border: 1px solid #f5d28a;
+  border-left: 4px solid #e8a317;
+  border-radius: 10px;
+  padding: 14px 16px;
+  color: #7a5200;
+
+  svg {
+    flex-shrink: 0;
+    margin-top: 2px;
+    color: #e8a317;
+  }
+
+  strong {
+    display: block;
+    margin-bottom: 3px;
+    font-size: 13.5px;
+    font-weight: 700;
+    color: #5c3d00;
+  }
+
+  span {
+    display: block;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+}
+
 /* ── Score bar ───────────────────────────────── */
 .cr-score-block {
   background: #f7f9fc; border-radius: 12px;

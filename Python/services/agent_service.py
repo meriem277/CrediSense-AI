@@ -32,11 +32,21 @@ from typing import Optional
 
 from pydantic import BaseModel
 
+from services.dossier_texte import preparer_texte_dossier
 from services.llm_client import chat_completion, LLMUnavailableError, etat as llm_etat
 
 logger = logging.getLogger(__name__)
 
 CACHE_MAX_SIZE = 128
+
+
+def _max_chars_dossier() -> int:
+    """Taille maximale (en caractères) du dossier envoyé au LLM — .env : AGENT_MAX_CHARS."""
+    try:
+        valeur = int(os.getenv("AGENT_MAX_CHARS", "12000"))
+        return valeur if valeur > 0 else 12000
+    except ValueError:
+        return 12000
 
 # ── Règles réglementaires (BCT Tunisie — crédit à la consommation) ────────────
 DTI_ACCEPTABLE      = 30.0   # % — en dessous : acceptable
@@ -84,6 +94,7 @@ class CreditAnalysisResult(BaseModel):
     recommendedPlan:  list                           = []
     conditions:       list                           = []
     documentSources:  list                           = []
+    avertissements:   list                           = []   # ex : dossier raccourci avant analyse
     rawExplanation:   Optional[str]                  = None
     creditType:       str                            = "CONSOMMATION"
 
@@ -428,8 +439,18 @@ class AgentService:
             return result
 
         try:
-            reponse     = self._appeler_llm(document_text)
+            # Répartit le budget de caractères entre les documents (plus de coupe
+            # brutale qui supprimait les derniers documents sans rien dire)
+            texte_dossier, avertissements = preparer_texte_dossier(
+                document_text, _max_chars_dossier()
+            )
+            if avertissements:
+                logger.warning("Dossier raccourci avant analyse (%d → %d chars) : %s",
+                               len(document_text), len(texte_dossier), " | ".join(avertissements))
+
+            reponse     = self._appeler_llm(texte_dossier)
             result_dict = self._parser_resultat(reponse.content)
+            result_dict["avertissements"] = avertissements
 
             # Validation Pydantic
             try:
@@ -544,7 +565,7 @@ class AgentService:
             task="analyse",
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user",   "content": f"Voici le dossier à analyser :\n\n{document_text[:4000]}"}
+                {"role": "user",   "content": f"Voici le dossier à analyser :\n\n{document_text}"}
             ],
             temperature=0.1,
             max_tokens=3500,

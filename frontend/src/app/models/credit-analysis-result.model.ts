@@ -29,5 +29,7 @@ export interface CreditAnalysisResult {
   risks: Array<string | RiskItem>;
   recommendedPlan: Array<string | PlanItem>;
   documentSources?: DocumentSource[];
+  /** Ex : « Le document X a été raccourci… » — le texte envoyé à l'IA a dépassé la taille maximale */
+  avertissements?: string[];
   rawExplanation: string;
 }

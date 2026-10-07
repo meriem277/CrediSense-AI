@@ -230,9 +230,6 @@ public class FichierServiceImpl implements FichierService {
                 return;
             }
 
-            HttpHeaders jsonHeaders = new HttpHeaders();
-            jsonHeaders.setContentType(MediaType.APPLICATION_JSON);
-
             // ── ÉTAPE 3 : Indexation RAG ──────────────────────────────
             try {
                 List<String> ocrTextes = new ArrayList<>();
@@ -266,34 +263,16 @@ public class FichierServiceImpl implements FichierService {
                     );
                     log.info("RAG indexe avec {} documents pour dossier {}",
                             ocrTextes.size(), dossierId);
-
-                    // ✅ Attente avant le score pour éviter le rate limit Groq
-                    Thread.sleep(3000);
                 }
 
-            } catch (InterruptedException ie) {
-                Thread.currentThread().interrupt();
             } catch (Exception e) {
                 log.warn("Indexation RAG echouee: {}", e.getMessage());
             }
 
-            // ── ÉTAPE 4 : Score consommation ──────────────────────────
-            try {
-                Map<String, Object> scoreBody = new HashMap<>();
-                scoreBody.put("document_text", texteComplet.toString());
-
-                HttpEntity<Map<String, Object>> scoreRequest =
-                        new HttpEntity<>(scoreBody, jsonHeaders);
-
-                restTemplate.postForObject(
-                        nlpServiceUrl + "/ai/score/consommation",
-                        scoreRequest, Map.class
-                );
-                log.info("Score calculé pour dossier {}", dossierId);
-
-            } catch (Exception e) {
-                log.warn("Score consommation échoué: {}", e.getMessage());
-            }
+            // Le score n'est PAS calculé ici : analyserEtScorer() le fait juste après
+            // (avec les infos de la demande de crédit) et en enregistre le résultat.
+            // Un score calculé ici était jeté, et coûtait un appel LLM de plus par analyse
+            // (c'est ce qui obligeait à une pause de 3 s pour éviter les limites de débit).
 
             log.info("Pipeline complet réussi pour dossier {} — {} chars",
                     dossierId, texteComplet.length());
@@ -444,7 +423,13 @@ public class FichierServiceImpl implements FichierService {
             for (Fichier f : fichiers) {
                 ocrResultRepository.findByFichierId(f.getId()).ifPresent(ocr -> {
                     if (ocr.getTexteNettoye() != null) {
-                        texteComplet.append(ocr.getTexteNettoye()).append("\n\n");
+                        // En-tête par document : le service IA s'en sert pour répartir
+                        // équitablement la taille maximale entre les documents (sans lui,
+                        // les derniers documents du dossier étaient coupés en silence).
+                        texteComplet.append("=== ")
+                                .append(f.getTypeDocument() != null ? f.getTypeDocument() : "DOCUMENT")
+                                .append(" (").append(f.getNomOriginal()).append(") ===\n")
+                                .append(ocr.getTexteNettoye()).append("\n\n");
                     }
                 });
             }
