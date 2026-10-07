@@ -21,5 +21,9 @@ public class FichierResponse {
     private Boolean cinCoherent;
     private UUID dossierId;
 
+    private String  typeDetecte;
+    private Double  confianceType;
+    private Boolean typeConflit;
+
 
 }

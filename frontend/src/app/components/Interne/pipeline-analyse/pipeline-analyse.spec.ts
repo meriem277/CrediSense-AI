@@ -119,3 +119,66 @@ describe('PipelineAnalyseComponent — verrouillage de l\'analyse', () => {
     expect(terminee.etat.peutAnalyserAvecConfirmation).toBe(false);
   });
 });
+
+describe('PipelineAnalyseComponent — type de document contredit', () => {
+
+  /** Un relevé bancaire déposé dans l'emplacement « fiche de paie ». */
+  function documentsAvecFichePaieEnConflit(): DocumentPipeline[] {
+    const docs = documentsRequisLus();
+    docs[0] = { ...doc('FICHE_PAIE', { revenuMensuelNet: 1820 }), typeDetecte: 'RELEVE_BANCAIRE', typeConflit: true };
+    return docs;
+  }
+
+  it('type contredit, CIN cohérent : l\'analyse est bloquée mais possible après confirmation', () => {
+    const { etat, etape } = evaluer([doc('CIN', IDENTITE, true), ...documentsAvecFichePaieEnConflit()]);
+
+    expect(etape('cin').statut).toBe('valide');
+    expect(etape('docs').statut).toBe('erreur');
+    expect(etape('docs').detail).toContain('FICHE_PAIE → RELEVE_BANCAIRE');
+    expect(etat.peutAnalyser).toBe(false);
+    expect(etat.peutAnalyserAvecConfirmation).toBe(true);
+  });
+
+  it('type contredit ET CIN incohérent : une seule confirmation couvre les deux', () => {
+    const { etat, etape } = evaluer([doc('CIN', IDENTITE, false), ...documentsAvecFichePaieEnConflit()]);
+
+    expect(etape('cin').statut).toBe('erreur');
+    expect(etat.peutAnalyser).toBe(false);
+    expect(etat.peutAnalyserAvecConfirmation).toBe(true);
+  });
+
+  it('un verdict incertain (conflit null) ne bloque rien', () => {
+    const docs = documentsRequisLus();
+    docs[0] = { ...docs[0], typeDetecte: 'RELEVE_BANCAIRE', typeConflit: null };
+    const { etat, etape } = evaluer([doc('CIN', IDENTITE, true), ...docs]);
+
+    expect(etape('docs').statut).toBe('valide');
+    expect(etat.peutAnalyser).toBe(true);
+    expect(etat.peutAnalyserAvecConfirmation).toBe(false);
+  });
+
+  it('un type confirmé conforme (conflit false) ne bloque rien', () => {
+    const docs = documentsRequisLus();
+    docs[0] = { ...docs[0], typeDetecte: 'FICHE_PAIE', typeConflit: false };
+    const { etat } = evaluer([doc('CIN', IDENTITE, true), ...docs]);
+
+    expect(etat.peutAnalyser).toBe(true);
+  });
+
+  it('un document requis manquant passe avant le conflit de type', () => {
+    const docs = documentsAvecFichePaieEnConflit().filter(d => d.typeDocument !== 'RELEVE_BANCAIRE');
+    const { etat, etape } = evaluer([doc('CIN', IDENTITE, true), ...docs]);
+
+    expect(etape('docs').statut).toBe('en_cours');
+    expect(etape('docs').detail).toContain('RELEVE_BANCAIRE');
+    expect(etat.peutAnalyserAvecConfirmation).toBe(false);
+  });
+
+  it('analyse déjà terminée : le conflit de type ne permet plus de relancer', () => {
+    const { etat } = evaluer([doc('CIN', IDENTITE, true), ...documentsAvecFichePaieEnConflit()],
+                             { analyseTerminee: true });
+
+    expect(etat.peutAnalyser).toBe(false);
+    expect(etat.peutAnalyserAvecConfirmation).toBe(false);
+  });
+});

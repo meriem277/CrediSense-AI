@@ -183,6 +183,10 @@ public class DossierController {
         map.put("nomOriginal",  f.getNomOriginal() != null ? f.getNomOriginal() : "");
         map.put("typeDocument", f.getTypeDocument() != null ? f.getTypeDocument() : "");
         map.put("typeOriginal", f.getTypeOriginal() != null ? f.getTypeOriginal() : "");
+        // Contrôle du type : null tant que le document n'a pas été classé ou si le verdict est incertain
+        map.put("typeDetecte",   f.getTypeDetecte());
+        map.put("confianceType", f.getConfianceType());
+        map.put("typeConflit",   f.getTypeConflit());
         map.put("cheminPdf",    f.getCheminPdf() != null ? f.getCheminPdf() : "");
         map.put("createdAt",    f.getCreatedAt() != null ? f.getCreatedAt().toString() : "");
         map.put("verifie",      f.getOcrResult() != null

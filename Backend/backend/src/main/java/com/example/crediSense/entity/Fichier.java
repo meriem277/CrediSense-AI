@@ -24,6 +24,14 @@ public class Fichier {
     private String typeOriginal;
     private String typeDocument;
 
+    // Contrôle du type : ce que la classification (embeddings, puis LLM) a trouvé, comparé
+    // au type déclaré par le client. typeConflit : true = désaccord fiable, false = accord,
+    // null = pas de conclusion (verdict peu fiable ou type non déclaré).
+    private String  typeDetecte;
+    private Double  confianceType;
+    private String  methodeType;
+    private Boolean typeConflit;
+
     private String cheminPdf;
 
     @CreationTimestamp

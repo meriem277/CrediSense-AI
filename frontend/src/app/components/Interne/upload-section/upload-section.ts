@@ -116,7 +116,9 @@ export class UploadSection implements OnChanges {
           nomOriginal:  f.nomOriginal,
           typeDocument: f.typeDocument,
           jsonData:     f.jsonData ?? null,
-          cinCoherent:  f.cinCoherent ?? null
+          cinCoherent:  f.cinCoherent ?? null,
+          typeDetecte:  f.typeDetecte ?? null,
+          typeConflit:  f.typeConflit ?? null
         }));
 
         this.loading = false;
@@ -133,7 +135,11 @@ export class UploadSection implements OnChanges {
   // Un document dont le CIN ne correspond pas à celui du client n'est PAS « validé »,
   // même si l'IA a pu le lire (sinon le badge contredit l'étape « Vérification CIN »).
   estVerifie(fichier: any): boolean {
-    return fichier.verifie === true && fichier.cinCoherent !== false;
+    return fichier.verifie === true && fichier.cinCoherent !== false && fichier.typeConflit !== true;
+  }
+
+  private libelleType(type: string): string {
+    return LABELS_TYPE_DOCUMENT[type] || type;
   }
 
   // ✅ Message affiché au-dessus du fichier — "CIN vérifié et validé", etc.
@@ -145,6 +151,11 @@ export class UploadSection implements OnChanges {
     }
     if (fichier.cinCoherent === false) {
       return 'CIN incohérent avec celui du client : vérification manuelle recommandée';
+    }
+    // Le contenu du document ne correspond pas à l'emplacement choisi par le client
+    if (fichier.typeConflit === true) {
+      return `Type incohérent : déposé comme « ${this.libelleType(fichier.typeDocument)} », ` +
+             `le contenu ressemble à « ${this.libelleType(fichier.typeDetecte)} » : vérification manuelle recommandée`;
     }
     if (!this.estVerifie(fichier)) {
       return 'En attente de vérification';
@@ -196,14 +207,28 @@ export class UploadSection implements OnChanges {
       return;
     }
     if (this.peutAnalyserAvecConfirmation) {
-      const types = this.documentsAvecJson
-        .filter(d => d.cinCoherent === false)
-        .map(d => LABELS_TYPE_DOCUMENT[d.typeDocument] || d.typeDocument)
-        .join(', ');
-      this.confirmationIncoherence =
-        `Le numéro de CIN lu ne correspond pas à celui du client (${types}). ` +
-        `Vérifiez les documents manuellement avant de poursuivre.`;
+      this.confirmationIncoherence = this.messageIncoherence();
     }
+  }
+
+  /** Ce qui est incohérent dans le dossier : CIN d'un document et/ou type d'un document. */
+  private messageIncoherence(): string {
+    const parties: string[] = [];
+
+    const cin = this.documentsAvecJson.filter(d => d.cinCoherent === false)
+      .map(d => this.libelleType(d.typeDocument));
+    if (cin.length > 0) {
+      parties.push(`Le numéro de CIN lu ne correspond pas à celui du client (${cin.join(', ')}).`);
+    }
+
+    const types = this.documentsAvecJson.filter(d => d.typeConflit === true)
+      .map(d => `${this.libelleType(d.typeDocument)} → ${this.libelleType(d.typeDetecte ?? '')}`);
+    if (types.length > 0) {
+      parties.push(`Le contenu de certains documents ne correspond pas à leur type déclaré (${types.join(', ')}).`);
+    }
+
+    parties.push('Vérifiez les documents manuellement avant de poursuivre.');
+    return parties.join(' ');
   }
 
   confirmerAnalyse(): void {
@@ -259,7 +284,7 @@ export class UploadSection implements OnChanges {
 
         // Le serveur a suspendu l'analyse : CIN incohérent non confirmé. On demande
         // à l'agent de décider, au lieu d'afficher une erreur.
-        if (err.status === 409 && err.error?.code === 'CIN_INCOHERENT') {
+        if (err.status === 409 && ['CIN_INCOHERENT', 'TYPE_INCOHERENT'].includes(err.error?.code)) {
           this.confirmationIncoherence = err.error.message;
           this.loadFichiers();
           return;

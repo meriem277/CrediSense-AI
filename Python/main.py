@@ -13,6 +13,7 @@ from services.groq_service    import GroqService
 from services.chatbot_service import ChatbotService
 from services.agent_service   import AgentService
 from services.document_classifier_service import DocumentClassifierService  # ✅ nouveau
+from services.controle_type   import evaluer_type
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -42,8 +43,9 @@ class ClassifyRequest(BaseModel):
     dossier_id: Optional[str] = None   # ✅ remplace seuil_confiance (géré en interne par label maintenant)
 
 class ClassifyHybridRequest(BaseModel):   # ✅ nouveau
-    texte:      str
-    dossier_id: Optional[str] = None
+    texte:        str
+    dossier_id:   Optional[str] = None
+    type_declare: Optional[str] = None   # type choisi par le client : comparé au type détecté
 
 class VerifyDocumentsRequest(BaseModel):
     documents_fournis: list[str]
@@ -117,12 +119,14 @@ def classify_document_hybrid(request: ClassifyHybridRequest):
     Classification en cascade : embeddings d'abord (rapide), bascule
     automatique vers le LLM GROQ si le score est en zone grise.
     Champ "methode" dans la réponse indique laquelle a tranché.
+    Le champ "controle" compare le type détecté au type déclaré (voir controle_type.py).
     """
     try:
-        return document_classifier.classify(
+        resultat = document_classifier.classify(
             texte_ocr=request.texte,
             dossier_id=request.dossier_id
         )
+        return {**resultat, "controle": evaluer_type(request.type_declare, resultat)}
     except Exception as e:
         logger.error(f"Erreur /ai/classify-hybrid : {e}")
         raise HTTPException(status_code=500, detail=str(e))

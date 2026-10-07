@@ -110,6 +110,71 @@ CHAMPS_CRITIQUES = {
     "montantCredit", "historiqueCredit"
 }
 
+# ── Extraction adaptée au type de document ───────────────────────────────────
+# Chaque type de document ne contient qu'une partie des champs : demander les 15 champs
+# sur une CIN pousse le modèle à en inventer. Le type vient de la classification (ou, à
+# défaut, de l'emplacement choisi par le client) ; sans type connu on garde le schéma complet.
+CHAMPS_SCHEMA = {
+    "nomClient":         '"string | null"',
+    "prenomClient":      '"string | null"',
+    "cin":               '"string | null"',
+    "revenuMensuelNet":  '"number | null"',
+    "typeContrat":       '"CDI|CDD|FONCTIONNAIRE|INDEPENDANT|RETRAITE | null"',
+    "employeur":         '"string | null"',
+    "anciennete":        '"string | null"',
+    "chargesMensuelles": '"number | null"',
+    "tauxEndettement":   '"number | null"',
+    "montantCredit":     '"number | null"',
+    "dureeCredit":       '"number | null"',
+    "typeCredit":        '"IMMOBILIER|CONSOMMATION | null"',
+    "soldeMoyenCompte":  '"number | null"',
+    "historiqueCredit":  '"BON|MOYEN|MAUVAIS | null"',
+    "incidentsPayment":  '"number | null"',
+}
+
+# Toujours demandés : servent à la cohérence du CIN et à la vérification d'identité
+CHAMPS_TOUJOURS = {"nomClient", "prenomClient", "cin"}
+
+# Champs ajoutés au-delà de CHAMPS_ATTENDUS_PAR_TYPE (utiles sans entrer dans le score de confiance)
+CHAMPS_EXTRA_PAR_TYPE = {
+    "RELEVE_BANCAIRE": {"chargesMensuelles"},
+}
+
+CONSIGNES_PAR_TYPE = {
+    "CIN": "Lis le numéro de la carte (8 chiffres), le nom et le prénom. "
+           "Si le nom existe en arabe et en lettres latines, donne les lettres latines.",
+    "FICHE_PAIE": "revenuMensuelNet = le « net à payer » du mois, jamais le salaire brut ni le net imposable. "
+                  "anciennete = la date d'entrée ou l'ancienneté telle qu'écrite sur la fiche.",
+    "RELEVE_BANCAIRE": "chargesMensuelles = total mensuel des échéances de crédit ou de prêt (pas le salaire, pas les "
+                       "dépenses courantes). incidentsPayment = nombre de rejets, impayés ou découverts. "
+                       "soldeMoyenCompte = la moyenne si elle est indiquée, sinon le dernier solde.",
+    "ATTESTATION_EMPLOI": "anciennete = la date d'embauche ou la durée, telle qu'écrite dans l'attestation. "
+                          "typeContrat uniquement si l'attestation le dit.",
+    "JUSTIFICATIF_DOMICILE": "Seuls le nom et le prénom du titulaire nous intéressent.",
+}
+
+
+def schema_pour_type(type_document: Optional[str]) -> str:
+    """Schéma JSON demandé au LLM : limité aux champs que ce type de document peut contenir."""
+    type_document = (type_document or "").upper()
+    attendus = CHAMPS_ATTENDUS_PAR_TYPE.get(type_document)
+    if not attendus or type_document == "_DEFAULT":
+        return JSON_SCHEMA
+    retenus = attendus | CHAMPS_TOUJOURS | CHAMPS_EXTRA_PAR_TYPE.get(type_document, set())
+    lignes = [f'  "{nom}": {desc}' for nom, desc in CHAMPS_SCHEMA.items() if nom in retenus]
+    return "{\n" + ",\n".join(lignes) + "\n}"
+
+
+def consigne_pour_type(type_document: Optional[str]) -> str:
+    """Phrase(s) ajoutée(s) au prompt : de quel document il s'agit et comment lire ses champs."""
+    type_document = (type_document or "").upper()
+    consigne = CONSIGNES_PAR_TYPE.get(type_document)
+    if not consigne:
+        return ""
+    return (f"Ce document a été identifié comme : {type_document}. {consigne} "
+            f"Mets null pour tout champ que ce document ne contient pas : n'invente rien.\n\n")
+
+
 # ── Compatibilité : client HTTP singleton ─────────────────────────────────────
 # Conservé car d'autres fichiers l'importent encore
 # (ex : services/llm_classifier_service.py).
@@ -181,7 +246,7 @@ class GroqService:
 
         try:
             # ── 3. Appeler le LLM (bascule automatique entre fournisseurs) ───
-            reponse = self._appeler_llm(texte_optimise)
+            reponse = self._appeler_llm(texte_optimise, type_document=type_document)
 
             # ── 4. Nettoyer et parser ────────────────────────────────────────
             json_dict = self._nettoyer_json(reponse.content)
@@ -194,7 +259,7 @@ class GroqService:
                     reponse.provider
                 )
                 try:
-                    reponse   = self._appeler_llm(texte_optimise, route=["mistral"])
+                    reponse   = self._appeler_llm(texte_optimise, route=["mistral"], type_document=type_document)
                     json_dict = self._nettoyer_json(reponse.content)
                 except LLMUnavailableError as e:
                     logger.warning("Nouvel essai Mistral impossible : %s", str(e))
@@ -248,12 +313,13 @@ class GroqService:
 
     # ── Appel LLM ─────────────────────────────────────────────────────────────
 
-    def _appeler_llm(self, texte: str, route: Optional[list] = None):
+    def _appeler_llm(self, texte: str, route: Optional[list] = None, type_document: Optional[str] = None):
         """Appelle le routeur LLM (tâche 'extraction') en mode JSON."""
         user_prompt = (
             f"Extrais les informations financières du document bancaire "
             f"ci-dessous et retourne UNIQUEMENT un JSON selon ce schema :\n\n"
-            f"{JSON_SCHEMA}\n\n"
+            f"{schema_pour_type(type_document)}\n\n"
+            f"{consigne_pour_type(type_document)}"
             f"Document :\n{texte}"
         )
 

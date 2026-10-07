@@ -15,6 +15,10 @@ export interface DocumentPipeline {
   // ✅ Calculé côté backend — true/false si ce fichier a un "cin" comparable
   // au CIN officiel du client, null si ce document n'a pas de champ cin.
   cinCoherent?: boolean | null;
+  // ✅ Contrôle du type par la classification : le type détecté contredit (de façon fiable)
+  // le type choisi par le client. null = pas de conclusion (verdict incertain, ou pas encore classé).
+  typeDetecte?: string | null;
+  typeConflit?: boolean | null;
 }
 
 export interface EtapePipeline {
@@ -56,6 +60,9 @@ export class PipelineAnalyseComponent implements OnChanges {
   /** Vrai quand l'étape CIN est en erreur uniquement à cause d'une incohérence de numéro. */
   private cinIncoherenceSeule = false;
 
+  /** Vrai quand le CIN est valide mais qu'un document ne correspond pas à son type déclaré. */
+  private typeConflitSeul = false;
+
   ngOnChanges(_: SimpleChanges): void {
     this.calculerEtapes();
     this.etatChange.emit({
@@ -67,7 +74,8 @@ export class PipelineAnalyseComponent implements OnChanges {
   // ── Calcul de l'état des 4 étapes ─────────────────────────────────────
   private calculerEtapes(): void {
     this.cinIncoherenceSeule = false;
-    const etapeCin     = this.evaluerEtapeCin();
+    this.typeConflitSeul     = false;
+    const etapeCin    = this.evaluerEtapeCin();
     const etapeDocs     = this.evaluerEtapeDocuments(etapeCin.statut === 'valide');
     const etapeAnalyse = this.evaluerEtapeAnalyse(etapeDocs.statut === 'valide');
     const etapeScore     = this.evaluerEtapeScore(etapeAnalyse.statut === 'valide');
@@ -152,6 +160,20 @@ export class PipelineAnalyseComponent implements OnChanges {
 
     const manquants = this.typesRequisManquants();
 
+    // Un document dont le contenu ne correspond pas au type choisi par le client (ex : un relevé
+    // déposé comme « fiche de paie ») ne peut pas être validé : l'agent doit confirmer.
+    const enConflit = this.documents.filter(d => d.typeConflit === true);
+    if (manquants.length === 0 && enConflit.length > 0) {
+      this.typeConflitSeul = true;
+      const liste = enConflit.map(d => `${d.typeDocument} → ${d.typeDetecte}`).join(', ');
+      return {
+        id: 'docs',
+        titre: 'Validation des documents',
+        statut: 'erreur',
+        detail: `Type incohérent : ${liste} — vérification manuelle recommandée`
+      };
+    }
+
     if (manquants.length === 0) {
       return {
         id: 'docs',
@@ -209,9 +231,9 @@ export class PipelineAnalyseComponent implements OnChanges {
     return docsEtape?.statut === 'valide' && !this.analyseEnCours && !this.analyseTerminee;
   }
 
-  // ── Seul le CIN est incohérent : l'agent peut poursuivre en confirmant ───
+  // ── Seul le CIN ou le type d'un document est incohérent : l'agent peut poursuivre en confirmant ───
   get peutLancerAvecConfirmation(): boolean {
-    return this.cinIncoherenceSeule
+    return (this.cinIncoherenceSeule || this.typeConflitSeul)
       && this.typesRequisManquants().length === 0
       && !this.analyseEnCours
       && !this.analyseTerminee;

@@ -120,6 +120,7 @@ public class FichierServiceImpl implements FichierService {
         resultat.put("total",          fichiers.size());
         resultat.put("echecs",         nbEchecs);
         resultat.put("cinIncoherents", cinIncoherents);
+        resultat.put("typesEnConflit", typesEnConflit(dossierUUID));
         return resultat;
     }
 
@@ -230,6 +231,10 @@ public class FichierServiceImpl implements FichierService {
 
                             nbLus++;
 
+                            // ── ÉTAPE 1 bis : classification, comparée au type déclaré ──
+                            // Le type retenu (détecté s'il est fiable) pilote l'extraction.
+                            String typePourExtraction = classerDocument(f, texte.toString());
+
                             // ── ÉTAPE 2 : Extraction JSON ──────────────
                             try {
                                 HttpHeaders jsonHeaders = new HttpHeaders();
@@ -238,7 +243,7 @@ public class FichierServiceImpl implements FichierService {
                                 Map<String, Object> jsonBody = new HashMap<>();
                                 jsonBody.put("texte_nettoye", texte.toString());
                                 jsonBody.put("cin",           cin);
-                                jsonBody.put("type_document", f.getTypeDocument());
+                                jsonBody.put("type_document", typePourExtraction);
 
                                 HttpEntity<Map<String, Object>> jsonRequest =
                                         new HttpEntity<>(jsonBody, jsonHeaders);
@@ -306,6 +311,72 @@ public class FichierServiceImpl implements FichierService {
         return nbLus;
     }
 
+    /**
+     * Classe le document d'après son texte (/ai/classify-hybrid) et le compare au type déclaré
+     * par le client. Enregistre le résultat sur le fichier et renvoie le type à utiliser pour
+     * l'extraction JSON : le type détecté s'il est fiable, sinon le type déclaré.
+     * Une classification qui échoue ne bloque jamais le pipeline : on garde le type déclaré.
+     */
+    private String classerDocument(Fichier f, String texte) {
+        String declare = f.getTypeDocument();
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            Map<String, Object> body = new HashMap<>();
+            body.put("texte",        texte);
+            body.put("dossier_id",   f.getDossier() != null ? String.valueOf(f.getDossier().getId()) : null);
+            body.put("type_declare", declare);
+
+            Map reponse = restTemplate.postForObject(
+                    nlpServiceUrl + "/ai/classify-hybrid", new HttpEntity<>(body, headers), Map.class);
+            if (reponse == null || !(reponse.get("controle") instanceof Map<?, ?> controle)) {
+                return declare;
+            }
+
+            String  detecte    = controle.get("typeDetecte") != null ? controle.get("typeDetecte").toString() : null;
+            Boolean concordant = controle.get("concordant") instanceof Boolean b ? b : null;
+            String  retenu     = controle.get("typeRetenu") != null ? controle.get("typeRetenu").toString() : declare;
+
+            f.setTypeDetecte(detecte);
+            f.setConfianceType(controle.get("confiance") instanceof Number n ? n.doubleValue() : null);
+            f.setMethodeType(controle.get("methode") != null ? controle.get("methode").toString() : null);
+            f.setTypeConflit(concordant == null ? null : !concordant);
+
+            // Type non déclaré (« AUTRE ») et verdict fiable : le type détecté devient le type du document
+            boolean nonDeclare = declare == null || declare.isBlank() || "AUTRE".equalsIgnoreCase(declare);
+            if (nonDeclare && Boolean.TRUE.equals(controle.get("fiable")) && retenu != null && !"AUTRE".equals(retenu)) {
+                f.setTypeDocument(retenu);
+            }
+            fichierRepository.save(f);
+
+            if (Boolean.TRUE.equals(f.getTypeConflit())) {
+                log.warn("Type incohérent — fichier={}, déclaré='{}', détecté='{}' (confiance {}, {})",
+                        f.getId(), declare, detecte, f.getConfianceType(), f.getMethodeType());
+            }
+            return retenu != null && !retenu.isBlank() ? retenu : declare;
+
+        } catch (Exception e) {
+            log.warn("Classification impossible pour {} : {}", f.getNomOriginal(), e.getMessage());
+            return declare;
+        }
+    }
+
+    /** Type à afficher à l'IA : le type détecté quand il contredit (de façon fiable) le type déclaré. */
+    private String typeEffectif(Fichier f) {
+        return Boolean.TRUE.equals(f.getTypeConflit()) && f.getTypeDetecte() != null
+                ? f.getTypeDetecte() : f.getTypeDocument();
+    }
+
+    /** Documents dont le type déclaré contredit le contenu, sous la forme « déclaré → détecté ». */
+    private List<String> typesEnConflit(UUID dossierUUID) {
+        return fichierRepository.findByDossierId(dossierUUID).stream()
+                .filter(f -> Boolean.TRUE.equals(f.getTypeConflit()))
+                .map(f -> (f.getTypeDocument() != null ? f.getTypeDocument() : "DOCUMENT")
+                        + " → " + f.getTypeDetecte())
+                .toList();
+    }
+
     /** Indexe les textes OCR du dossier pour le chatbot (recherche dans les documents). */
     private void indexerRag(String cin, String dossierId, UUID dossierUUID) {
         {
@@ -317,7 +388,7 @@ public class FichierServiceImpl implements FichierService {
                 for (Fichier f : fichiersList) {
                     ocrResultRepository.findByFichierId(f.getId()).ifPresent(ocr -> {
                         if (ocr.getTexteNettoye() != null && !ocr.getTexteNettoye().isBlank()) {
-                            ocrTextes.add("Document type " + f.getTypeDocument() +
+                            ocrTextes.add("Document type " + typeEffectif(f) +
                                     " nom " + f.getNomOriginal() +
                                     " :\n" + ocr.getTexteNettoye());
                         }
@@ -418,6 +489,9 @@ public class FichierServiceImpl implements FichierService {
         r.setTypeDocument(f.getTypeDocument());
         r.setCheminPdf(f.getCheminPdf());
         r.setCreatedAt(f.getCreatedAt());
+        r.setTypeDetecte(f.getTypeDetecte());
+        r.setConfianceType(f.getConfianceType());
+        r.setTypeConflit(f.getTypeConflit());
 
         if (f.getAgent() != null)   r.setAgentId(f.getAgent().getId());
         if (f.getDossier() != null) r.setDossierId(f.getDossier().getId());
@@ -500,11 +574,14 @@ public class FichierServiceImpl implements FichierService {
         // de l'agent — c'est lui qui décide, après vérification manuelle, de poursuivre.
         if (!confirmerIncoherence) {
             List<String> incoherents = typesCinIncoherents(dossierUUID);
-            if (!incoherents.isEmpty()) {
-                log.warn("Analyse suspendue — CIN incohérent sur {} (dossier {})", incoherents, dossierId);
+            List<String> enConflit   = typesEnConflit(dossierUUID);
+            if (!incoherents.isEmpty() || !enConflit.isEmpty()) {
+                log.warn("Analyse suspendue — CIN incohérent sur {}, type en conflit sur {} (dossier {})",
+                        incoherents, enConflit, dossierId);
                 Map<String, Object> bloque = new HashMap<>();
-                bloque.put("bloque",           "CIN_INCOHERENT");
+                bloque.put("bloque",           incoherents.isEmpty() ? "TYPE_INCOHERENT" : "CIN_INCOHERENT");
                 bloque.put("typesIncoherents", incoherents);
+                bloque.put("typesEnConflit",   enConflit);
                 return bloque;
             }
         }
@@ -522,7 +599,7 @@ public class FichierServiceImpl implements FichierService {
                         // équitablement la taille maximale entre les documents (sans lui,
                         // les derniers documents du dossier étaient coupés en silence).
                         texteComplet.append("=== ")
-                                .append(f.getTypeDocument() != null ? f.getTypeDocument() : "DOCUMENT")
+                                .append(typeEffectif(f) != null ? typeEffectif(f) : "DOCUMENT")
                                 .append(" (").append(f.getNomOriginal()).append(") ===\n")
                                 .append(ocr.getTexteNettoye()).append("\n\n");
                     }

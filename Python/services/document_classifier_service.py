@@ -1,6 +1,10 @@
 # services/document_classifier_service.py
 """
-Orchestrateur de classification à 2 niveaux (cascade) :
+Orchestrateur de classification à 3 niveaux (cascade) :
+
+  0. Règles par mots-clés (classification_regles.py) — instantané, gratuit, reproductible.
+     Répond seulement quand le verdict est net (titre du document, vocabulaire propre) ;
+     sinon elle s'abstient et la cascade continue.
 
   1. Embeddings (nlp_service.py) — rapide, gratuit, local.
      Si le score de confiance est élevé → on garde ce résultat, FIN.
@@ -20,6 +24,7 @@ jamais appeler le LLM ; seuls les cas ambigus consomment un appel.
 
 import logging
 
+from services.classification_regles import classer_par_regles
 from services.nlp_service import NLPClassifier
 from services.llm_classifier_service import LLMClassifierService
 
@@ -45,12 +50,22 @@ class DocumentClassifierService:
         """
         Retourne le résultat de classification final, avec le champ
         "methode" indiquant comment la décision a été prise :
+        - "regles"                      → mots-clés nets (titre du document…), rien d'autre appelé
         - "embeddings"                  → confiance élevée, LLM non appelé
         - "embeddings_faible_confiance" → confiance très basse, LLM non appelé
         - "llm_fallback"                → zone grise, LLM a tranché
         - "embeddings_llm_indisponible" → zone grise, LLM en échec,
                                           verdict des embeddings conservé
         """
+        verdict_regles = classer_par_regles(texte_ocr)
+        if verdict_regles is not None:
+            logger.info(
+                "Classification tranchée par règles (%s, score=%s, mots=%s, dossier=%s)",
+                verdict_regles["type_document"], verdict_regles["score_regles"],
+                verdict_regles["mots_cles"], dossier_id
+            )
+            return verdict_regles
+
         resultat_embeddings = self.embeddings_classifier.classify(texte_ocr, dossier_id)
         confiance = resultat_embeddings["confiance"]
 

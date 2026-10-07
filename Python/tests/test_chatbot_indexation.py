@@ -35,6 +35,7 @@ def _chat_completion(task, messages, **kwargs):
 _faux_llm = types.ModuleType("services.llm_client")
 _faux_llm.chat_completion = _chat_completion
 _faux_llm.LLMUnavailableError = type("LLMUnavailableError", (RuntimeError,), {})
+_faux_llm.etat = lambda: {}
 sys.modules["services.llm_client"] = _faux_llm
 
 import services.chatbot_service as chatbot  # noqa: E402

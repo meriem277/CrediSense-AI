@@ -9,6 +9,7 @@ import com.example.crediSense.repository.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.mockito.ArgumentCaptor;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -233,5 +234,179 @@ class FichierServiceImplTest {
         service.verifierDossier(CIN_CLIENT, dossierId.toString());
 
         verify(jsonExtractionRepository, times(1)).save(argThat(e -> e.getJsonData().contains(CIN_CLIENT)));
+    }
+
+    // ── Contrôle du type de document (classification) ────────────────────────
+
+    /** Le document n'a pas encore été lu : OCR et extraction réussissent. */
+    private void ocrEtExtractionReussis() {
+        when(ocrResultRepository.findByFichierId(fichier.getId())).thenReturn(Optional.empty());
+        when(jsonExtractionRepository.findByFichierIdOrderByCreatedAtDesc(fichier.getId())).thenReturn(List.of());
+
+        Map<String, Object> ocr = Map.of("texte", "texte lu", "statut", "SUCCESS");
+        when(restTemplate.postForEntity(contains("/ocr"), any(), eq(Map.class))).thenReturn(ResponseEntity.ok(ocr));
+
+        Map<String, Object> extractionOk = new HashMap<>();
+        extractionOk.put("statut", "SUCCESS");
+        extractionOk.put("json_data", Map.of("cin", CIN_CLIENT, "nomClient", "Ben Ali"));
+        extractionOk.put("confidence_score", 0.9);
+        when(restTemplate.postForObject(contains("/ai/extract-json"), any(HttpEntity.class), eq(Map.class)))
+                .thenReturn(extractionOk);
+    }
+
+    /** Réponse de /ai/classify-hybrid : bloc « controle » calculé par le service IA. */
+    private void classification(String detecte, boolean fiable, Boolean concordant) {
+        Map<String, Object> controle = new HashMap<>();
+        controle.put("typeDetecte", detecte);
+        controle.put("confiance", 0.8);
+        controle.put("methode", "embeddings");
+        controle.put("fiable", fiable);
+        controle.put("concordant", concordant);
+        controle.put("typeRetenu", fiable ? detecte : fichier.getTypeDocument());
+        when(restTemplate.postForObject(contains("/ai/classify-hybrid"), any(HttpEntity.class), eq(Map.class)))
+                .thenReturn(Map.of("type_document", detecte, "controle", controle));
+    }
+
+    /** Corps JSON envoyé à /ai/extract-json. */
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> corpsExtraction() {
+        ArgumentCaptor<HttpEntity> captor = ArgumentCaptor.forClass(HttpEntity.class);
+        verify(restTemplate).postForObject(contains("/ai/extract-json"), captor.capture(), eq(Map.class));
+        return (Map<String, Object>) captor.getValue().getBody();
+    }
+
+    @Test
+    void conflitDeType_estEnregistre_etL_extractionUtiliseLeTypeDetecte() {
+        fichier.setTypeDocument("FICHE_PAIE");
+        ocrEtExtractionReussis();
+        classification("RELEVE_BANCAIRE", true, false);
+
+        Map resultat = service.verifierDossier(CIN_CLIENT, dossierId.toString());
+
+        assertEquals(Boolean.TRUE, fichier.getTypeConflit());
+        assertEquals("RELEVE_BANCAIRE", fichier.getTypeDetecte());
+        assertEquals("FICHE_PAIE", fichier.getTypeDocument());         // le type déclaré n'est pas écrasé
+        assertEquals(List.of("FICHE_PAIE → RELEVE_BANCAIRE"), resultat.get("typesEnConflit"));
+        // le contenu est un relevé : l'extraction est faite comme pour un relevé
+        assertEquals("RELEVE_BANCAIRE", corpsExtraction().get("type_document"));
+    }
+
+    @Test
+    void typeConforme_aucunConflit_etLeTypeDeclareServAL_extraction() {
+        fichier.setTypeDocument("FICHE_PAIE");
+        ocrEtExtractionReussis();
+        classification("FICHE_PAIE", true, true);
+
+        Map resultat = service.verifierDossier(CIN_CLIENT, dossierId.toString());
+
+        assertEquals(Boolean.FALSE, fichier.getTypeConflit());
+        assertEquals(List.of(), resultat.get("typesEnConflit"));
+        assertEquals("FICHE_PAIE", corpsExtraction().get("type_document"));
+    }
+
+    @Test
+    void verdictIncertain_neSignaleAucunConflit() {
+        fichier.setTypeDocument("FICHE_PAIE");
+        ocrEtExtractionReussis();
+        classification("RELEVE_BANCAIRE", false, null);
+
+        Map resultat = service.verifierDossier(CIN_CLIENT, dossierId.toString());
+
+        assertNull(fichier.getTypeConflit());
+        assertEquals(List.of(), resultat.get("typesEnConflit"));
+        assertEquals("FICHE_PAIE", corpsExtraction().get("type_document"));   // on garde le type déclaré
+    }
+
+    @Test
+    void typeNonDeclare_prendLeTypeDetecteQuandIlEstFiable() {
+        fichier.setTypeDocument("AUTRE");
+        ocrEtExtractionReussis();
+        classification("ATTESTATION_EMPLOI", true, null);
+
+        service.verifierDossier(CIN_CLIENT, dossierId.toString());
+
+        assertEquals("ATTESTATION_EMPLOI", fichier.getTypeDocument());
+        assertNull(fichier.getTypeConflit());   // rien à comparer : pas de conflit
+        assertEquals("ATTESTATION_EMPLOI", corpsExtraction().get("type_document"));
+    }
+
+    @Test
+    void classificationEnPanne_neBloquePasLeDocument() {
+        fichier.setTypeDocument("FICHE_PAIE");
+        ocrEtExtractionReussis();
+        when(restTemplate.postForObject(contains("/ai/classify-hybrid"), any(HttpEntity.class), eq(Map.class)))
+                .thenThrow(new RuntimeException("service IA indisponible"));
+
+        service.verifierDossier(CIN_CLIENT, dossierId.toString());
+
+        assertNull(fichier.getTypeConflit());
+        // le document est quand même extrait, avec le type déclaré
+        assertEquals("FICHE_PAIE", corpsExtraction().get("type_document"));
+        verify(jsonExtractionRepository, times(1)).save(any());
+    }
+
+    // ── Garde « type de document contredit » ─────────────────────────────────
+
+    private void typeEnConflit() {
+        fichier.setTypeDocument("FICHE_PAIE");
+        fichier.setTypeDetecte("RELEVE_BANCAIRE");
+        fichier.setTypeConflit(true);
+    }
+
+    @Test
+    void typeEnConflitSansConfirmation_bloqueEtNeCalculePasDeScore() {
+        typeEnConflit();
+        documentDejaVerifie(CIN_CLIENT);   // le CIN, lui, est cohérent
+
+        Map resultat = service.analyserEtScorer(CIN_CLIENT, dossierId.toString(), false);
+
+        assertEquals("TYPE_INCOHERENT", resultat.get("bloque"));
+        assertEquals(List.of("FICHE_PAIE → RELEVE_BANCAIRE"), resultat.get("typesEnConflit"));
+        assertEquals(List.of(), resultat.get("typesIncoherents"));
+        verifierScoringAppele(0);
+    }
+
+    @Test
+    void cinEtTypeEnConflit_lesDeuxSontSignales() {
+        typeEnConflit();
+        documentDejaVerifie("22222222");
+
+        Map resultat = service.analyserEtScorer(CIN_CLIENT, dossierId.toString(), false);
+
+        assertEquals("CIN_INCOHERENT", resultat.get("bloque"));
+        assertEquals(List.of("FICHE_PAIE"), resultat.get("typesIncoherents"));
+        assertEquals(List.of("FICHE_PAIE → RELEVE_BANCAIRE"), resultat.get("typesEnConflit"));
+        verifierScoringAppele(0);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void typeEnConflitAvecConfirmation_poursuit_etLeScoringVoitLeVraiType() {
+        typeEnConflit();
+        documentDejaVerifie(CIN_CLIENT);
+        reponseScoring();
+
+        Map resultat = service.analyserEtScorer(CIN_CLIENT, dossierId.toString(), true);
+
+        assertNull(resultat.get("bloque"));
+        ArgumentCaptor<HttpEntity> captor = ArgumentCaptor.forClass(HttpEntity.class);
+        verify(restTemplate).postForObject(contains("/ai/score/consommation"), captor.capture(), eq(Map.class));
+        String texte = String.valueOf(((Map<String, Object>) captor.getValue().getBody()).get("document_text"));
+        assertTrue(texte.contains("=== RELEVE_BANCAIRE ("), texte);   // l'IA voit un relevé, pas une fiche de paie
+        assertFalse(texte.contains("=== FICHE_PAIE ("));
+    }
+
+    @Test
+    void typeConforme_n_empecheJamaisLAnalyse() {
+        fichier.setTypeDocument("FICHE_PAIE");
+        fichier.setTypeDetecte("FICHE_PAIE");
+        fichier.setTypeConflit(false);
+        documentDejaVerifie(CIN_CLIENT);
+        reponseScoring();
+
+        Map resultat = service.analyserEtScorer(CIN_CLIENT, dossierId.toString(), false);
+
+        assertNull(resultat.get("bloque"));
+        verifierScoringAppele(1);
     }
 }

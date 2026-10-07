@@ -129,6 +129,7 @@ public class FichierController {
             response.put("total",          fichiers.size());
             response.put("echecs",         echecs);
             response.put("cinIncoherents", resultat.get("cinIncoherents"));
+            response.put("typesEnConflit", resultat.get("typesEnConflit"));
             response.put("message", echecs == 0
                     ? fichiers.size() + " document(s) vérifié(s)"
                     : (fichiers.size() - echecs) + "/" + fichiers.size()
@@ -168,15 +169,30 @@ public class FichierController {
             Map scoreResult = fichierService.analyserEtScorer(
                     cin, dossierId.toString(), confirmerIncoherence);
 
-            // CIN incohérent et non confirmé : rien n'a été calculé, l'agent doit décider
-            if (scoreResult != null && "CIN_INCOHERENT".equals(scoreResult.get("bloque"))) {
+            // CIN incohérent ou type de document contredit, et non confirmé : rien n'a été
+            // calculé, l'agent doit décider
+            Object codeBloque = scoreResult != null ? scoreResult.get("bloque") : null;
+            if ("CIN_INCOHERENT".equals(codeBloque) || "TYPE_INCOHERENT".equals(codeBloque)) {
+                Object cinIncoherents = scoreResult.get("typesIncoherents");
+                Object typesEnConflit = scoreResult.get("typesEnConflit");
+
+                StringBuilder message = new StringBuilder();
+                if ("CIN_INCOHERENT".equals(codeBloque)) {
+                    message.append("Le numéro de CIN lu ne correspond pas à celui du client (")
+                           .append(cinIncoherents).append("). ");
+                }
+                if (typesEnConflit instanceof List<?> l && !l.isEmpty()) {
+                    message.append("Le contenu de certains documents ne correspond pas à leur type déclaré (")
+                           .append(l).append("). ");
+                }
+                message.append("Vérifiez les documents, puis confirmez pour poursuivre l'analyse.");
+
                 Map<String, Object> bloque = new HashMap<>();
                 bloque.put("success",          false);
-                bloque.put("code",             "CIN_INCOHERENT");
-                bloque.put("typesIncoherents", scoreResult.get("typesIncoherents"));
-                bloque.put("message", "Le numéro de CIN lu ne correspond pas à celui du client "
-                        + "(" + scoreResult.get("typesIncoherents") + "). "
-                        + "Vérifiez les documents, puis confirmez pour poursuivre l'analyse.");
+                bloque.put("code",             codeBloque);
+                bloque.put("typesIncoherents", cinIncoherents);
+                bloque.put("typesEnConflit",   typesEnConflit);
+                bloque.put("message",          message.toString());
                 return ResponseEntity.status(HttpStatus.CONFLICT).body(bloque);
             }
 
