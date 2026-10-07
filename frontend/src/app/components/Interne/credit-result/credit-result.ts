@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy, OnChanges, SimpleChanges, ChangeDetectorR
 import { CommonModule }                  from '@angular/common';
 import { HttpClient }                    from '@angular/common/http';
 import { Subscription, combineLatest }   from 'rxjs';
-import { CreditAnalysisResult }          from '../../../models/credit-analysis-result.model';
+import { CreditAnalysisResult, mapperResultat } from '../../../models/credit-analysis-result.model';
 import { CreditStateService }            from '../../../services/credit-state.service';
 import { environment }                   from '../../../../environments/environment';
 import { ExportButton } from '../export-button/export-button';
@@ -71,19 +71,7 @@ export class CreditResult implements OnInit, OnDestroy, OnChanges {
           // ✅ Repasse par creditState.setResult() pour rester sur le même
           // flux que _setScore() côté upload-section — le template n'a rien
           // à changer, il lit toujours creditState.result$.
-          this.creditState.setResult({
-            eligibility:      data.eligibility                                || 'INCONNU',
-            eligibilityScore: data.eligibilityScore || data.eligibility_score || 0,
-            creditType:       data.creditType                                || 'CONSOMMATION',
-            financialMetrics: data.financialMetrics || data.financial_metrics || {},
-            risks:            data.risks                                     || [],
-            recommendedPlan:  data.recommendedPlan  || data.recommended_plan   || [],
-            documentSources:  data.documentSources  || data.document_sources   || [],
-            avertissements:   data.avertissements                              || [],
-            alerteIdentite:   data.alerteIdentite,
-            messageIdentite:  data.messageIdentite,
-            rawExplanation:   data.rawExplanation   || data.explanation         || ''
-          });
+          this.creditState.setResult(mapperResultat(data));
         },
         error: () => {
           // 404 normal si ce dossier n'a jamais été analysé — on laisse
@@ -100,8 +88,49 @@ export class CreditResult implements OnInit, OnDestroy, OnChanges {
       'ELIGIBLE':     'color-eligible',
       'REFUS':        'color-refus',
       'CONDITIONNEL': 'color-conditionnel',
+      'A_COMPLETER':  'color-acompleter',
       'INDETERMINE':  'color-indetermine',
     }[this.result?.eligibility ?? 'INDETERMINE'] ?? 'color-indetermine';
+  }
+
+  /** Libellé affiché : le code interne « A_COMPLETER » n'est pas lisible tel quel. */
+  get eligibilityLabel(): string {
+    const e = this.result?.eligibility ?? 'INDETERMINE';
+    return ({
+      'ELIGIBLE':     'ÉLIGIBLE',
+      'REFUS':        'REFUS',
+      'CONDITIONNEL': 'CONDITIONNEL',
+      'A_COMPLETER':  'À COMPLÉTER',
+      'INDETERMINE':  'INDÉTERMINÉ',
+    } as Record<string, string>)[e] ?? e;
+  }
+
+  // ── Contrôles réglementaires ──────────────────────────────────────────────
+  controleClass(statut: string): string {
+    return ({ 'OK': 'ctl-ok', 'ATTENTION': 'ctl-warn', 'KO': 'ctl-ko', 'A_VERIFIER': 'ctl-todo' } as Record<string, string>)[statut] ?? 'ctl-todo';
+  }
+
+  controleLabel(statut: string): string {
+    return ({ 'OK': 'Conforme', 'ATTENTION': 'Attention', 'KO': 'Non conforme', 'A_VERIFIER': 'À vérifier' } as Record<string, string>)[statut] ?? statut;
+  }
+
+  /** Montant en dinars avec 3 décimales (millimes) : 2100 -> « 2 100,000 DT ». */
+  formatDT(valeur: number | null | undefined): string {
+    if (valeur === null || valeur === undefined || isNaN(Number(valeur))) return '—';
+    return new Intl.NumberFormat('fr-TN', { minimumFractionDigits: 3, maximumFractionDigits: 3 }).format(Number(valeur)) + ' DT';
+  }
+
+  // ── Points forts / vigilance : texte simple ou objet {title, detail, source} ─
+  pointTitre(p: any): string {
+    return typeof p === 'string' ? p : (p?.title ?? p?.detail ?? '');
+  }
+
+  pointDetail(p: any): string {
+    return typeof p === 'string' ? '' : (p?.title ? (p?.detail ?? '') : '');
+  }
+
+  pointSource(p: any): string {
+    return typeof p === 'string' ? '' : (p?.source ?? '');
   }
 
   formatMetricKey(key: string): string {

@@ -56,6 +56,11 @@ def _decouper(texte: str) -> list[tuple[Optional[str], str]]:
     return sections
 
 
+def decouper_sections(texte: str) -> list[tuple[Optional[str], str]]:
+    """Version publique : [(titre de l'en-tête ou None, texte de la section)]."""
+    return _decouper(texte or "")
+
+
 def _repartir(tailles: list[int], budget: int) -> list[int]:
     """
     Partage `budget` entre des sections de tailles données : une section plus

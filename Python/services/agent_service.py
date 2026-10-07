@@ -32,6 +32,7 @@ from typing import Optional
 
 from pydantic import BaseModel
 
+from services.dettes_releve import detecter_dettes_releve
 from services.dossier_texte import preparer_texte_dossier
 from services.llm_client import chat_completion, LLMUnavailableError, etat as llm_etat
 
@@ -58,12 +59,26 @@ AGE_MAX_FIN_CREDIT  = 70
 DUREES_SIMULEES     = [12, 24, 36, 48, 60, 84]
 
 
+# À incrémenter quand les règles changent : fait partie de la clé de cache, pour qu'une
+# ancienne analyse (faite avec d'anciennes règles ou un autre taux) ne soit jamais resservie.
+RULES_VERSION = "2026-10-a"
+
+
 def _taux_annuel() -> Optional[float]:
-    valeur = os.getenv("CREDIT_TAUX_ANNUEL", "").strip()
+    """
+    Taux d'intérêt annuel du crédit, en décimal (0.10 = 10 %) — .env : CREDIT_TAUX_ANNUEL.
+    Obligatoire : sans taux valide, aucune mensualité ni taux d'endettement n'est calculé
+    (la décision est « À COMPLÉTER »). Accepte aussi « 10 » ou « 10,5 » (pourcentage).
+    Renvoie None si absent, illisible, ou hors de ]0 ; 50 %].
+    """
+    valeur = os.getenv("CREDIT_TAUX_ANNUEL", "").strip().replace(",", ".")
     try:
-        return float(valeur) if valeur else None
+        taux = float(valeur)
     except ValueError:
         return None
+    if 1 < taux <= 100:          # saisi en pourcentage (10 pour 10 %)
+        taux /= 100
+    return taux if 0 < taux <= 0.5 else None
 
 
 # ── Schéma Pydantic ───────────────────────────────────────────────────────────
@@ -260,11 +275,18 @@ def _check(critere: str, statut: str, valeur: str, seuil: str, explication: str,
     }
 
 
-def appliquer_regles(metrics: dict) -> dict:
+def appliquer_regles(metrics: dict, dettes_connues: bool = True) -> dict:
     """
     Recalcule mensualité / DTI et vérifie chaque critère réglementaire.
+
+    Règle de fond : on NE CALCULE JAMAIS sur une donnée inconnue.
+      - sans taux d'intérêt valide (CREDIT_TAUX_ANNUEL) : ni mensualité, ni taux d'endettement,
+        ni capacité d'emprunt, ni simulation (avant : calcul « hors intérêts », trop optimiste) ;
+      - dettes existantes inconnues (`dettes_connues=False`) : pas de taux d'endettement
+        (avant : une dette inconnue valait 0 et améliorait le dossier).
+
     Retourne : {"metrics": ..., "regulatoryChecks": [...], "capacity": {...},
-                "simulations": [...], "calculationNote": str}
+                "simulations": [...], "calculationNote": str, "taux": float | None}
     """
     taux    = _taux_annuel()
     revenu  = _num(metrics.get("monthlyIncome"))
@@ -275,20 +297,39 @@ def appliquer_regles(metrics: dict) -> dict:
     metrics = dict(metrics)
     checks  = []
 
-    # ── Mensualité et DTI recalculés ─────────────────────────────────────────
+    # ── Mensualité et DTI recalculés (jamais ceux estimés par le LLM) ─────────
     mensualite = None
     dti        = None
-    if montant and duree:
+    if taux is not None and montant and duree:
         mensualite = round(calculer_mensualite(montant, duree, taux), 3)
-        metrics["monthlyPayment"] = mensualite
-    if revenu and mensualite is not None:
+    metrics["monthlyPayment"] = mensualite
+    if revenu and mensualite is not None and dettes_connues:
         dti = round((mensualite + dettes) / revenu * 100, 2)
-        metrics["dti"] = dti
+    metrics["dti"] = dti
+
+    # 0. Taux d'intérêt appliqué
+    if taux is None:
+        checks.append(_check("Taux d'intérêt appliqué", "A_VERIFIER", "non configuré", "taux annuel obligatoire",
+                             "Le taux d'intérêt du crédit n'est pas configuré sur le service IA "
+                             "(variable CREDIT_TAUX_ANNUEL) : aucune mensualité ne peut être calculée.", True))
+    else:
+        checks.append(_check("Taux d'intérêt appliqué", "OK", f"{taux * 100:.2f} % par an", "taux configuré",
+                             "Taux annuel utilisé pour toutes les mensualités et simulations.", False))
 
     # 1. Taux d'endettement
     if dti is None:
+        raisons = []
+        if taux is None:
+            raisons.append("taux d'intérêt non configuré")
+        if not revenu:
+            raisons.append("revenu mensuel net introuvable")
+        if not (montant and duree):
+            raisons.append("montant ou durée de la demande manquant")
+        if not dettes_connues:
+            raisons.append("dettes existantes inconnues")
         checks.append(_check("Taux d'endettement", "A_VERIFIER", "inconnu", f"< {DTI_ACCEPTABLE:.0f} %",
-                             "Revenu ou mensualité manquant : le taux d'endettement ne peut pas être calculé.", True))
+                             "Taux d'endettement non calculable : " + ", ".join(raisons or ["donnée manquante"]) + ".",
+                             True))
     elif dti < DTI_ACCEPTABLE:
         checks.append(_check("Taux d'endettement", "OK", f"{dti:.2f} %", f"< {DTI_ACCEPTABLE:.0f} %",
                              f"Les charges de crédit représentent {dti:.2f} % du revenu, sous le seuil de {DTI_ACCEPTABLE:.0f} %.", True))
@@ -298,6 +339,17 @@ def appliquer_regles(metrics: dict) -> dict:
     else:
         checks.append(_check("Taux d'endettement", "KO", f"{dti:.2f} %", f"≤ {DTI_MAX:.0f} %",
                              f"Au-delà du maximum réglementaire de {DTI_MAX:.0f} %.", True))
+
+    # 1 bis. Dettes existantes : connues (relevé, IA) ou à confirmer
+    if dettes_connues:
+        checks.append(_check("Dettes existantes", "OK", f"{_dt(dettes)} / mois", "connues",
+                             ("Échéances de crédit en cours : " + _dt(dettes) + " par mois.") if dettes
+                             else "Aucune échéance de crédit en cours.", False))
+    else:
+        checks.append(_check("Dettes existantes", "A_VERIFIER", "inconnues", "à confirmer",
+                             "Aucun relevé bancaire dans le dossier : impossible de savoir si le client "
+                             "a des crédits en cours. À confirmer (relevé des 3 derniers mois, "
+                             "centrale des risques).", True))
 
     # 2. Plafond 5 × salaire
     plafond = round(MULTIPLE_SALAIRE * revenu, 3) if revenu else None
@@ -365,7 +417,7 @@ def appliquer_regles(metrics: dict) -> dict:
 
     # ── Capacité d'emprunt ───────────────────────────────────────────────────
     capacity = {}
-    if revenu:
+    if revenu and taux is not None and dettes_connues:
         mens_max = max(0.0, DTI_ACCEPTABLE / 100 * revenu - dettes)
         duree_ref = duree or 60
         montant_max = montant_finançable(mens_max, duree_ref, taux)
@@ -386,7 +438,7 @@ def appliquer_regles(metrics: dict) -> dict:
 
     # ── Simulations de durée ─────────────────────────────────────────────────
     simulations = []
-    if montant and revenu:
+    if montant and revenu and taux is not None and dettes_connues:
         durees = sorted(set(DUREES_SIMULEES + ([duree] if duree else [])))
         for n in durees:
             if n > DUREE_MAX_MOIS:
@@ -402,9 +454,10 @@ def appliquer_regles(metrics: dict) -> dict:
                 "isRequested":    n == duree,
             })
 
-    note = (f"Mensualités calculées avec un taux annuel indicatif de {taux * 100:.2f} %."
-            if taux else
-            "Mensualités calculées hors intérêts (taux non configuré) : le coût réel sera supérieur.")
+    note = (f"Mensualités calculées avec un taux annuel de {taux * 100:.2f} % (configuration du service)."
+            if taux is not None else
+            "Taux d'intérêt non configuré (CREDIT_TAUX_ANNUEL) : mensualités et taux d'endettement "
+            "non calculés.")
 
     return {
         "metrics":          metrics,
@@ -412,7 +465,27 @@ def appliquer_regles(metrics: dict) -> dict:
         "capacity":         capacity,
         "simulations":      simulations,
         "calculationNote":  note,
+        "taux":             taux,
     }
+
+
+def donnees_manquantes(metrics: dict, taux: Optional[float], dettes_connues: bool, checks: list) -> list[str]:
+    """
+    Liste lisible de ce qui manque pour pouvoir rendre une décision, avec où le trouver.
+    Vide si tout est là. Sert à la décision « À COMPLÉTER » et à l'écran de l'agent.
+    """
+    manquantes = []
+    if not _num(metrics.get("monthlyIncome")):
+        manquantes.append("Revenu mensuel net — fiche de paie (« net à payer »)")
+    if not _num(metrics.get("requestedAmount")) or not _num(metrics.get("duration")):
+        manquantes.append("Montant et durée demandés — formulaire de demande de crédit")
+    if taux is None:
+        manquantes.append("Taux d'intérêt annuel — à configurer sur le service IA (variable CREDIT_TAUX_ANNUEL)")
+    if not dettes_connues:
+        manquantes.append("Dettes existantes — relevé bancaire des 3 derniers mois")
+    if any(c["criterion"] == "Ancienneté dans l'emploi" and c["status"] == "A_VERIFIER" for c in checks):
+        manquantes.append("Date d'embauche — attestation de travail")
+    return manquantes
 
 
 # ── Classe principale ─────────────────────────────────────────────────────────
@@ -429,8 +502,11 @@ class AgentService:
         t0 = time.time()
         logger.info("Analyse consommation — %d chars", len(document_text))
 
-        # Cache
-        cache_key = hashlib.md5(document_text.encode()).hexdigest()
+        # Cache — la clé inclut la version des règles et le taux : changer l'un des deux
+        # ne doit jamais ressortir une ancienne analyse (par exemple « À COMPLÉTER » faite
+        # avant que le taux ne soit configuré)
+        cle_brute = f"{RULES_VERSION}|{_taux_annuel()}|{_max_chars_dossier()}|{document_text}"
+        cache_key = hashlib.md5(cle_brute.encode()).hexdigest()
         if cache_key in self._cache:
             logger.info("Cache HIT agent consommation")
             result = self._cache[cache_key].copy()
@@ -462,13 +538,23 @@ class AgentService:
             # ── Couche déterministe : calculs et critères réglementaires ─────
             metrics = result_dict.get("financialMetrics") or {}
             if isinstance(metrics, dict):
-                regles = appliquer_regles(metrics)
-                result_dict["financialMetrics"] = regles["metrics"]
-                result_dict["regulatoryChecks"] = regles["regulatoryChecks"]
-                result_dict["capacity"]         = regles["capacity"]
-                result_dict["simulations"]      = regles["simulations"]
-                result_dict["calculationNote"]  = regles["calculationNote"]
+                # Dettes : lues par l'IA ET détectées par règle dans le relevé (texte COMPLET,
+                # avant tout raccourcissement). Une dette inconnue n'est jamais comptée comme nulle.
+                detection = detecter_dettes_releve(document_text)
+                avert = result_dict.setdefault("avertissements", [])
+                metrics, dettes_connues, notes = self._determiner_dettes(metrics, detection, avert)
+
+                regles = appliquer_regles(metrics, dettes_connues)
+                result_dict["financialMetrics"]    = regles["metrics"]
+                result_dict["regulatoryChecks"]    = regles["regulatoryChecks"]
+                result_dict["capacity"]            = regles["capacity"]
+                result_dict["simulations"]         = regles["simulations"]
+                result_dict["calculationNote"]     = " ".join([regles["calculationNote"], *notes])
+                result_dict["tauxAnnuelApplique"]  = regles["taux"]
+                result_dict["donneesManquantes"]   = donnees_manquantes(
+                    regles["metrics"], regles["taux"], dettes_connues, regles["regulatoryChecks"])
                 self._verifier_coherence(result_dict)
+                self._appliquer_donnees_manquantes(result_dict)
 
             # Génère documentSources si absent
             if not result_dict.get('documentSources'):
@@ -530,6 +616,90 @@ class AgentService:
         except Exception as e:
             logger.error("Erreur analyse consommation : %s", str(e), exc_info=True)
             return self._resultat_echec(f"Erreur analyse : {str(e)}", t0)
+
+    # ── Dettes existantes : IA + détection par règle ──────────────────────────
+    def _determiner_dettes(self, metrics: dict, detection: dict, avertissements: list) -> tuple[dict, bool, list]:
+        """
+        Renvoie (metrics, dettes_connues, notes). Priorité à la prudence :
+          - IA et relevé donnent chacun une valeur : on garde la plus élevée (et on signale un écart) ;
+          - relevé présent mais aucune échéance trouvée : dettes nulles (à confirmer) ;
+          - aucun relevé et aucune valeur crédible : dettes INCONNUES (pas de taux d'endettement).
+        Un « 0 » donné par l'IA sans aucun relevé dans le dossier n'est pas une preuve.
+        """
+        metrics = dict(metrics)
+        notes: list[str] = []
+        lues      = _num(metrics.get("existingDebts"))
+        detectees = detection["mensualite"]
+        # « relevé » = un relevé présent ET lisible : seul cas où l'absence d'échéance veut dire quelque chose
+        releve    = detection["releve_present"] and detection.get("exploitable", True)
+
+        if detection["releve_present"] and not releve:
+            avertissements.append(
+                "Le relevé bancaire n'a pas pu être lu correctement (aucune opération datée reconnue) : "
+                "les dettes existantes n'ont pas pu être vérifiées.")
+
+        if lues is not None and lues == 0 and not releve:
+            lues = None                      # « 0 » sans relevé lisible : pas fiable
+
+        if lues is not None and detectees is not None:
+            retenues = max(lues, detectees)
+            if abs(lues - detectees) > 0.15 * retenues:
+                avertissements.append(
+                    f"Dettes existantes : l'IA a lu {_dt(lues)} par mois, le relevé bancaire en montre "
+                    f"{_dt(detectees)} : la valeur la plus élevée ({_dt(retenues)}) est retenue. À vérifier.")
+            metrics["existingDebts"] = retenues
+            return metrics, True, notes
+
+        if detectees is not None:
+            metrics["existingDebts"] = detectees
+            approx = " (estimation : dates illisibles)" if detection["approximatif"] else ""
+            notes.append(f"Dettes existantes : {_dt(detectees)} par mois détectées dans le relevé bancaire{approx}.")
+            return metrics, True, notes
+
+        if lues is not None:
+            metrics["existingDebts"] = lues
+            return metrics, True, notes
+
+        if releve:
+            metrics["existingDebts"] = 0.0
+            notes.append("Dettes existantes : aucune échéance de crédit détectée dans le relevé bancaire "
+                         "(à confirmer auprès de la centrale des risques).")
+            return metrics, True, notes
+
+        metrics["existingDebts"] = None
+        return metrics, False, notes
+
+    # ── Données manquantes : jamais « éligible » sur un dossier incomplet ─────
+    def _appliquer_donnees_manquantes(self, result_dict: dict) -> None:
+        """
+        Si des informations indispensables manquent, une décision favorable du LLM
+        (ELIGIBLE ou CONDITIONNEL) devient « A_COMPLETER » : on ne peut pas décider sans elles.
+        Un REFUS fondé sur un critère connu reste un REFUS.
+        """
+        manquantes = result_dict.get("donneesManquantes") or []
+        if not manquantes or result_dict.get("eligibility") not in ("ELIGIBLE", "CONDITIONNEL"):
+            return
+
+        logger.warning("Décision LLM %s remplacée par A_COMPLETER (données manquantes : %s)",
+                       result_dict.get("eligibility"), "; ".join(manquantes))
+        noms = "; ".join(m.split(" — ")[0] for m in manquantes)
+
+        result_dict["analysePreliminaire"] = result_dict.get("rawExplanation") or ""
+        result_dict["eligibility"]         = "A_COMPLETER"
+        result_dict["eligibilityScore"]    = min(int(result_dict.get("eligibilityScore") or 0), 59)
+        result_dict["scoreProvisoire"]     = True
+        # `summary` s'adresse à l'AGENT : il voit tout. `rawExplanation` peut partir par e-mail
+        # au CLIENT : il ne doit contenir que des pièces que le client peut fournir, jamais un
+        # réglage technique du service (taux d'intérêt à configurer, etc.).
+        pieces_client = [m for m in manquantes if not m.startswith("Taux d'intérêt")]
+        result_dict["summary"] = (
+            f"Décision impossible pour l'instant : des informations indispensables manquent ({noms}). "
+            f"Le détail ci-dessous est une analyse préliminaire.")
+        result_dict["rawExplanation"] = (
+            "Pour finaliser l'étude de votre dossier, il manque : " + " ; ".join(pieces_client) + "."
+            if pieces_client else
+            "L'étude de votre dossier n'a pas pu être finalisée automatiquement. "
+            "Votre conseiller reviendra vers vous.")
 
     # ── Cohérence LLM / règles ────────────────────────────────────────────────
     def _verifier_coherence(self, result_dict: dict) -> None:
@@ -673,6 +843,9 @@ class AgentService:
             "capacity":         {},
             "simulations":      [],
             "documentSources":  [],
+            "donneesManquantes": [],
+            "avertissements":   [],
+            "scoreProvisoire":  False,
             "rawExplanation":   explication,
             "creditType":       "CONSOMMATION",
             "statut":           "FAILURE",

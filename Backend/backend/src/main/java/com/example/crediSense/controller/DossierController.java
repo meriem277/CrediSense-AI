@@ -291,6 +291,7 @@ public class DossierController {
                 case "ELIGIBLE"     -> "#16a34a";
                 case "REFUS"        -> "#dc2626";
                 case "CONDITIONNEL" -> "#d97706";
+                case "A_COMPLETER"  -> "#d97706";
                 default             -> "#6b7280";
             };
 
@@ -298,6 +299,7 @@ public class DossierController {
                 case "ELIGIBLE"     -> "✅";
                 case "REFUS"        -> "❌";
                 case "CONDITIONNEL" -> "⚠️";
+                case "A_COMPLETER"  -> "📄";
                 default             -> "ℹ️";
             };
 
@@ -305,6 +307,7 @@ public class DossierController {
                 case "ELIGIBLE"     -> "Félicitations ! Votre dossier remplit tous les critères d'éligibilité au crédit consommation.";
                 case "REFUS"        -> "Après analyse approfondie, votre dossier ne remplit pas actuellement les critères d'éligibilité. Nous vous invitons à contacter votre conseiller.";
                 case "CONDITIONNEL" -> "Votre dossier est accepté sous conditions. Des garanties supplémentaires peuvent être requises. Votre conseiller vous contactera prochainement.";
+                case "A_COMPLETER"  -> "Votre dossier est incomplet : des informations complémentaires sont nécessaires pour pouvoir rendre une décision. Votre conseiller vous contactera pour les recueillir.";
                 default             -> "Votre dossier est en cours d'analyse. Vous serez informé prochainement.";
             };
 
@@ -312,11 +315,35 @@ public class DossierController {
                 case "ELIGIBLE"     -> "Votre demande de crédit a été approuvée — Attijariwafa Bank";
                 case "REFUS"        -> "Résultat de votre demande de crédit — Attijariwafa Bank";
                 case "CONDITIONNEL" -> "Décision conditionnelle sur votre demande — Attijariwafa Bank";
+                case "A_COMPLETER"  -> "Informations complémentaires nécessaires pour votre demande — Attijariwafa Bank";
                 default             -> "Résultat de votre demande de crédit — Attijariwafa Bank";
             };
 
-            // ✅ Barre de score colorée
+            // Libellé affiché dans l'e-mail (le code interne « A_COMPLETER » n'a pas à être montré)
+            String libelleDecision = "A_COMPLETER".equals(eligibility) ? "DOSSIER À COMPLÉTER" : eligibility;
+
+            // ✅ Barre de score colorée — pas de score pour un dossier à compléter : il serait
+            // provisoire, et un chiffre provisoire envoyé au client est pris pour un verdict
             String couleurScore = score >= 70 ? "#16a34a" : score >= 40 ? "#d97706" : "#dc2626";
+            String blocScore = "A_COMPLETER".equals(eligibility) ? "" : String.format("""
+                    <tr>
+                      <td style="padding:0 40px 24px;">
+                        <div style="background:#f8f9fc;border-radius:10px;padding:20px;">
+                          <div style="display:flex;justify-content:space-between;margin-bottom:10px;">
+                            <span style="font-size:13px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">
+                              Score de crédit
+                            </span>
+                            <span style="font-size:18px;font-weight:700;color:%s;">
+                              %d / 100
+                            </span>
+                          </div>
+                          <div style="background:#e5e7eb;border-radius:99px;height:8px;overflow:hidden;">
+                            <div style="background:%s;height:8px;width:%d%%;border-radius:99px;"></div>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                    """, couleurScore, score, couleurScore, score);
 
             // ✅ HTML Email
             String html = String.format("""
@@ -368,24 +395,8 @@ public class DossierController {
                       </td>
                     </tr>
 
-                    <!-- SCORE -->
-                    <tr>
-                      <td style="padding:0 40px 24px;">
-                        <div style="background:#f8f9fc;border-radius:10px;padding:20px;">
-                          <div style="display:flex;justify-content:space-between;margin-bottom:10px;">
-                            <span style="font-size:13px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">
-                              Score de crédit
-                            </span>
-                            <span style="font-size:18px;font-weight:700;color:%s;">
-                              %d / 100
-                            </span>
-                          </div>
-                          <div style="background:#e5e7eb;border-radius:99px;height:8px;overflow:hidden;">
-                            <div style="background:%s;height:8px;width:%d%%;border-radius:99px;"></div>
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
+                    <!-- SCORE (absent pour un dossier à compléter) -->
+                    %s
 
                     <!-- MESSAGE DÉCISION -->
                     <tr>
@@ -446,9 +457,8 @@ public class DossierController {
                     creditType,
                     couleur, couleur,
                     icone,
-                    couleur, eligibility,
-                    couleurScore, score,
-                    couleurScore, score,
+                    couleur, libelleDecision,
+                    blocScore,
                     messageDecision,
                     explication
             );

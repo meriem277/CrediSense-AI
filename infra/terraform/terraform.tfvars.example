@@ -21,6 +21,11 @@ LLM_ROUTE_EXTRACTION=groq,mistral
 LLM_ROUTE_ANALYSE=groq,mistral
 LLM_ROUTE_CHAT=groq,mistral
 LLM_MAX_ATTENTE=60
+
+# OBLIGATOIRE : taux d'intérêt annuel du crédit consommation, en décimal (0.10 = 10 %).
+# Sans lui, aucune mensualité ni taux d'endettement n'est calculé et chaque dossier
+# reste « À COMPLÉTER ». À remplir avec le taux réel de la banque.
+CREDIT_TAUX_ANNUEL=
 EOT
 
 # Backend (Spring Boot) settings from application.properties

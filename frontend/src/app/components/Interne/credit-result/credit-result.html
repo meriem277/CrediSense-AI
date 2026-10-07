@@ -30,7 +30,7 @@
 
   <!-- ── En-tête éligibilité ── -->
   <div class="cr-header">
-    <div class="cr-badge" [ngClass]="eligibilityColor">{{ result.eligibility }}</div>
+    <div class="cr-badge" [ngClass]="eligibilityColor">{{ eligibilityLabel }}</div>
     <div class="cr-type">{{ result.creditType }}</div>
 
     <div class="cr-header-actions">
@@ -87,10 +87,21 @@
     {{ sendEmailError }}
   </div>
 
+  <!-- ── Informations à compléter : sans elles, aucune décision n'est rendue ── -->
+  <div class="cr-donnees-manquantes" *ngIf="result.donneesManquantes?.length">
+    <strong>Informations à compléter avant de pouvoir décider</strong>
+    <ul>
+      <li *ngFor="let m of result.donneesManquantes">{{ m }}</li>
+    </ul>
+  </div>
+
+  <!-- ── Résumé ── -->
+  <p class="cr-summary" *ngIf="result.summary">{{ result.summary }}</p>
+
   <!-- ── Score ── -->
   <div class="cr-score-block">
     <div class="cr-score-label">
-      <span>Score de crédit</span>
+      <span>Score de crédit <em class="cr-provisoire" *ngIf="result.scoreProvisoire">provisoire</em></span>
       <strong>{{ result.eligibilityScore }} / 100</strong>
     </div>
     <div class="cr-score-bar">
@@ -111,6 +122,101 @@
         <div class="cr-metric-val">{{ formatValue(m.key, m.value) }}</div>
       </div>
     </div>
+  </div>
+
+  <!-- ── Contrôles réglementaires (calculés par le moteur de règles, pas par le LLM) ── -->
+  <div class="cr-section" *ngIf="result.regulatoryChecks && result.regulatoryChecks.length > 0">
+    <h4 class="cr-section-title">
+      Contrôles réglementaires
+      <span class="cr-count">{{ result.regulatoryChecks.length }}</span>
+    </h4>
+    <div class="cr-table-wrap">
+      <table class="cr-table">
+        <thead>
+          <tr><th>Critère</th><th>Résultat</th><th>Valeur</th><th>Seuil</th><th>Explication</th></tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let c of result.regulatoryChecks">
+            <td>
+              <strong>{{ c.criterion }}</strong>
+              <span class="cr-bloquant" *ngIf="c.blocking" title="Un échec sur ce critère bloque la décision favorable">bloquant</span>
+            </td>
+            <td><span class="cr-ctl" [ngClass]="controleClass(c.status)">{{ controleLabel(c.status) }}</span></td>
+            <td>{{ c.value }}</td>
+            <td>{{ c.threshold }}</td>
+            <td>{{ c.explanation }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── Capacité d'emprunt ── -->
+  <div class="cr-section" *ngIf="result.capacity && result.capacity.explanation">
+    <h4 class="cr-section-title">Capacité d'emprunt</h4>
+    <div class="cr-capacity">
+      <div class="cr-capacity-figures">
+        <div><span>Mensualité maximale</span><strong>{{ formatDT(result.capacity.maxMonthlyPayment) }}</strong></div>
+        <div><span>Reste après la demande</span><strong>{{ formatDT(result.capacity.remainingMonthly) }}</strong></div>
+        <div><span>Montant empruntable ({{ result.capacity.referenceDuration }} mois)</span><strong>{{ formatDT(result.capacity.maxAmountForDuration) }}</strong></div>
+      </div>
+      <p>{{ result.capacity.explanation }}</p>
+    </div>
+  </div>
+
+  <!-- ── Simulation par durée ── -->
+  <div class="cr-section" *ngIf="result.simulations && result.simulations.length > 0">
+    <h4 class="cr-section-title">Simulation par durée</h4>
+    <div class="cr-table-wrap">
+      <table class="cr-table cr-table-sim">
+        <thead>
+          <tr><th>Durée</th><th>Mensualité</th><th>Taux d'endettement</th><th>Coût total</th><th>Résultat</th></tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let s of result.simulations" [class.cr-row-demandee]="s.isRequested">
+            <td>{{ s.duration }} mois <span class="cr-demandee" *ngIf="s.isRequested">demandée</span></td>
+            <td>{{ formatDT(s.monthlyPayment) }}</td>
+            <td>{{ s.dti }} %</td>
+            <td>{{ formatDT(s.totalCost) }}</td>
+            <td><span class="cr-ctl" [ngClass]="controleClass(s.status)">{{ controleLabel(s.status) }}</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <p class="cr-note" *ngIf="result.calculationNote">{{ result.calculationNote }}</p>
+
+  <!-- ── Points forts et points de vigilance ── -->
+  <div class="cr-two-col" *ngIf="result.strengths?.length || result.weaknesses?.length">
+    <div class="cr-section" *ngIf="result.strengths?.length">
+      <h4 class="cr-section-title cr-title-strength">Points forts</h4>
+      <ul class="cr-points cr-points-ok">
+        <li *ngFor="let p of result.strengths">
+          <strong>{{ pointTitre(p) }}</strong>
+          <span *ngIf="pointDetail(p)">{{ pointDetail(p) }}</span>
+          <em *ngIf="pointSource(p)">{{ pointSource(p) }}</em>
+        </li>
+      </ul>
+    </div>
+    <div class="cr-section" *ngIf="result.weaknesses?.length">
+      <h4 class="cr-section-title cr-title-weak">Points de vigilance</h4>
+      <ul class="cr-points cr-points-warn">
+        <li *ngFor="let p of result.weaknesses">
+          <strong>{{ pointTitre(p) }}</strong>
+          <span *ngIf="pointDetail(p)">{{ pointDetail(p) }}</span>
+          <em *ngIf="pointSource(p)">{{ pointSource(p) }}</em>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ── Conditions avant décaissement ── -->
+  <div class="cr-section" *ngIf="result.conditions?.length">
+    <h4 class="cr-section-title">Conditions avant décaissement</h4>
+    <ul class="cr-conditions">
+      <li *ngFor="let c of result.conditions">{{ c }}</li>
+    </ul>
   </div>
 
   <!-- ── Risques identifiés ── -->

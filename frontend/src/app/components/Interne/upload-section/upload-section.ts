@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { environment }         from '../../../../environments/environment';
 import { CreditStateService } from '../../../services/credit-state.service';
+import { mapperResultat } from '../../../models/credit-analysis-result.model';
 import { DocumentPipeline, PipelineAnalyseComponent } from '../pipeline-analyse/pipeline-analyse';
 
 // ✅ Libellés lisibles pour chaque type de document détecté par le pipeline IA
@@ -284,19 +285,7 @@ export class UploadSection implements OnChanges {
 
   // ── Helper ─────────────────────────────────────────────────────────────────
   private _setScore(score: any): void {
-    this.creditState.setResult({
-      eligibility:      score.eligibility                               || 'INCONNU',
-      eligibilityScore: score.eligibilityScore || score.eligibility_score || 0,
-      creditType:       score.creditType                               || 'CONSOMMATION',
-      financialMetrics: score.financialMetrics || score.financial_metrics || {},
-      risks:            score.risks                                    || [],
-      recommendedPlan:  score.recommendedPlan  || score.recommended_plan  || [],
-      documentSources:  score.documentSources  || score.document_sources  || [],
-      avertissements:   score.avertissements                               || [],
-      alerteIdentite:   score.alerteIdentite,
-      messageIdentite:  score.messageIdentite,
-      rawExplanation:   score.rawExplanation   || score.explanation        || ''
-    });
+    this.creditState.setResult(mapperResultat(score));
   }
 
 }

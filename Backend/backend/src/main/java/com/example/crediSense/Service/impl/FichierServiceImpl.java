@@ -619,6 +619,8 @@ public class FichierServiceImpl implements FichierService {
                                         "Nous regrettons de vous informer que votre dossier ne remplit pas les critères d'éligibilité.";
                                 case "CONDITIONNEL" ->
                                         "Votre dossier est accepté sous conditions. Des garanties supplémentaires peuvent être requises.";
+                                case "A_COMPLETER"  ->
+                                        "Votre dossier est incomplet : des informations complémentaires sont nécessaires pour pouvoir rendre une décision.";
                                 default             ->
                                         "Votre dossier est en cours d'analyse.";
                             };
