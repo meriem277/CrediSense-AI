@@ -39,6 +39,9 @@ public class AuditService {
     public static final String EMAIL_ECHEC            = "EMAIL_ECHEC";
     public static final String RAPPORT_TELECHARGE     = "RAPPORT_TELECHARGE";
     public static final String STATUT_MODIFIE         = "STATUT_MODIFIE";
+    public static final String OFFRE_ACCEPTEE         = "OFFRE_ACCEPTEE";
+    public static final String OFFRE_REFUSEE          = "OFFRE_REFUSEE";
+    public static final String OFFRE_REINITIALISEE    = "OFFRE_REINITIALISEE";
 
     public static final String SYSTEME = "SYSTEME";
 
@@ -122,6 +125,10 @@ public class AuditService {
             case RAPPORT_TELECHARGE -> "Rapport PDF « " + d.getOrDefault("version", "agent") + " » téléchargé" + par;
             case STATUT_MODIFIE -> "Statut du dossier modifié" + par + " : " + d.getOrDefault("ancien", "?")
                     + " → " + d.getOrDefault("nouveau", "?");
+            case OFFRE_ACCEPTEE -> "Offre acceptée par le client : " + d.getOrDefault("label", "proposition")
+                    + " (" + d.getOrDefault("montant", "?") + " DT sur " + d.getOrDefault("duree", "?") + " mois)";
+            case OFFRE_REFUSEE -> "Propositions refusées par le client";
+            case OFFRE_REINITIALISEE -> "Réponse du client réinitialisée : la décision ou les propositions ont changé";
             default -> type == null ? "" : type;
         };
     }

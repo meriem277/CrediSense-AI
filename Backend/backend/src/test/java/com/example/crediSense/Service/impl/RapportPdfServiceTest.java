@@ -320,10 +320,51 @@ class RapportPdfServiceTest {
     }
 
     @Test
-    void lePdfClientNeContientJamaisLesPropositionsDAjustement() throws Exception {
+    void lePdfClientContientLesPropositionsEtInviteARepondreDepuisSonEspace() throws Exception {
         String t = texte(service.generer(dossier, resultatConditionnel(), RapportPdfService.Version.CLIENT));
+        assertTrue(t.toUpperCase().contains("PROPOSITIONS DE VOTRE CONSEILLER"), t);
+        assertTrue(t.contains("Montant réduit, même durée"), t);
+        assertTrue(t.contains("Même montant, durée allongée"), t);
+        assertTrue(t.contains("espace client"), t);
+        assertTrue(t.contains("Aucune n'est appliquée sans votre accord"), t);
+        // le message interne destiné à l'agent n'est pas repris
+        assertFalse(t.contains("sous réserve de validation par l'agent"), t);
         assertFalse(t.toUpperCase().contains("PROPOSITIONS D'AJUSTEMENT"), t);
-        assertFalse(t.contains("Montant réduit, même durée"), t);
+    }
+
+    @Test
+    void lePdfClientNAffichePasDePropositionQuandIlNYEnAPas() throws Exception {
+        Map<String, Object> r = resultatConditionnel();
+        r.put("adjustedOffers", Map.of("applicable", false, "offers", List.of(), "unresolved", List.of(),
+                "message", "L'endettement est déjà respecté : message interne."));
+        String t = texte(service.generer(dossier, r, RapportPdfService.Version.CLIENT));
+        assertFalse(t.toUpperCase().contains("PROPOSITIONS"), t);
+        assertFalse(t.contains("message interne"), t);
+    }
+
+    @Test
+    void lePdfClientNeMontrePasDePropositionPourUneAutreDecision() throws Exception {
+        Map<String, Object> r = resultatConditionnel();
+        r.put("eligibility", "ELIGIBLE");
+        String t = texte(service.generer(dossier, r, RapportPdfService.Version.CLIENT));
+        assertFalse(t.toUpperCase().contains("PROPOSITIONS DE VOTRE CONSEILLER"), t);
+    }
+
+    @Test
+    void lePdfClientConditionnelUtiliseLeResumeEtNonLeTexteLongDeLIA() throws Exception {
+        Map<String, Object> r = resultatConditionnel();
+        r.put("summary", "Résumé prudent sans chiffres.");
+        r.put("rawExplanation", "Mensualité de 1 666,67 DT et endettement de 34,7 % calculés par l'IA.");
+        String t = texte(service.generer(dossier, r, RapportPdfService.Version.CLIENT));
+        assertTrue(t.contains("Résumé prudent sans chiffres."), t);
+        assertFalse(t.contains("34,7 %"), t);
+    }
+
+    @Test
+    void lePdfClientNonConditionnelGardeLExplicationDetaillee() throws Exception {
+        Map<String, Object> r = resultatEligible();
+        String t = texte(service.generer(dossier, r, RapportPdfService.Version.CLIENT));
+        assertTrue(t.contains("Votre revenu couvre largement la mensualité demandée."), t);
     }
 
     @Test

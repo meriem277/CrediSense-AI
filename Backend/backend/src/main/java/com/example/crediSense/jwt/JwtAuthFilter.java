@@ -8,6 +8,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import com.example.crediSense.entity.Agent;
 import com.example.crediSense.repository.AgentRepository;
+import com.example.crediSense.repository.ClientRepository;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -21,6 +22,7 @@ import java.util.List;
 public class JwtAuthFilter  extends OncePerRequestFilter {
      private final JwtUtil jwtUtil;
     private final AgentRepository agentRepository;
+    private final ClientRepository clientRepository;
 
 
     @Override
@@ -43,7 +45,17 @@ public class JwtAuthFilter  extends OncePerRequestFilter {
                 String token = authHeader.substring(7);
                 if (jwtUtil.validateToken(token)) {
                     String email = jwtUtil.extractEmail(token);
-                    Agent agent = agentRepository.findByEmail(email).orElse(null);
+
+                    // Jeton d'un CLIENT : il n'ouvre que les routes réservées au rôle CLIENT (ses propres
+                    // demandes). Il ne donne aucun accès aux routes des agents.
+                    boolean jetonClient = "CLIENT".equals(jwtUtil.extractRole(token));
+                    if (jetonClient && clientRepository.findByEmail(email).isPresent()) {
+                        SecurityContextHolder.getContext().setAuthentication(
+                                new UsernamePasswordAuthenticationToken(
+                                        email, null, List.of(new SimpleGrantedAuthority("ROLE_CLIENT"))));
+                    }
+
+                    Agent agent = jetonClient ? null : agentRepository.findByEmail(email).orElse(null);
                     if (agent != null) {
                         UsernamePasswordAuthenticationToken auth =
                                 new UsernamePasswordAuthenticationToken(

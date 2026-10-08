@@ -60,6 +60,15 @@ public class DecisionFinale {
     private String        emailMode;          // AUTO | DELAI | VALIDATION | MANUEL
     private String        emailActeur;        // agent qui a validé, annulé ou envoyé (SYSTEME : automatique)
 
+    // ── Réponse du client aux propositions d'ajustement (dossier CONDITIONNEL) ──
+    // ACCEPTEE | REFUSEE (null : le client n'a pas répondu). L'offre choisie est conservée telle que le
+    // client l'a vue : une nouvelle analyse ne peut pas changer ce à quoi il a répondu.
+    private String        reponseClient;
+    private Integer       offreChoisieIndex;
+    @Column(columnDefinition = "text")
+    private String        offreChoisieJson;
+    private LocalDateTime reponseClientLe;
+
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "dossier_id")
     @JsonIgnoreProperties({"agentAnalysis", "decisionFinale", "fichiers", "ragContexts", "client"})

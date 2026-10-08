@@ -1,9 +1,11 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideHttpClient } from '@angular/common/http';
+import { HttpClient, provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter, Router } from '@angular/router';
 
 import { Historique } from './historique';
+import { jwtInterceptor } from '../../../../services/jwt.interceptor';
+import { AuthService } from '../../../../services/Interne/auth.service';
 import { ClientAuthService } from '../../../../services/Externe/Client-auth.service';
 import { environment } from '../../../../../environments/environment';
 
@@ -301,5 +303,296 @@ describe('Historique — page « Mes demandes »', () => {
     demarrer();
     un('.btn-logout')!.click();
     expect(deconnexions).toBe(1);
+  });
+});
+
+
+describe('Historique — propositions du conseiller', () => {
+  let fixture: ComponentFixture<Historique>;
+  let http: HttpTestingController;
+
+  const URL_LISTE = `${environment.apiUrl}/api/clients/mes-demandes/propositions`;
+  const id = DOSSIERS[1].dossierId;                       // la demande « en cours »
+  const urlProposition = `${environment.apiUrl}/api/clients/mes-demandes/${id}/proposition`;
+
+  const OFFRES = [
+    { kind: 'MONTANT_REDUIT', label: 'Montant réduit, même durée', amount: 16300, duration: 12, monthlyPayment: 1433.029, dti: 29.85, totalCost: 17196.348, explanation: 'Sur 12 mois, 16 300 DT passe sous 30 %.' },
+    { kind: 'DUREE_ALLONGEE', label: 'Même montant, durée allongée', amount: 20000, duration: 18, monthlyPayment: 1201.142, dti: 25.02, totalCost: 21620.549, explanation: 'En allongeant à 18 mois, le montant passe.' },
+  ];
+  const proposition = (etat: string, choix: number | null = null) =>
+    ({ decision: 'CONDITIONNEL', message: 'm', offres: OFFRES, etat, choix, repondueLe: choix !== null || etat === 'REFUSEE' ? '2026-10-08T10:12:00' : null });
+
+  const composant = () => fixture.componentInstance;
+  const texte = () => (fixture.nativeElement as HTMLElement).textContent!.replace(/\s+/g, ' ');
+  const tous = (s: string) => Array.from((fixture.nativeElement as HTMLElement).querySelectorAll(s)) as HTMLElement[];
+  const un = (s: string) => (fixture.nativeElement as HTMLElement).querySelector(s) as HTMLElement | null;
+
+  const demarrer = (liste: unknown = [{ dossierId: id, etat: 'EN_ATTENTE_REPONSE' }]) => {
+    fixture = TestBed.createComponent(Historique);
+    fixture.detectChanges();
+    http.expectOne(r => r.url.includes('/api/clients/historique')).flush(DOSSIERS);
+    const requete = http.expectOne(URL_LISTE);
+    if (liste === 'erreur') requete.flush('x', { status: 403, statusText: 'Forbidden' });
+    else requete.flush(liste as any);
+    fixture.detectChanges();
+  };
+
+  const ouvrir = (etat = proposition('EN_ATTENTE_REPONSE')) => {
+    composant().voirDetails(DOSSIERS[1]);
+    http.expectOne(urlProposition).flush(etat);
+    http.expectOne(r => r.url.includes('/fichiers')).flush([]);
+    fixture.detectChanges();
+  };
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [Historique],
+      providers: [
+        provideHttpClient(), provideHttpClientTesting(), provideRouter([]),
+        { provide: ClientAuthService, useValue: {
+            isLoggedIn: () => true, logout: () => {},
+            getUser: () => ({ prenom: 'Meriem', nom: 'Rehouma', email: 'meriem@exemple.tn' }) } },
+      ],
+    }).compileComponents();
+    http = TestBed.inject(HttpTestingController);
+  });
+
+  // ── Liste et bandeau ─────────────────────────────────────────────────────
+  it('signale en haut de page qu\'une proposition attend la réponse du client', () => {
+    demarrer();
+    expect(un('.action-requise')!.textContent).toContain('Une proposition de votre conseiller attend votre réponse');
+    expect(composant().demandesAvecActionRequise.length).toBe(1);
+  });
+
+  it('marque la demande concernée et propose « Répondre »', () => {
+    demarrer();
+    const lignes = tous('.dossier');
+    const ligne = lignes.find(l => l.textContent!.includes('F1CC090A'))!;
+    expect(ligne.querySelector('.pastille-proposition')!.textContent).toContain('Proposition à examiner');
+    expect(ligne.querySelector('.btn-details')!.textContent).toContain('Répondre');
+    expect(lignes.filter(l => l.querySelector('.pastille-proposition')).length).toBe(1);
+  });
+
+  it('n\'affiche aucun bandeau quand il n\'y a pas de proposition', () => {
+    demarrer([]);
+    expect(un('.action-requise')).toBeNull();
+    expect(tous('.pastille-proposition').length).toBe(0);
+    expect(tous('.btn-details').every(b => b.textContent!.includes('Voir détails'))).toBe(true);
+  });
+
+  it('ne casse pas la page quand les propositions ne peuvent pas être chargées', () => {
+    demarrer('erreur');
+    expect(un('.action-requise')).toBeNull();
+    expect(tous('.dossier').length).toBe(4);
+  });
+
+  it('indique l\'état d\'une demande déjà traitée', () => {
+    demarrer([{ dossierId: id, etat: 'ACCEPTEE' }, { dossierId: DOSSIERS[2].dossierId, etat: 'REFUSEE' }]);
+    expect(un('.action-requise')).toBeNull();
+    const pastilles = tous('.pastille-proposition').map(p => p.textContent!.trim());
+    expect(pastilles).toContain('Proposition acceptée');
+    expect(pastilles).toContain('Proposition refusée');
+  });
+
+  it('compte plusieurs propositions en attente', () => {
+    demarrer([{ dossierId: id, etat: 'EN_ATTENTE_REPONSE' }, { dossierId: DOSSIERS[2].dossierId, etat: 'EN_ATTENTE_REPONSE' }]);
+    expect(un('.action-requise')!.textContent).toContain('2 propositions de votre conseiller attendent votre réponse');
+  });
+
+  // ── Fenêtre de la proposition ────────────────────────────────────────────
+  it('affiche les options dans la fenêtre de détails', () => {
+    demarrer();
+    ouvrir();
+    expect(tous('.offre-client').length).toBe(2);
+    const t = texte();
+    expect(t).toContain('Propositions de votre conseiller');
+    expect(t).toContain('Montant réduit, même durée');
+    expect(t).toContain('Aucune n\'est appliquée sans votre accord');
+    expect(t).toMatch(/16\s?300 DT/);
+    expect(t).toContain('29,85 %');
+  });
+
+  it('ne charge pas de proposition pour une demande qui n\'en a pas', () => {
+    demarrer();
+    composant().voirDetails(DOSSIERS[0]);
+    http.expectNone(`${environment.apiUrl}/api/clients/mes-demandes/${DOSSIERS[0].dossierId}/proposition`);
+    http.expectOne(r => r.url.includes('/fichiers')).flush([]);
+    fixture.detectChanges();
+    expect(un('.proposition')).toBeNull();
+  });
+
+  it('refuse d\'accepter tant qu\'aucune option n\'est choisie', () => {
+    demarrer();
+    ouvrir();
+    const accepter = un('.btn-accepter') as HTMLButtonElement;
+    expect(accepter.disabled).toBe(true);
+    composant().demanderConfirmation('ACCEPTER');
+    expect(composant().confirmation).toBeNull();
+  });
+
+  it('sélectionne une option au clic et au clavier', () => {
+    demarrer();
+    ouvrir();
+    tous('.offre-client')[1].click();
+    fixture.detectChanges();
+    expect(composant().offreSelectionnee).toBe(1);
+    expect(tous('.offre-client')[1].className).toContain('choisie');
+    expect((un('.btn-accepter') as HTMLButtonElement).disabled).toBe(false);
+    expect(un('.btn-accepter')!.textContent).toContain("Accepter l'option 2");
+
+    tous('.offre-client')[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+    fixture.detectChanges();
+    expect(composant().offreSelectionnee).toBe(0);
+  });
+
+  it('demande confirmation avant d\'envoyer la réponse, puis permet de revenir', () => {
+    demarrer();
+    ouvrir();
+    composant().choisirOffre(1);
+    composant().demanderConfirmation('ACCEPTER');
+    fixture.detectChanges();
+
+    expect(un('.confirmation')!.textContent).toContain('option 2');
+    expect(un('.confirmation')!.textContent).toMatch(/20\s?000 DT/);
+    expect(un('.confirmation')!.textContent).toContain('définitive');
+    http.expectNone(r => r.url.includes('/repondre'));              // rien n'est envoyé avant la confirmation
+
+    composant().annulerConfirmation();
+    fixture.detectChanges();
+    expect(un('.confirmation')).toBeNull();
+    expect(un('.btn-accepter')).not.toBeNull();
+  });
+
+  it('envoie l\'acceptation de l\'option choisie et affiche le résultat', () => {
+    demarrer();
+    ouvrir();
+    composant().choisirOffre(1);
+    composant().demanderConfirmation('ACCEPTER');
+    composant().confirmerReponse();
+
+    const requete = http.expectOne(`${urlProposition}/repondre`);
+    expect(requete.request.method).toBe('POST');
+    expect(requete.request.body).toEqual({ choix: 'ACCEPTER', offre: 1 });
+    requete.flush(proposition('ACCEPTEE', 1));
+    fixture.detectChanges();
+
+    expect(un('.reponse-donnee')!.textContent).toContain("Vous avez accepté l'option 2");
+    expect(un('.reponse-donnee')!.textContent).toContain('transmise à votre conseiller');
+    expect(un('.reponse-actions')).toBeNull();                       // plus de boutons : une seule réponse
+    expect(composant().propositions[id]).toBe('ACCEPTEE');
+    expect(tous('.offre-client')[0].className).toContain('ecartee');
+  });
+
+  it('envoie le refus des propositions', () => {
+    demarrer();
+    ouvrir();
+    composant().demanderConfirmation('REFUSER');
+    fixture.detectChanges();
+    expect(un('.confirmation')!.textContent).toContain('refusez toutes les propositions');
+    composant().confirmerReponse();
+
+    const requete = http.expectOne(`${urlProposition}/repondre`);
+    expect(requete.request.body).toEqual({ choix: 'REFUSER', offre: null });
+    requete.flush(proposition('REFUSEE'));
+    fixture.detectChanges();
+    expect(un('.reponse-donnee')!.textContent).toContain('Vous avez refusé les propositions');
+    expect(composant().propositions[id]).toBe('REFUSEE');
+  });
+
+  it('empêche un double envoi pendant que la réponse part', () => {
+    demarrer();
+    ouvrir();
+    composant().demanderConfirmation('REFUSER');
+    composant().confirmerReponse();
+    composant().confirmerReponse();
+    const requetes = http.match(`${urlProposition}/repondre`);
+    expect(requetes.length).toBe(1);
+  });
+
+  it('affiche le message du serveur en cas d\'erreur et permet de réessayer', () => {
+    demarrer();
+    ouvrir();
+    composant().choisirOffre(0);
+    composant().demanderConfirmation('ACCEPTER');
+    composant().confirmerReponse();
+    http.expectOne(`${urlProposition}/repondre`).flush({ message: 'Choisissez l\'une des propositions proposées.' }, { status: 400, statusText: 'Bad Request' });
+    fixture.detectChanges();
+
+    expect(un('.erreur-reponse')!.textContent).toContain('Choisissez l\'une des propositions');
+    expect(composant().envoiReponse).toBe(false);
+    expect(un('.btn-accepter')).not.toBeNull();
+  });
+
+  it('relit l\'état réel quand la réponse existe déjà (409)', () => {
+    demarrer();
+    ouvrir();
+    composant().choisirOffre(0);
+    composant().demanderConfirmation('ACCEPTER');
+    composant().confirmerReponse();
+    http.expectOne(`${urlProposition}/repondre`).flush({ message: 'Vous avez déjà répondu à cette proposition.' }, { status: 409, statusText: 'Conflict' });
+    http.expectOne(urlProposition).flush(proposition('ACCEPTEE', 0));
+    fixture.detectChanges();
+
+    expect(un('.reponse-donnee')!.textContent).toContain("Vous avez accepté l'option 1");
+    expect(un('.erreur-reponse')!.textContent).toContain('déjà répondu');
+  });
+
+  it('donne un message clair quand le serveur ne répond pas', () => {
+    demarrer();
+    ouvrir();
+    composant().demanderConfirmation('REFUSER');
+    composant().confirmerReponse();
+    http.expectOne(`${urlProposition}/repondre`).error(new ProgressEvent('error'));
+    fixture.detectChanges();
+    expect(un('.erreur-reponse')!.textContent).toContain('n\'a pas pu être enregistrée');
+  });
+
+  it('remet la sélection à zéro en fermant puis en rouvrant la fenêtre', () => {
+    demarrer();
+    ouvrir();
+    composant().choisirOffre(1);
+    composant().demanderConfirmation('ACCEPTER');
+    composant().fermerDetails();
+    expect(composant().offreSelectionnee).toBeNull();
+    expect(composant().confirmation).toBeNull();
+    expect(composant().proposition).toBeNull();
+  });
+
+  it('une réponse déjà donnée ne peut plus être modifiée', () => {
+    demarrer([{ dossierId: id, etat: 'REFUSEE' }]);
+    ouvrir(proposition('REFUSEE'));
+    composant().choisirOffre(0);                                     // sans effet : la réponse est définitive
+    composant().demanderConfirmation('REFUSER');
+    expect(composant().offreSelectionnee).toBeNull();
+    expect(un('.btn-accepter')).toBeNull();
+    expect(un('.btn-refuser')).toBeNull();
+  });
+
+  it('formate les montants et pourcentages à la française', () => {
+    demarrer();
+    expect(composant().formatMontant(16300)).toMatch(/^16\s?300 DT$/);
+    expect(composant().formatMontant(null)).toBe('—');
+    expect(composant().formatPourcent(29.85)).toBe('29,85 %');
+    expect(composant().formatPourcent(undefined)).toBe('—');
+  });
+});
+
+describe('jwtInterceptor — routes « mes demandes »', () => {
+  it('envoie le jeton du client (et non celui d\'un agent) sur les routes des propositions', async () => {
+    await TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(withInterceptors([jwtInterceptor])), provideHttpClientTesting(),
+        { provide: AuthService, useValue: { getToken: () => 'jeton-agent' } },
+        { provide: ClientAuthService, useValue: { getToken: () => 'jeton-client' } },
+      ],
+    }).compileComponents();
+    const client = TestBed.inject(HttpClient);
+    const http = TestBed.inject(HttpTestingController);
+
+    client.get('/api/clients/mes-demandes/propositions').subscribe();
+    expect(http.expectOne('/api/clients/mes-demandes/propositions').request.headers.get('Authorization')).toBe('Bearer jeton-client');
+
+    client.get('/api/dossiers/1/resultat').subscribe();
+    expect(http.expectOne('/api/dossiers/1/resultat').request.headers.get('Authorization')).toBe('Bearer jeton-agent');
   });
 });

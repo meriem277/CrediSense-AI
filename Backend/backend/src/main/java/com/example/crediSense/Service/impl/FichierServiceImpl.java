@@ -744,9 +744,19 @@ public class FichierServiceImpl implements FichierService {
                                         dossierId, e.getMessage());
                             }
 
+                            // Le client avait répondu à des propositions : si la décision ou les propositions ont
+                            // changé, sa réponse ne correspond plus à ce qu'il a accepté (elle est effacée).
+                            boolean reponseClientEffacee = PropositionClientService.reinitialiserSiObsolete(df, result);
+
                             decisionFinaleRepository.save(df);
                             log.info("DecisionFinale sauvegardée — dossier={}, decision={}",
                                     dossierId, decision);
+                            if (reponseClientEffacee) {
+                                auditService.enregistrer(dossierUUID, AuditService.OFFRE_REINITIALISEE, decision,
+                                        toDouble(result.get("eligibilityScore")),
+                                        result.get("versionRegles") != null ? result.get("versionRegles").toString() : null,
+                                        new LinkedHashMap<>());
+                            }
 
                             // Journal : la décision, son score, la version des règles et l'IA qui l'ont produite
                             Map<String, Object> detailAnalyse = new LinkedHashMap<>();

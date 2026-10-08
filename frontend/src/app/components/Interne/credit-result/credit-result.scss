@@ -883,3 +883,12 @@ $trait:  #eceef3;
   .comp-ligne { grid-template-columns: 1fr; gap: 4px; }
   .sim-col .sim-barre { width: 24px; }
 }
+
+/* ── Réponse du client à ses propositions ── */
+.cr-reponse-client {
+  display: flex; flex-direction: column; gap: 3px; padding: 14px 18px; border-radius: 14px; font-size: 13.5px; line-height: 1.5;
+  background: #f4f5f8; border: 1px solid $trait; border-left: 5px solid #8b93a7;
+  strong { font-size: 14.5px; color: $encre; }
+  small { font-size: 12px; color: $gris; }
+  &.cr-reponse-ACCEPTEE { background: #f1faf6; border-color: #cdebdc; border-left-color: $vert; strong { color: #0b5f44; } }
+}

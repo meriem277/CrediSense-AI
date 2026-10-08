@@ -10,7 +10,8 @@ export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
   // ✅ Routes client → token client
   const isClientRoute = req.url.includes('/api/public/')
                      || req.url.includes('/api/client-auth/')
-                     || req.url.includes('/api/clients/historique');
+                     || req.url.includes('/api/clients/historique')
+                     || req.url.includes('/api/clients/mes-demandes');
 
   const token = isClientRoute
     ? clientAuth.getToken()

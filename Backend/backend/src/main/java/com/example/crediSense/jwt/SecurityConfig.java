@@ -65,6 +65,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/public/**").permitAll()
                         .requestMatchers("/api/public/upload/**").permitAll()  // ✅
                         .requestMatchers("/api/clients/historique").permitAll()
+                        // Propositions d'ajustement : réservées au client connecté, sur ses propres demandes
+                        .requestMatchers("/api/clients/mes-demandes/**").hasRole("CLIENT")
                         .requestMatchers("/api/clients/**").permitAll()
 
                         // ── Fichiers & chatbot ────────────────────────────────
@@ -74,12 +76,14 @@ public class SecurityConfig {
                         .requestMatchers("/api/fichiers/analyser-dossier/**").permitAll()
 
                         // ── Dossiers → agents et admins seulement ────────────
-                        .requestMatchers("/api/dossiers/**").authenticated()
+                        // (les jetons CLIENT sont reconnus par JwtAuthFilter : un client connecté ne doit
+                        // pas pouvoir atteindre les routes des agents)
+                        .requestMatchers("/api/dossiers/**").hasAnyRole("ADMIN", "AGENT")
                         // ── Admin ─────────────────────────────────────────────
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
 
-                        // ── Tout le reste → authentifié ───────────────────────
-                        .anyRequest().authenticated()
+                        // ── Tout le reste → agents et admins ──────────────────
+                        .anyRequest().hasAnyRole("ADMIN", "AGENT")
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 

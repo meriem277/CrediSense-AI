@@ -58,6 +58,16 @@
 
     <ng-container *ngIf="!loading && dossiers.length > 0">
 
+      <!-- ── Action requise : une proposition attend la réponse du client ── -->
+      <div class="action-requise" *ngIf="demandesAvecActionRequise.length > 0" role="alert">
+        <span class="action-icone" aria-hidden="true">!</span>
+        <div class="action-texte">
+          <strong>{{ demandesAvecActionRequise.length === 1 ? 'Une proposition de votre conseiller attend votre réponse' : demandesAvecActionRequise.length + ' propositions de votre conseiller attendent votre réponse' }}</strong>
+          <span>Votre dossier peut être accepté en l'adaptant à votre capacité de remboursement. Consultez les options et choisissez celle qui vous convient.</span>
+        </div>
+        <button type="button" class="btn-action" (click)="voirDetails(demandesAvecActionRequise[0])">Voir la proposition</button>
+      </div>
+
       <!-- ── Dernière demande ── -->
       <section class="hero" *ngIf="dernierDossier as dernier" [ngClass]="getStatutClass(dernier.statut)" aria-label="Votre dernière demande">
         <div class="hero-main">
@@ -138,6 +148,7 @@
           <div class="dossier-corps">
             <strong class="dossier-titre">{{ libelleType(d.typeCredit) }}</strong>
             <span class="dossier-meta">N° {{ reference(d) }} · {{ formatDate(d.createdAt) }}</span>
+            <span class="pastille-proposition" *ngIf="etatProposition(d)" [ngClass]="'prop-' + etatProposition(d)">{{ libelleEtatProposition(d) }}</span>
           </div>
 
           <div class="dossier-etat">
@@ -147,9 +158,9 @@
             </span>
           </div>
 
-          <button type="button" class="btn-details" (click)="voirDetails(d)"
+          <button type="button" class="btn-details" [class.btn-details-action]="actionRequise(d)" (click)="voirDetails(d)"
                   [attr.aria-label]="'Voir les détails du dossier ' + reference(d)">
-            Voir détails
+            {{ actionRequise(d) ? 'Répondre' : 'Voir détails' }}
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
           </button>
         </li>
@@ -181,6 +192,76 @@
         <span class="statut-badge" [ngClass]="getStatutClass(selectedDossier.statut)">{{ getStatutLabel(selectedDossier.statut) }}</span>
         <span>{{ messageStatut(selectedDossier.statut) }}</span>
       </div>
+
+      <!-- ── Proposition du conseiller ── -->
+      <section class="proposition" *ngIf="loadingProposition || proposition" aria-label="Propositions de votre conseiller">
+        <h4 class="modal-section">Propositions de votre conseiller</h4>
+        <div class="modal-loading" *ngIf="loadingProposition" role="status"><div class="spinner-lg"></div></div>
+
+        <ng-container *ngIf="proposition as prop">
+          <p class="proposition-intro" *ngIf="prop.etat === 'EN_ATTENTE_REPONSE'">
+            Pour adapter votre crédit à votre capacité de remboursement, voici nos propositions.
+            <strong>Aucune n'est appliquée sans votre accord.</strong>
+          </p>
+
+          <div class="reponse-donnee" *ngIf="prop.etat !== 'EN_ATTENTE_REPONSE'" [ngClass]="'reponse-' + prop.etat" role="status">
+            <strong *ngIf="prop.etat === 'ACCEPTEE'">Vous avez accepté l'option {{ (prop.choix ?? 0) + 1 }}</strong>
+            <strong *ngIf="prop.etat === 'REFUSEE'">Vous avez refusé les propositions</strong>
+            <span>Votre réponse du {{ formatDate(prop.repondueLe ?? '') }} a été transmise à votre conseiller. Elle ne peut plus être modifiée ici.</span>
+          </div>
+
+          <div class="offres-client">
+            <article class="offre-client" *ngFor="let o of prop.offres; let i = index"
+                     [class.choisie]="prop.etat === 'EN_ATTENTE_REPONSE' ? offreSelectionnee === i : prop.choix === i"
+                     [class.ecartee]="prop.etat !== 'EN_ATTENTE_REPONSE' && prop.choix !== i"
+                     [class.cliquable]="prop.etat === 'EN_ATTENTE_REPONSE'"
+                     [attr.role]="prop.etat === 'EN_ATTENTE_REPONSE' ? 'radio' : null"
+                     [attr.aria-checked]="prop.etat === 'EN_ATTENTE_REPONSE' ? offreSelectionnee === i : null"
+                     [attr.tabindex]="prop.etat === 'EN_ATTENTE_REPONSE' ? 0 : null"
+                     (click)="choisirOffre(i)" (keydown.enter)="choisirOffre(i)" (keydown.space)="choisirOffre(i); $event.preventDefault()">
+              <div class="offre-entete">
+                <span class="offre-numero">Option {{ i + 1 }}</span>
+                <span class="offre-coche" *ngIf="prop.etat === 'EN_ATTENTE_REPONSE' ? offreSelectionnee === i : prop.choix === i" aria-hidden="true">✓</span>
+              </div>
+              <h5>{{ o.label }}</h5>
+              <div class="offre-montant-client">{{ formatMontant(o.amount) }}</div>
+              <dl>
+                <div><dt>Durée</dt><dd>{{ o.duration }} mois</dd></div>
+                <div><dt>Mensualité</dt><dd>{{ formatMontant(o.monthlyPayment) }}</dd></div>
+                <div><dt>Taux d'endettement</dt><dd>{{ formatPourcent(o.dti) }}</dd></div>
+                <div><dt>Coût total</dt><dd>{{ formatMontant(o.totalCost) }}</dd></div>
+              </dl>
+              <p class="offre-explication-client">{{ o.explanation }}</p>
+            </article>
+          </div>
+
+          <!-- Réponse : choix, puis confirmation (la réponse est définitive) -->
+          <div class="reponse-actions" *ngIf="prop.etat === 'EN_ATTENTE_REPONSE' && !confirmation">
+            <button type="button" class="btn-accepter" [disabled]="offreSelectionnee === null" (click)="demanderConfirmation('ACCEPTER')">
+              {{ offreSelectionnee === null ? 'Choisissez une option pour l\'accepter' : 'Accepter l\'option ' + (offreSelectionnee + 1) }}
+            </button>
+            <button type="button" class="btn-refuser" (click)="demanderConfirmation('REFUSER')">Refuser les propositions</button>
+          </div>
+
+          <div class="confirmation" *ngIf="confirmation" role="alertdialog" aria-live="polite">
+            <p *ngIf="confirmation === 'ACCEPTER' && offreChoisie">
+              Vous acceptez l'<strong>option {{ (offreSelectionnee ?? 0) + 1 }}</strong> :
+              <strong>{{ formatMontant(offreChoisie.amount) }}</strong> sur <strong>{{ offreChoisie.duration }} mois</strong>,
+              soit <strong>{{ formatMontant(offreChoisie.monthlyPayment) }}</strong> par mois.
+            </p>
+            <p *ngIf="confirmation === 'REFUSER'">Vous refusez toutes les propositions. Votre conseiller en sera informé.</p>
+            <p class="confirmation-note">Cette réponse est définitive et sera transmise à votre conseiller.</p>
+            <div class="reponse-actions">
+              <button type="button" class="btn-confirmer" [disabled]="envoiReponse" (click)="confirmerReponse()">
+                {{ envoiReponse ? 'Envoi en cours…' : 'Confirmer ma réponse' }}
+              </button>
+              <button type="button" class="btn-secondaire" [disabled]="envoiReponse" (click)="annulerConfirmation()">Retour</button>
+            </div>
+          </div>
+        </ng-container>
+
+        <div class="erreur-reponse" *ngIf="erreurReponse" role="alert">{{ erreurReponse }}</div>
+      </section>
 
       <h4 class="modal-section">Documents déposés</h4>
       <div class="modal-loading" *ngIf="loadingFichiers" role="status"><div class="spinner-lg"></div></div>

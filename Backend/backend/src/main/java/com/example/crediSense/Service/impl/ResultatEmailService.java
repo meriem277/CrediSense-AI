@@ -31,6 +31,10 @@ public class ResultatEmailService {
     @Value("${spring.mail.username}")
     private String fromEmail;
 
+    /** Adresse du site : le bouton de l'e-mail conduit à l'espace client. */
+    @Value("${app.frontend-url:http://localhost:4200}")
+    private String frontendUrl;
+
     /** Ce qui a été envoyé, pour l'afficher à l'agent et le garder en base. */
     public record Envoi(String destinataire, String decision, boolean pdfJoint) {}
 
@@ -45,7 +49,15 @@ public class ResultatEmailService {
         }
 
             String eligibility = payload.getOrDefault("eligibility", "").toString();
-            String explication = echapper(payload.getOrDefault("rawExplanation", "").toString());
+            boolean conditionnel = "CONDITIONNEL".equals(eligibility);
+            // Dossier conditionnel : on montre le résumé, et les chiffres viennent du moteur (blocs ci-dessous).
+            // Le texte long rédigé par l'IA peut citer ses propres calculs, qui diffèrent de ceux du moteur.
+            String texteAnalyse = conditionnel && payload.get("summary") != null && !payload.get("summary").toString().isBlank()
+                    ? payload.get("summary").toString()
+                    : payload.getOrDefault("rawExplanation", "").toString();
+            String explication = echapper(texteAnalyse);
+            String titreAnalyse = conditionnel ? "En résumé" : "Analyse détaillée";
+            String blocConditionnel = conditionnel ? blocConditionnel(payload, frontendUrl) : "";
             Object scoreObj    = payload.get("eligibilityScore");
             int    score       = scoreObj != null ? Integer.parseInt(scoreObj.toString()) : 0;
             String creditType  = payload.getOrDefault("creditType", "CONSOMMATION").toString();
@@ -72,7 +84,7 @@ public class ResultatEmailService {
             String messageDecision = switch (eligibility) {
                 case "ELIGIBLE"     -> "Félicitations ! Votre dossier remplit tous les critères d'éligibilité au crédit consommation.";
                 case "REFUS"        -> "Après analyse approfondie, votre dossier ne remplit pas actuellement les critères d'éligibilité. Nous vous invitons à contacter votre conseiller.";
-                case "CONDITIONNEL" -> "Votre dossier est accepté sous conditions. Des garanties supplémentaires peuvent être requises. Votre conseiller vous contactera prochainement.";
+                case "CONDITIONNEL" -> "Votre dossier peut être accepté sous conditions. Vous trouverez ci-dessous le détail de votre demande, les conditions à remplir et, lorsque c'est possible, des propositions pour adapter votre crédit à votre capacité de remboursement.";
                 case "A_COMPLETER"  -> "Votre dossier est incomplet : des informations complémentaires sont nécessaires pour pouvoir rendre une décision. Votre conseiller vous contactera pour les recueillir.";
                 default             -> "Votre dossier est en cours d'analyse. Vous serez informé prochainement.";
             };
@@ -95,14 +107,16 @@ public class ResultatEmailService {
                     <tr>
                       <td style="padding:0 40px 24px;">
                         <div style="background:#f8f9fc;border-radius:10px;padding:20px;">
-                          <div style="display:flex;justify-content:space-between;margin-bottom:10px;">
-                            <span style="font-size:13px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">
-                              Score de crédit
-                            </span>
-                            <span style="font-size:18px;font-weight:700;color:%s;">
-                              %d / 100
-                            </span>
-                          </div>
+                          <table width="100%%" cellpadding="0" cellspacing="0" style="margin-bottom:10px;">
+                            <tr>
+                              <td style="font-size:13px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">
+                                Score de crédit
+                              </td>
+                              <td align="right" style="font-size:18px;font-weight:700;color:%s;">
+                                %d / 100
+                              </td>
+                            </tr>
+                          </table>
                           <div style="background:#e5e7eb;border-radius:99px;height:8px;overflow:hidden;">
                             <div style="background:%s;height:8px;width:%d%%;border-radius:99px;"></div>
                           </div>
@@ -175,12 +189,15 @@ public class ResultatEmailService {
                       </td>
                     </tr>
 
+                    <!-- DÉTAIL D'UN DOSSIER CONDITIONNEL : chiffres, conditions, propositions -->
+                    %s
+
                     <!-- ANALYSE DÉTAILLÉE -->
                     <tr>
                       <td style="padding:0 40px 24px;">
                         <h3 style="color:#1a1a2e;font-size:14px;font-weight:700;margin:0 0 12px;
                                    text-transform:uppercase;letter-spacing:0.5px;">
-                          Analyse détaillée
+                          %s
                         </h3>
                         <p style="color:#555;font-size:13px;line-height:1.8;margin:0;
                                   background:#f8f9fc;border-radius:8px;padding:16px;">
@@ -226,6 +243,8 @@ public class ResultatEmailService {
                     couleur, libelleDecision,
                     blocScore,
                     messageDecision,
+                    blocConditionnel,
+                    titreAnalyse,
                     explication
             );
 
@@ -254,6 +273,129 @@ public class ResultatEmailService {
                 eligibility, client.getEmail(), dossier.getId(), pdf != null);
 
         return new Envoi(client.getEmail(), eligibility, pdf != null);
+    }
+
+
+    // ── Dossier conditionnel : le détail que le client doit pouvoir lire ──────────────────────
+
+    /** Lignes de tableau HTML : vos chiffres, les conditions, les propositions et le bouton de réponse. */
+    static String blocConditionnel(Map<String, Object> payload, String adresseSite) {
+        return blocChiffres(payload) + blocConditions(payload) + blocPropositions(payload, adresseSite);
+    }
+
+    private static String ligneSection(String titre, String contenu) {
+        return """
+                <tr>
+                  <td style="padding:0 40px 24px;">
+                    <h3 style="color:#1a1a2e;font-size:14px;font-weight:700;margin:0 0 12px;text-transform:uppercase;letter-spacing:0.5px;">%s</h3>
+                    %s
+                  </td>
+                </tr>
+                """.formatted(titre, contenu);
+    }
+
+    /** Les chiffres calculés par le moteur de règles : montant, durée, mensualité, taux d'endettement. */
+    static String blocChiffres(Map<String, Object> payload) {
+        Object brut = payload.get("financialMetrics");
+        if (!(brut instanceof Map<?, ?> m)) return "";
+
+        StringBuilder lignes = new StringBuilder();
+        ajouterLigne(lignes, "Montant demandé", dt(m.get("requestedAmount")));
+        Double duree = nombre(m.get("duration"));
+        if (duree != null && duree > 0) ajouterLigne(lignes, "Durée", Math.round(duree) + " mois");
+        ajouterLigne(lignes, "Mensualité estimée", dt(m.get("monthlyPayment")));
+        Double dti = nombre(m.get("dti"));
+        if (dti != null && dti > 0) {
+            ajouterLigne(lignes, "Taux d'endettement", pourcent(dti) + " <span style=\"color:#6b7280;font-weight:400;\">(notre seuil d'acceptation : 30 %)</span>");
+        }
+        if (lignes.length() == 0) return "";
+
+        return ligneSection("Votre demande en chiffres",
+                "<table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#f8f9fc;border-radius:8px;\">" + lignes + "</table>");
+    }
+
+    private static void ajouterLigne(StringBuilder lignes, String libelle, String valeur) {
+        if (valeur == null || valeur.isBlank()) return;
+        lignes.append("<tr><td style=\"padding:10px 16px;font-size:13px;color:#6b7280;border-bottom:1px solid #eef0f4;\">")
+              .append(libelle)
+              .append("</td><td align=\"right\" style=\"padding:10px 16px;font-size:14px;font-weight:700;color:#1a1a2e;border-bottom:1px solid #eef0f4;\">")
+              .append(valeur).append("</td></tr>");
+    }
+
+    /** Les conditions à remplir avant le décaissement. */
+    static String blocConditions(Map<String, Object> payload) {
+        if (!(payload.get("conditions") instanceof java.util.List<?> conditions) || conditions.isEmpty()) return "";
+        StringBuilder items = new StringBuilder();
+        for (Object c : conditions) {
+            String texte = c == null ? "" : c.toString().trim();
+            if (!texte.isEmpty()) items.append("<li style=\"margin:0 0 6px;\">").append(echapper(texte)).append("</li>");
+        }
+        if (items.length() == 0) return "";
+        return ligneSection("Conditions à remplir",
+                "<ul style=\"margin:0;padding-left:20px;color:#444;font-size:13px;line-height:1.7;\">" + items + "</ul>");
+    }
+
+    /** Les propositions du moteur, et le bouton qui conduit à l'espace client pour y répondre. */
+    static String blocPropositions(Map<String, Object> payload, String adresseSite) {
+        if (!(payload.get("adjustedOffers") instanceof Map<?, ?> propositions)
+                || !Boolean.TRUE.equals(propositions.get("applicable"))
+                || !(propositions.get("offers") instanceof java.util.List<?> offres) || offres.isEmpty()) {
+            return "";
+        }
+
+        StringBuilder cartes = new StringBuilder();
+        int numero = 0;
+        for (Object o : offres) {
+            if (!(o instanceof Map<?, ?> offre)) continue;
+            numero++;
+            Double duree = nombre(offre.get("duration"));
+            Double dti = nombre(offre.get("dti"));
+            cartes.append("""
+                    <table width="100%%" cellpadding="0" cellspacing="0" style="border:1px solid #e5e7eb;border-radius:10px;margin:0 0 12px;">
+                      <tr><td style="padding:14px 16px;">
+                        <div style="font-size:11px;font-weight:700;color:#16a34a;text-transform:uppercase;letter-spacing:0.6px;">Option %d</div>
+                        <div style="font-size:14px;font-weight:700;color:#1a1a2e;margin:2px 0 6px;">%s</div>
+                        <div style="font-size:22px;font-weight:700;color:#1a1a2e;">%s</div>
+                        <div style="font-size:13px;color:#555;margin-top:6px;line-height:1.7;">
+                          Durée : <strong>%s</strong> · Mensualité : <strong>%s</strong><br/>
+                          Taux d'endettement : <strong>%s</strong> · Coût total : <strong>%s</strong>
+                        </div>
+                      </td></tr>
+                    </table>
+                    """.formatted(numero, echapper(String.valueOf(offre.get("label"))), dt(offre.get("amount")),
+                    duree != null ? Math.round(duree) + " mois" : "—", dt(offre.get("monthlyPayment")),
+                    dti != null ? pourcent(dti) : "—", dt(offre.get("totalCost"))));
+        }
+        if (numero == 0) return "";
+
+        String lien = (adresseSite == null || adresseSite.isBlank() ? "" : adresseSite.replaceAll("/+$", "")) + "/client/historique";
+        String contenu = "<p style=\"margin:0 0 12px;color:#555;font-size:13px;line-height:1.7;\">Pour que votre dossier soit accepté, "
+                + "nous vous proposons de l'adapter. <strong>Aucune de ces propositions n'est appliquée sans votre accord</strong> : "
+                + "vous pouvez en accepter une ou les refuser depuis votre espace client.</p>"
+                + cartes
+                + "<p style=\"text-align:center;margin:18px 0 4px;\"><a href=\"" + echapper(lien) + "\" "
+                + "style=\"display:inline-block;background:#E8302A;color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;"
+                + "padding:12px 28px;border-radius:8px;\">Répondre à la proposition</a></p>"
+                + "<p style=\"text-align:center;color:#6b7280;font-size:12px;margin:8px 0 0;\">Connectez-vous à votre espace client, rubrique « Mes demandes ».</p>";
+        return ligneSection("Nos propositions pour votre dossier", contenu);
+    }
+
+    private static Double nombre(Object o) {
+        if (o == null) return null;
+        try { return Double.parseDouble(o.toString()); } catch (NumberFormatException e) { return null; }
+    }
+
+    /** « 16 300 DT » : sans décimales, espace simple comme séparateur de milliers. */
+    static String dt(Object valeur) {
+        Double n = nombre(valeur);
+        if (n == null || n <= 0) return null;
+        String texte = java.text.NumberFormat.getIntegerInstance(java.util.Locale.FRANCE).format(Math.round(n));
+        return texte.replace('\u202f', ' ').replace('\u00a0', ' ') + " DT";
+    }
+
+    /** « 36,63 % » */
+    static String pourcent(double valeur) {
+        return String.format(java.util.Locale.FRANCE, "%.2f", valeur) + " %";
     }
 
     /** Nom du fichier joint : « Reponse-credit-1A2B3C4D.pdf ». */

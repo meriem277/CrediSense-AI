@@ -121,6 +121,18 @@
     <span class="cr-validation-erreur" *ngIf="erreurValidation" role="alert">{{ erreurValidation }}</span>
   </div>
 
+  <!-- Réponse du client à ses propositions d'ajustement : l'agent doit le savoir -->
+  <div class="cr-reponse-client" *ngIf="result.reponseClient as reponse" [ngClass]="'cr-reponse-' + reponse.statut" role="status">
+    <strong *ngIf="reponse.statut === 'ACCEPTEE'">Le client a accepté une proposition</strong>
+    <strong *ngIf="reponse.statut === 'REFUSEE'">Le client a refusé les propositions</strong>
+    <span *ngIf="reponse.statut === 'ACCEPTEE' && reponse.offre as offre">
+      {{ offre.label }} : {{ formatDT(offre.amount) }} sur {{ offre.duration }} mois,
+      soit {{ formatDT(offre.monthlyPayment) }} par mois (endettement {{ pct(offre.dti) }}).
+    </span>
+    <span *ngIf="reponse.statut === 'REFUSEE'">Aucune des propositions ne lui convient : à vous de le recontacter.</span>
+    <small>Réponse du {{ dateJournal(reponse.repondueLe) }}. Le dossier n'est pas modifié automatiquement : c'est à vous de décider de la suite.</small>
+  </div>
+
   <!-- Message erreur envoi -->
   <div class="cr-send-feedback" *ngIf="sendEmailError" role="alert">
     {{ sendEmailError }}

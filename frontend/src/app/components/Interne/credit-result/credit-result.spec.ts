@@ -771,3 +771,66 @@ describe("CreditResult — présentation visuelle", () => {
     expect(composant().pct(null)).toBe("—");
   });
 });
+
+
+describe("CreditResult — réponse du client aux propositions", () => {
+  let fixture: ComponentFixture<CreditResult>;
+  let etat: CreditStateService;
+
+  const OFFRE = { kind: 'DUREE_ALLONGEE', label: 'Même montant, durée allongée', amount: 20000, duration: 18,
+                  monthlyPayment: 1201.142, dti: 25.02, totalCost: 21620.549, explanation: 'x' };
+  const CONDITIONNEL = { ...RESULTAT_COMPLET, eligibility: 'CONDITIONNEL', eligibilityScore: 55 };
+
+  const afficher = (resultat: unknown) => { etat.setResult(mapperResultat(resultat)); fixture.detectChanges(); };
+  const texte = () => (fixture.nativeElement as HTMLElement).textContent!.replace(/\s+/g, " ");
+  const bandeau = () => (fixture.nativeElement as HTMLElement).querySelector(".cr-reponse-client") as HTMLElement | null;
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [CreditResult],
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    }).compileComponents();
+    fixture = TestBed.createComponent(CreditResult);
+    etat = TestBed.inject(CreditStateService);
+    fixture.detectChanges();
+  });
+
+  it("montre à l'agent l'offre acceptée par le client", () => {
+    afficher({ ...CONDITIONNEL, reponseClient: { statut: 'ACCEPTEE', repondueLe: '2026-10-08T10:12:00', offre: OFFRE } });
+    expect(bandeau()).not.toBeNull();
+    const t = bandeau()!.textContent!.replace(/\s+/g, " ");
+    expect(t).toContain("Le client a accepté une proposition");
+    expect(t).toContain("Même montant, durée allongée");
+    expect(t).toContain("18 mois");
+    expect(t).toContain("25,02 %");
+    expect(t).toContain("08/10/2026");
+    expect(bandeau()!.className).toContain("cr-reponse-ACCEPTEE");
+  });
+
+  it("précise que le dossier n'est pas modifié automatiquement", () => {
+    afficher({ ...CONDITIONNEL, reponseClient: { statut: 'ACCEPTEE', repondueLe: '2026-10-08T10:12:00', offre: OFFRE } });
+    expect(bandeau()!.textContent).toContain("n'est pas modifié automatiquement");
+  });
+
+  it("signale le refus des propositions", () => {
+    afficher({ ...CONDITIONNEL, reponseClient: { statut: 'REFUSEE', repondueLe: '2026-10-08T10:12:00', offre: null } });
+    const t = bandeau()!.textContent!.replace(/\s+/g, " ");
+    expect(t).toContain("Le client a refusé les propositions");
+    expect(t).toContain("à vous de le recontacter");
+    expect(bandeau()!.className).toContain("cr-reponse-REFUSEE");
+  });
+
+  it("n'affiche rien tant que le client n'a pas répondu", () => {
+    afficher(CONDITIONNEL);
+    expect(bandeau()).toBeNull();
+    afficher({ ...CONDITIONNEL, reponseClient: null });
+    expect(bandeau()).toBeNull();
+    expect(texte()).not.toContain("Le client a");
+  });
+
+  it("conserve la réponse du client lors de la conversion du résultat", () => {
+    const r = mapperResultat({ ...CONDITIONNEL, reponseClient: { statut: 'REFUSEE', repondueLe: null } });
+    expect(r.reponseClient?.statut).toBe('REFUSEE');
+    expect(mapperResultat(CONDITIONNEL).reponseClient).toBeNull();
+  });
+});

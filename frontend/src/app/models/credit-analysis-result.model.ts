@@ -66,6 +66,13 @@ export interface PropositionsAjustement {
   unresolved: string[];
 }
 
+/** Réponse du client à ses propositions d'ajustement (null tant qu'il n'a pas répondu). */
+export interface ReponseClient {
+  statut: 'ACCEPTEE' | 'REFUSEE';
+  repondueLe: string | null;
+  offre?: OffreAjustee | null;
+}
+
 export interface SimulationDuree {
   duration: number;
   monthlyPayment: number;
@@ -129,6 +136,8 @@ export interface CreditAnalysisResult {
   simulations?: SimulationDuree[];
   /** Propositions de montant / durée (dossier CONDITIONNEL uniquement). */
   adjustedOffers?: PropositionsAjustement;
+  /** Ce que le client a répondu à ces propositions. */
+  reponseClient?: ReponseClient | null;
   calculationNote?: string;
   tauxAnnuelApplique?: number | null;
   /** Ce qui manque pour pouvoir décider, avec où le trouver. */
@@ -164,6 +173,7 @@ export function mapperResultat(src: any): CreditAnalysisResult {
     capacity:           s.capacity || undefined,
     simulations:        s.simulations || [],
     adjustedOffers:     s.adjustedOffers || undefined,
+    reponseClient:      s.reponseClient || null,
     calculationNote:    s.calculationNote || undefined,
     tauxAnnuelApplique: s.tauxAnnuelApplique ?? null,
     donneesManquantes:  s.donneesManquantes || [],

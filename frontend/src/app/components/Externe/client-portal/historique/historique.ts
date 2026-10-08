@@ -5,6 +5,7 @@ import { Router, RouterModule } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { ClientAuthService } from '../../../../services/Externe/Client-auth.service';
 import { environment } from '../../../../../environments/environment';
+import { OffreProposee, PropositionClient, ResumeProposition } from '../../../../models/proposition-client.model';
 
 export type FiltreStatut = 'tous' | 'etude' | 'approuve' | 'refuse';
 export type TriDate = 'recent' | 'ancien';
@@ -45,6 +46,15 @@ export class Historique implements OnInit {
   fichiers: any[] = [];
   loadingFichiers = false;
 
+  // Propositions du conseiller (dossier conditionnel) : état par demande, puis détail de celle qui est ouverte
+  propositions: Record<string, ResumeProposition['etat']> = {};
+  proposition: PropositionClient | null = null;
+  loadingProposition = false;
+  offreSelectionnee: number | null = null;
+  confirmation: 'ACCEPTER' | 'REFUSER' | null = null;
+  envoiReponse = false;
+  erreurReponse = '';
+
   // Filtres de la liste
   filtre: FiltreStatut = 'tous';
   recherche = '';
@@ -76,6 +86,7 @@ export class Historique implements OnInit {
       next: (data) => {
         this.dossiers = data ?? [];
         this.loading = false;
+        this.chargerPropositions();
       },
       error: () => {
         this.errorMsg = 'Erreur lors du chargement de l\'historique.';
@@ -220,6 +231,116 @@ export class Historique implements OnInit {
     }
   }
 
+  // ── Propositions du conseiller ───────────────────────────────────────────
+  /** Quelles demandes ont une proposition, et où en est la réponse. Silencieux en cas d'échec (pas de bandeau). */
+  chargerPropositions(): void {
+    this.http.get<ResumeProposition[]>(`${environment.apiUrl}/api/clients/mes-demandes/propositions`).subscribe({
+      next: (liste) => {
+        this.propositions = {};
+        for (const l of liste ?? []) this.propositions[l.dossierId] = l.etat;
+      },
+      error: () => { this.propositions = {}; }
+    });
+  }
+
+  etatProposition(dossier: any): ResumeProposition['etat'] | null {
+    return this.propositions[String(dossier?.dossierId)] ?? null;
+  }
+
+  /** Le client doit répondre à une proposition de cette demande. */
+  actionRequise(dossier: any): boolean {
+    return this.etatProposition(dossier) === 'EN_ATTENTE_REPONSE';
+  }
+
+  get demandesAvecActionRequise(): any[] {
+    return this.dossiers.filter(d => this.actionRequise(d));
+  }
+
+  libelleEtatProposition(dossier: any): string {
+    switch (this.etatProposition(dossier)) {
+      case 'EN_ATTENTE_REPONSE': return 'Proposition à examiner';
+      case 'ACCEPTEE':           return 'Proposition acceptée';
+      case 'REFUSEE':            return 'Proposition refusée';
+      default:                   return '';
+    }
+  }
+
+  private chargerProposition(dossier: any, garderMessage = false): void {
+    this.proposition = null;
+    this.offreSelectionnee = null;
+    this.confirmation = null;
+    if (!garderMessage) this.erreurReponse = '';
+    if (!this.etatProposition(dossier)) return;
+
+    this.loadingProposition = true;
+    this.http.get<PropositionClient>(
+      `${environment.apiUrl}/api/clients/mes-demandes/${dossier.dossierId}/proposition`
+    ).subscribe({
+      next: (p) => { this.proposition = p; this.loadingProposition = false; },
+      error: () => { this.proposition = null; this.loadingProposition = false; }
+    });
+  }
+
+  choisirOffre(numero: number): void {
+    if (this.proposition?.etat !== 'EN_ATTENTE_REPONSE') return;
+    this.offreSelectionnee = numero;
+    this.confirmation = null;
+    this.erreurReponse = '';
+  }
+
+  /** Première étape : on demande confirmation avant d'envoyer, la réponse est définitive. */
+  demanderConfirmation(choix: 'ACCEPTER' | 'REFUSER'): void {
+    if (choix === 'ACCEPTER' && this.offreSelectionnee === null) return;
+    this.confirmation = choix;
+    this.erreurReponse = '';
+  }
+
+  annulerConfirmation(): void { this.confirmation = null; }
+
+  get offreChoisie(): OffreProposee | null {
+    const n = this.offreSelectionnee;
+    return n !== null && this.proposition ? (this.proposition.offres[n] ?? null) : null;
+  }
+
+  confirmerReponse(): void {
+    if (!this.selectedDossier || !this.confirmation || this.envoiReponse) return;
+    if (this.confirmation === 'ACCEPTER' && this.offreSelectionnee === null) return;
+
+    this.envoiReponse = true;
+    this.erreurReponse = '';
+    const corps = { choix: this.confirmation, offre: this.confirmation === 'ACCEPTER' ? this.offreSelectionnee : null };
+
+    this.http.post<PropositionClient>(
+      `${environment.apiUrl}/api/clients/mes-demandes/${this.selectedDossier.dossierId}/proposition/repondre`, corps
+    ).subscribe({
+      next: (p) => {
+        this.proposition = p;
+        this.propositions[String(this.selectedDossier.dossierId)] = p.etat;
+        this.confirmation = null;
+        this.envoiReponse = false;
+      },
+      error: (e) => {
+        this.erreurReponse = e?.error?.message
+          || 'Votre réponse n\'a pas pu être enregistrée. Veuillez réessayer dans un instant.';
+        this.confirmation = null;
+        this.envoiReponse = false;
+        // 409 : la réponse existe déjà (autre onglet) ; on relit l'état réel
+        if (e?.status === 409) this.chargerProposition(this.selectedDossier, true);
+      }
+    });
+  }
+
+  /** « 20 000 DT » : montants entiers, séparateur de milliers. */
+  formatMontant(valeur: number | null | undefined): string {
+    if (valeur === null || valeur === undefined || isNaN(Number(valeur))) return '—';
+    return new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Number(valeur)) + ' DT';
+  }
+
+  formatPourcent(valeur: number | null | undefined): string {
+    if (valeur === null || valeur === undefined || isNaN(Number(valeur))) return '—';
+    return `${Number(valeur).toFixed(2).replace('.', ',')} %`;
+  }
+
   // ── Documents d'un dossier ───────────────────────────────────────────────
   libelleDocument(fichier: any): string {
     const type = String(fichier?.typeDocument ?? '').toUpperCase();
@@ -234,6 +355,7 @@ export class Historique implements OnInit {
     this.selectedDossier = dossier;
     this.loadingFichiers = true;
     this.fichiers = [];
+    this.chargerProposition(dossier);
 
     this.http.get<any[]>(
       `${environment.apiUrl}/api/public/demande/${dossier.dossierId}/fichiers`
@@ -247,6 +369,10 @@ export class Historique implements OnInit {
   fermerDetails(): void {
     this.selectedDossier = null;
     this.fichiers = [];
+    this.proposition = null;
+    this.offreSelectionnee = null;
+    this.confirmation = null;
+    this.erreurReponse = '';
   }
 
   nouvelleDemande() {

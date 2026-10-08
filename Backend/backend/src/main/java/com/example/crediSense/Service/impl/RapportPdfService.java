@@ -85,7 +85,11 @@ public class RapportPdfService {
             if (version == Version.AGENT) {
                 texteSection(document, writer, "Résumé de l'analyse", texte(resultat, "summary"));
             } else {
-                texteSection(document, writer, "Explication", texte(resultat, "rawExplanation"));
+                // Dossier conditionnel : le résumé. Le texte long rédigé par l'IA peut citer ses propres
+                // calculs, qui diffèrent de ceux du moteur (chiffres de la section suivante).
+                String explication = "CONDITIONNEL".equals(decision) && !texte(resultat, "summary").isBlank()
+                        ? texte(resultat, "summary") : texte(resultat, "rawExplanation");
+                texteSection(document, writer, "Explication", explication);
             }
 
             manquants(document, writer, resultat, version);
@@ -94,13 +98,17 @@ public class RapportPdfService {
             if (version == Version.AGENT) {
                 controles(document, writer, resultat);
                 capaciteEtSimulations(document, writer, resultat);
-                propositionsAjustement(document, writer, resultat);
+                propositionsAjustement(document, writer, resultat, version);
                 listeSection(document, writer, "Points forts", liste(resultat, "strengths"));
                 listeSection(document, writer, "Points de vigilance", liste(resultat, "weaknesses"));
                 listeSection(document, writer, "Risques", liste(resultat, "risks"));
                 listeSection(document, writer, "Plan recommandé", liste(resultat, "recommendedPlan"));
                 listeSection(document, writer, "Avertissements", liste(resultat, "avertissements"));
                 texteSection(document, writer, "Note de calcul", texte(resultat, "calculationNote"));
+            }
+            // Le client reçoit les propositions du moteur (il peut les accepter depuis son espace client)
+            if (version == Version.CLIENT && "CONDITIONNEL".equals(decision)) {
+                propositionsAjustement(document, writer, resultat, version);
             }
             listeSection(document, writer, "Conditions avant décaissement", liste(resultat, "conditions"));
 
@@ -299,13 +307,23 @@ public class RapportPdfService {
         document.add(table);
     }
 
-    /** Propositions de montant / durée d'un dossier conditionnel : réservées à l'agent, jamais au client. */
-    private void propositionsAjustement(Document document, PdfWriter writer, Map<String, Object> resultat) throws DocumentException {
+    /**
+     * Propositions de montant / durée d'un dossier conditionnel. L'agent les voit comme « indicatives » ; le
+     * client les reçoit comme des propositions auxquelles il répond depuis son espace client.
+     */
+    private void propositionsAjustement(Document document, PdfWriter writer, Map<String, Object> resultat,
+                                        Version version) throws DocumentException {
         Map<String, Object> propositions = carte(resultat, "adjustedOffers");
         if (propositions.isEmpty()) return;
+        boolean client = version == Version.CLIENT;
+        // Pour le client : seulement s'il y a réellement des offres (pas le message interne « rien à ajuster »)
+        if (client && (!Boolean.TRUE.equals(propositions.get("applicable")) || liste(propositions, "offers").isEmpty())) return;
 
-        ouvrirSection(document, writer, "Propositions d'ajustement");
-        String message = texte(propositions, "message");
+        ouvrirSection(document, writer, client ? "Propositions de votre conseiller" : "Propositions d'ajustement");
+        String message = client
+                ? "Pour adapter votre crédit à votre capacité de remboursement, voici nos propositions. Aucune n'est appliquée "
+                  + "sans votre accord : vous pouvez en accepter une ou les refuser depuis votre espace client."
+                : texte(propositions, "message");
         if (message != null && !message.isBlank()) {
             Paragraph p = new Paragraph(nettoyer(message), police(10, Font.ITALIC, BaseColor.DARK_GRAY));
             p.setSpacingAfter(4);

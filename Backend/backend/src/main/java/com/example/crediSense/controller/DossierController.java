@@ -287,6 +287,8 @@ public class DossierController {
             );
             // L'agent voit si la réponse est partie chez le client (envoi automatique ou manuel)
             parsed.put("notification", notificationService.etatDe(df));
+            // Réponse du client à ses propositions d'ajustement (null tant qu'il n'a pas répondu)
+            parsed.put("reponseClient", com.example.crediSense.Service.impl.PropositionClientService.etatPourAgent(df));
             return ResponseEntity.ok(parsed);
         } catch (Exception e) {
             log.warn("Résultat illisible pour dossier {}: {}", id, e.getMessage());
