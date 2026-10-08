@@ -537,7 +537,29 @@ def mesurer_decision(sans_llm: bool, runs: int) -> dict:
               "proposition_microsecondes": stats_ms(d_offres)}
     print("moteur :", moteur)
 
-    synthese = {"calcul_mensualite": calcul, "moteur": moteur}
+    # (b bis) Grille de score : reproductibilité, bornes, vitesse
+    from services.score_grille import calculer_score
+    from services.agent_service import PARAMETRES, anciennete_en_mois
+    reference = {"dti": 10.87, "contractType": "CDI", "paymentIncidents": 0, "monthlyIncome": 2100.0, "requestedAmount": 9000.0}
+    repetitions = {json.dumps(calculer_score(PARAMETRES, reference, 61), sort_keys=True) for _ in range(2000)}
+    scores, durees_grille, hors_bornes, provisoires = [], [], 0, 0
+    for m in profils[:5000]:
+        r = appliquer_regles(dict(m), True)
+        t0 = time.perf_counter()
+        g = calculer_score(PARAMETRES, r["metrics"], anciennete_en_mois(m["employmentStartDate"]))
+        durees_grille.append((time.perf_counter() - t0) * 1e6)
+        scores.append(g["total"])
+        hors_bornes += 0 if 0 <= g["total"] <= 100 else 1
+        provisoires += 1 if g["provisoire"] else 0
+    grille = {"profils": len(scores), "resultats_distincts_pour_2000_repetitions_du_meme_dossier": len(repetitions),
+              "ecart_type_sur_repetitions": 0.0 if len(repetitions) == 1 else None,
+              "scores_hors_de_0_a_100": hors_bornes, "scores_provisoires": provisoires,
+              "score_moyen": round(statistics.mean(scores), 1), "score_min": min(scores), "score_max": max(scores),
+              "duree_microsecondes": stats_ms(durees_grille), "statut_parametres": PARAMETRES.resume()["statut"],
+              "empreinte_parametres": PARAMETRES.empreinte}
+    print("grille :", grille)
+
+    synthese = {"calcul_mensualite": calcul, "moteur": moteur, "grille_de_score": grille}
     detail = []
 
     # (c) De bout en bout, avec le modèle de langage, sur le dossier fictif
@@ -561,6 +583,7 @@ def mesurer_decision(sans_llm: bool, runs: int) -> dict:
             fm = res.get("financialMetrics") or {}
             sorties.append({"run": i + 1, "duree_ms": round(duree), "statut": res.get("statut"),
                             "decision": res.get("eligibility"), "score": res.get("eligibilityScore"),
+                            "score_llm_indicatif": res.get("scoreLLMIndicatif"),
                             "revenu": fm.get("monthlyIncome"), "dettes": fm.get("existingDebts"),
                             "mensualite": fm.get("monthlyPayment"), "dti": fm.get("dti"),
                             "provider": res.get("provider"), "donnees_manquantes": res.get("donneesManquantes")})

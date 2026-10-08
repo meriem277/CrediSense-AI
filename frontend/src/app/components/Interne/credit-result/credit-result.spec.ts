@@ -834,3 +834,100 @@ describe("CreditResult — réponse du client aux propositions", () => {
     expect(mapperResultat(CONDITIONNEL).reponseClient).toBeNull();
   });
 });
+
+
+describe("CreditResult — détail du score", () => {
+  let fixture: ComponentFixture<CreditResult>;
+  let etat: CreditStateService;
+
+  const DETAIL = {
+    methode: 'grille-v1', total: 91, provisoire: false, prototype: true, pointsObtenus: 91, pointsConnus: 100,
+    criteres: [
+      { id: 'endettement', libelle: "Taux d'endettement", points: 36, maximum: 40, connu: true, valeur: '22,77 %', explication: '22,77 % : sous le seuil acceptable.' },
+      { id: 'contrat', libelle: 'Stabilité du contrat', points: 20, maximum: 20, connu: true, valeur: 'CDI', explication: 'Contrat CDI.' },
+      { id: 'anciennete', libelle: "Ancienneté dans l'emploi", points: 8, maximum: 15, connu: true, valeur: '1 an(s) 4 mois', explication: 'x' },
+      { id: 'incidents', libelle: 'Incidents de paiement', points: null, maximum: 15, connu: false, valeur: 'inconnus', explication: 'Incidents non vérifiés : critère écarté du score.' },
+      { id: 'montant', libelle: 'Montant demandé / salaire', points: 1, maximum: 10, connu: true, valeur: '4,9 × salaire', explication: 'x' },
+    ],
+  };
+  const PARAMETRES = { statut: 'PROTOTYPE', empreinte: 'abc123', fichierValide: true, seuilsNonValides: ['dti_max'] };
+
+  const afficher = (resultat: unknown) => { etat.setResult(mapperResultat(resultat)); fixture.detectChanges(); };
+  const carte = () => (fixture.nativeElement as HTMLElement).querySelector('.cr-score-detail') as HTMLElement | null;
+  const lignes = () => Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('.score-critere')) as HTMLElement[];
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [CreditResult],
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    }).compileComponents();
+    fixture = TestBed.createComponent(CreditResult);
+    etat = TestBed.inject(CreditStateService);
+    fixture.detectChanges();
+  });
+
+  it('affiche les points de chaque critère sur son maximum', () => {
+    afficher({ ...RESULTAT_COMPLET, scoreDetail: DETAIL, parametresRegles: PARAMETRES });
+    expect(lignes().length).toBe(5);
+    const textes = lignes().map(l => l.querySelector('.score-critere-points')!.textContent!.trim());
+    expect(textes).toEqual(['36 / 40', '20 / 20', '8 / 15', 'écarté', '1 / 10']);
+    expect(carte()!.textContent).toContain('91 / 100');
+  });
+
+  it('écarte un critère inconnu au lieu de le compter comme zéro', () => {
+    afficher({ ...RESULTAT_COMPLET, scoreDetail: DETAIL, parametresRegles: PARAMETRES });
+    const inconnue = lignes()[3];
+    expect(inconnue.className).toContain('inconnu');
+    expect(inconnue.querySelector('.score-critere-points')!.textContent).toContain('écarté');
+    expect(inconnue.textContent).toContain('critère écarté du score');
+    expect(inconnue.querySelector('.score-critere-barre i')!.className).toContain('pts-inconnu');
+  });
+
+  it('donne à chaque barre une largeur proportionnelle aux points', () => {
+    afficher({ ...RESULTAT_COMPLET, scoreDetail: DETAIL });
+    const largeurs = lignes().map(l => parseFloat((l.querySelector('.score-critere-barre i') as HTMLElement).style.width));
+    [90, 100, 53.33, 0, 10].forEach((attendu, i) => expect(largeurs[i]).toBeCloseTo(attendu, 1));
+  });
+
+  it('classe la couleur des barres selon la part de points obtenus', () => {
+    afficher({ ...RESULTAT_COMPLET, scoreDetail: DETAIL });
+    const c = fixture.componentInstance;
+    expect(c.classePointsCritere(DETAIL.criteres[0])).toBe('pts-bon');
+    expect(c.classePointsCritere(DETAIL.criteres[2])).toBe('pts-moyen');
+    expect(c.classePointsCritere(DETAIL.criteres[4])).toBe('pts-faible');
+    expect(c.classePointsCritere(DETAIL.criteres[3])).toBe('pts-inconnu');
+  });
+
+  it('indique que le score est calculé par le système et reproductible', () => {
+    afficher({ ...RESULTAT_COMPLET, scoreDetail: DETAIL });
+    expect(carte()!.textContent).toContain('Calculé par le système');
+    expect(carte()!.textContent).toContain('le même dossier donne toujours la même note');
+  });
+
+  it('signale un score provisoire', () => {
+    afficher({ ...RESULTAT_COMPLET, scoreDetail: { ...DETAIL, provisoire: true } });
+    expect(carte()!.textContent).toContain('Provisoire');
+    afficher({ ...RESULTAT_COMPLET, scoreDetail: DETAIL });
+    expect(carte()!.textContent).not.toContain('Provisoire');
+  });
+
+  it('affiche la mention « prototype » tant que les seuils ne sont pas validés', () => {
+    afficher({ ...RESULTAT_COMPLET, scoreDetail: { ...DETAIL, prototype: true } });
+    expect(carte()!.querySelector('.cr-prototype')!.textContent).toContain('à valider avec la banque');
+    afficher({ ...RESULTAT_COMPLET, scoreDetail: { ...DETAIL, prototype: false }, parametresRegles: { statut: 'VALIDE' } });
+    expect(carte()!.querySelector('.cr-prototype')).toBeNull();
+  });
+
+  it("n'affiche pas la carte pour un ancien résultat sans détail de score", () => {
+    afficher(RESULTAT_COMPLET);
+    expect(carte()).toBeNull();
+  });
+
+  it('conserve le détail du score et les paramètres lors de la conversion', () => {
+    const r = mapperResultat({ ...RESULTAT_COMPLET, scoreDetail: DETAIL, parametresRegles: PARAMETRES });
+    expect(r.scoreDetail?.criteres.length).toBe(5);
+    expect(r.parametresRegles?.statut).toBe('PROTOTYPE');
+    expect(mapperResultat(RESULTAT_COMPLET).scoreDetail).toBeNull();
+    expect(mapperResultat(RESULTAT_COMPLET).parametresRegles).toBeNull();
+  });
+});

@@ -229,7 +229,7 @@ class TestPropositionsDansLAnalyse(unittest.TestCase):
         self.assertNotIn("adjustedOffers", r)
 
     def test_la_version_des_regles_a_change(self):
-        self.assertEqual(agent_service.RULES_VERSION, "2026-10-b")
+        self.assertEqual(agent_service.RULES_VERSION, "2026-10-c")
 
 
 if __name__ == "__main__":

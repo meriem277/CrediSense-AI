@@ -96,6 +96,7 @@ public class RapportPdfService {
             chiffresCles(document, writer, dossier, resultat, version);
 
             if (version == Version.AGENT) {
+                detailScore(document, writer, resultat);
                 controles(document, writer, resultat);
                 capaciteEtSimulations(document, writer, resultat);
                 propositionsAjustement(document, writer, resultat, version);
@@ -265,6 +266,46 @@ public class RapportPdfService {
             cellule(table, String.valueOf(c.get("explanation")), Font.NORMAL, null);
         }
         document.add(table);
+    }
+
+    /** Détail du score : points obtenus par critère (grille calculée par le code, pas par le modèle de langage). */
+    private void detailScore(Document document, PdfWriter writer, Map<String, Object> resultat) throws DocumentException {
+        Map<String, Object> detail = carte(resultat, "scoreDetail");
+        List<Object> criteres = liste(detail, "criteres");
+        if (criteres.isEmpty()) return;
+
+        ouvrirSection(document, writer, "Détail du score");
+        PdfPTable table = new PdfPTable(new float[]{3f, 2.2f, 1.6f, 1.6f});
+        table.setWidthPercentage(100);
+        table.setHeaderRows(1);
+        for (String titre : new String[]{"Critère", "Valeur", "Points", "Maximum"}) {
+            enteteCellule(table, titre);
+        }
+        for (Object o : criteres) {
+            if (!(o instanceof Map<?, ?> c)) continue;
+            boolean connu = !Boolean.FALSE.equals(c.get("connu"));
+            Double points = nombre(c.get("points"));
+            Double maximum = nombre(c.get("maximum"));
+            cellule(table, String.valueOf(c.get("libelle")), Font.BOLD, null);
+            cellule(table, String.valueOf(c.get("valeur")), Font.NORMAL, null);
+            cellule(table, connu && points != null ? String.valueOf(Math.round(points)) : "écarté", Font.NORMAL, null);
+            cellule(table, maximum != null ? String.valueOf(Math.round(maximum)) : "—", Font.NORMAL, null);
+        }
+        document.add(table);
+
+        Double total = nombre(detail.get("total"));
+        boolean provisoire = Boolean.TRUE.equals(detail.get("provisoire"));
+        Paragraph resume = new Paragraph("Score : " + (total != null ? Math.round(total) : "—") + " / 100"
+                + (provisoire ? " (provisoire : un ou plusieurs critères inconnus sont écartés du calcul)" : ""),
+                police(10, Font.BOLD, BaseColor.DARK_GRAY));
+        resume.setSpacingBefore(4);
+        document.add(resume);
+        if (Boolean.TRUE.equals(detail.get("prototype"))) {
+            Paragraph note = new Paragraph("Prototype : les poids de la grille et les seuils sont des valeurs par défaut indicatives, "
+                    + "à valider avec la banque avant tout usage réel.", police(9, Font.ITALIC, BaseColor.GRAY));
+            note.setSpacingAfter(2);
+            document.add(note);
+        }
     }
 
     private void capaciteEtSimulations(Document document, PdfWriter writer, Map<String, Object> resultat) throws DocumentException {

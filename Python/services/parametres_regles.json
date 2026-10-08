@@ -1,0 +1,60 @@
+{
+  "version": "2026-10-prototype",
+  "statut": "PROTOTYPE",
+  "avertissement": "Valeurs par défaut indicatives du prototype : elles n'ont pas été confrontées à la politique de crédit de la banque ni aux circulaires de la BCT. À valider avant tout usage réel. Pour valider un seuil : renseigner sa source, la personne qui l'a validé et la date, puis passer « statut » à VALIDE.",
+
+  "seuils": {
+    "dti_acceptable": {
+      "valeur": 30, "unite": "%",
+      "libelle": "Taux d'endettement acceptable (en dessous : conforme)",
+      "source": "À confirmer (politique de crédit de la banque / circulaire BCT)", "valide_par": null, "date_validation": null
+    },
+    "dti_max": {
+      "valeur": 35, "unite": "%",
+      "libelle": "Taux d'endettement maximum (au-dessus : non conforme)",
+      "source": "À confirmer (politique de crédit de la banque / circulaire BCT)", "valide_par": null, "date_validation": null
+    },
+    "multiple_salaire": {
+      "valeur": 5, "unite": "× salaire net",
+      "libelle": "Montant maximum accordé, en multiple du salaire mensuel net",
+      "source": "À confirmer", "valide_par": null, "date_validation": null
+    },
+    "duree_max_mois": {
+      "valeur": 84, "unite": "mois",
+      "libelle": "Durée maximale du crédit",
+      "source": "À confirmer", "valide_par": null, "date_validation": null
+    },
+    "anciennete_min_mois": {
+      "valeur": 6, "unite": "mois",
+      "libelle": "Ancienneté minimale dans l'emploi",
+      "source": "À confirmer", "valide_par": null, "date_validation": null
+    },
+    "age_max_fin_credit": {
+      "valeur": 70, "unite": "ans",
+      "libelle": "Âge maximal du client à la fin du crédit",
+      "source": "À confirmer", "valide_par": null, "date_validation": null
+    }
+  },
+
+  "grille_score": {
+    "description": "Score sur 100 calculé par le code (aucun modèle de langage) : somme de points par critère. Poids et paliers sont des choix de conception du prototype, à valider avec la banque.",
+    "poids": { "endettement": 40, "contrat": 20, "anciennete": 15, "incidents": 15, "montant": 10 },
+
+    "endettement": {
+      "plein_jusqua_pct": 20,
+      "fraction_au_seuil_acceptable": 0.6,
+      "fraction_au_seuil_max": 0.2,
+      "nul_a_pct_au_dela_du_max": 5
+    },
+    "contrat": { "CDI": 1.0, "FONCTIONNAIRE": 1.0, "RETRAITE": 0.7, "CDD": 0.5, "INDEPENDANT": 0.4 },
+    "anciennete": { "paliers_mois_fraction": [[0, 0.0], [6, 0.33], [12, 0.5], [24, 0.8], [60, 1.0]] },
+    "incidents": { "0": 1.0, "1": 0.33 },
+    "montant": { "plein_jusqua_multiple": 2, "fraction_au_plafond": 0.3 }
+  },
+
+  "decision_par_score": {
+    "description": "Un score en dessous de ce seuil ne peut pas mener à « ELIGIBLE » : la décision est ramenée à « CONDITIONNEL ».",
+    "score_min_eligible": 60,
+    "plafond_score_si_critere_bloquant_ko": 59
+  }
+}

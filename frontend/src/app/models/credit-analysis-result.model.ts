@@ -66,6 +66,42 @@ export interface PropositionsAjustement {
   unresolved: string[];
 }
 
+/** Un critère de la grille de score : points obtenus sur le maximum (null si la donnée est inconnue). */
+export interface CritereScore {
+  id: string;
+  libelle: string;
+  points: number | null;
+  maximum: number;
+  connu: boolean;
+  valeur: string;
+  explication: string;
+}
+
+/** Score calculé par le code (grille à points), avec le détail critère par critère. */
+export interface DetailScore {
+  methode: string;
+  total: number;
+  /** Vrai si un critère inconnu a été écarté du calcul. */
+  provisoire: boolean;
+  /** Vrai tant que les seuils et les poids n'ont pas été validés par la banque. */
+  prototype: boolean;
+  pointsObtenus?: number;
+  pointsConnus?: number;
+  criteres: CritereScore[];
+}
+
+/** Paramètres (seuils) utilisés pour cette analyse, et leur état de validation. */
+export interface ParametresRegles {
+  version?: string;
+  statut: 'PROTOTYPE' | 'VALIDE';
+  empreinte?: string;
+  origine?: string;
+  fichierValide?: boolean;
+  seuilsNonValides?: string[];
+  seuils?: Record<string, number>;
+  avertissement?: string | null;
+}
+
 /** Réponse du client à ses propositions d'ajustement (null tant qu'il n'a pas répondu). */
 export interface ReponseClient {
   statut: 'ACCEPTEE' | 'REFUSEE';
@@ -138,6 +174,8 @@ export interface CreditAnalysisResult {
   adjustedOffers?: PropositionsAjustement;
   /** Ce que le client a répondu à ces propositions. */
   reponseClient?: ReponseClient | null;
+  scoreDetail?: DetailScore | null;
+  parametresRegles?: ParametresRegles | null;
   calculationNote?: string;
   tauxAnnuelApplique?: number | null;
   /** Ce qui manque pour pouvoir décider, avec où le trouver. */
@@ -174,6 +212,8 @@ export function mapperResultat(src: any): CreditAnalysisResult {
     simulations:        s.simulations || [],
     adjustedOffers:     s.adjustedOffers || undefined,
     reponseClient:      s.reponseClient || null,
+    scoreDetail:        s.scoreDetail || null,
+    parametresRegles:   s.parametresRegles || null,
     calculationNote:    s.calculationNote || undefined,
     tauxAnnuelApplique: s.tauxAnnuelApplique ?? null,
     donneesManquantes:  s.donneesManquantes || [],

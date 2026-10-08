@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy, OnChanges, SimpleChanges, ChangeDetectorR
 import { CommonModule }                  from '@angular/common';
 import { HttpClient }                    from '@angular/common/http';
 import { Subscription, combineLatest }   from 'rxjs';
-import { AuditLigne, CreditAnalysisResult, mapperResultat } from '../../../models/credit-analysis-result.model';
+import { AuditLigne, CreditAnalysisResult, CritereScore, mapperResultat } from '../../../models/credit-analysis-result.model';
 import { CreditStateService }            from '../../../services/credit-state.service';
 import { environment }                   from '../../../../environments/environment';
 import { ExportButton } from '../export-button/export-button';
@@ -268,6 +268,13 @@ export class CreditResult implements OnInit, OnDestroy, OnChanges {
     if (demande === null) return '';
     const ecart = duree - demande;
     return ecart === 0 ? 'durée demandée conservée' : `${ecart > 0 ? '+' : '−'}${Math.abs(ecart)} mois`;
+  }
+
+  /** Couleur de la barre d'un critère : proportion des points obtenus (le texte « 36 / 40 » porte aussi l'information). */
+  classePointsCritere(critere: CritereScore): string {
+    if (!critere.connu || !critere.maximum || critere.points === null) return 'pts-inconnu';
+    const part = critere.points / critere.maximum;
+    return part >= 0.7 ? 'pts-bon' : part >= 0.4 ? 'pts-moyen' : 'pts-faible';
   }
 
   /** Montant en dinars avec 3 décimales (millimes) : 2100 -> « 2 100,000 DT ». */

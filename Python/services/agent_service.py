@@ -32,7 +32,9 @@ from typing import Optional
 
 from pydantic import BaseModel
 
+from services import parametres_regles
 from services.dettes_releve import detecter_dettes_releve
+from services.score_grille import calculer_score
 from services.dossier_texte import preparer_texte_dossier
 from services.llm_client import chat_completion, LLMUnavailableError, etat as llm_etat
 
@@ -49,19 +51,28 @@ def _max_chars_dossier() -> int:
     except ValueError:
         return 12000
 
-# ── Règles réglementaires (BCT Tunisie — crédit à la consommation) ────────────
-DTI_ACCEPTABLE      = 30.0   # % — en dessous : acceptable
-DTI_MAX             = 35.0   # % — au-dessus : refus
-MULTIPLE_SALAIRE    = 5      # montant max = 5 × salaire mensuel net
-DUREE_MAX_MOIS      = 84     # 7 ans
-ANCIENNETE_MIN_MOIS = 6
-AGE_MAX_FIN_CREDIT  = 70
+# ── Seuils d'acceptation et grille de score ───────────────────────────────────
+# Ils viennent de services/parametres_regles.json (avec leur source et leur date de validation) : on les
+# change sans toucher à la logique. PROTOTYPE : valeurs par défaut indicatives, à valider avec la banque.
+PARAMETRES = parametres_regles.charger()
+
+
+def _entier_si_possible(valeur: float):
+    return int(valeur) if float(valeur).is_integer() else valeur
+
+
+DTI_ACCEPTABLE      = PARAMETRES.dti_acceptable      # % — en dessous : acceptable
+DTI_MAX             = PARAMETRES.dti_max             # % — au-dessus : non conforme
+MULTIPLE_SALAIRE    = _entier_si_possible(PARAMETRES.multiple_salaire)   # montant max = n × salaire mensuel net
+DUREE_MAX_MOIS      = PARAMETRES.duree_max_mois
+ANCIENNETE_MIN_MOIS = PARAMETRES.anciennete_min_mois
+AGE_MAX_FIN_CREDIT  = PARAMETRES.age_max_fin_credit
 DUREES_SIMULEES     = [12, 24, 36, 48, 60, 84]
 
 
 # À incrémenter quand les règles changent : fait partie de la clé de cache, pour qu'une
 # ancienne analyse (faite avec d'anciennes règles ou un autre taux) ne soit jamais resservie.
-RULES_VERSION = "2026-10-b"
+RULES_VERSION = "2026-10-c"
 
 
 def _taux_annuel() -> Optional[float]:
@@ -123,20 +134,19 @@ Tu rédiges une note d'analyse destinée à un agent bancaire : elle doit être 
 
 MISSION : Analyser le dossier bancaire fourni et retourner UNIQUEMENT un JSON valide.
 
-CRITÈRES RÉGLEMENTAIRES BCT TUNISIE :
-- DTI (taux d'endettement) : ACCEPTABLE < 30% | RISQUE 30-35% | REFUS > 35%
-- Montant maximum accordé : 5 × salaire mensuel net
-- Durée maximale : 84 mois (7 ans)
-- Ancienneté emploi minimum : 6 mois
-- Âge à la fin du crédit : ≤ 70 ans
+CRITÈRES D'ACCEPTATION (paramètres du prototype, à valider avec la banque) :
+- DTI (taux d'endettement) : ACCEPTABLE < __DTI_ACC__% | RISQUE __DTI_ACC__-__DTI_MAX__% | REFUS > __DTI_MAX__%
+- Montant maximum accordé : __MULT__ × salaire mensuel net
+- Durée maximale : __DUREE__ mois
+- Ancienneté emploi minimum : __ANC__ mois
+- Âge à la fin du crédit : ≤ __AGE__ ans
 - Incidents de paiement > 0 : risque élevé
 - CDI / fonctionnaire : favorable | CDD : risque modéré | Indépendant : vérification bilan
 
-LOGIQUE DE SCORING (0-100) :
-- 80-100 : ELIGIBLE (dossier solide)
-- 60-79  : ELIGIBLE (dossier acceptable)
-- 40-59  : CONDITIONNEL (garanties supplémentaires requises)
-- 0-39   : REFUS (critères non satisfaits)
+SCORE ET DÉCISION :
+- Le score final (0-100) est CALCULÉ PAR LE SYSTÈME avec une grille à points : ne cherche pas à le reproduire.
+  Donne une estimation dans "eligibilityScore" (elle sera remplacée) et concentre-toi sur la décision et la rédaction.
+- Décision : ELIGIBLE (dossier solide), CONDITIONNEL (garanties ou ajustements requis), REFUS (critères non satisfaits).
 
 FORMAT DES MONTANTS :
 - Le dinar tunisien a 3 décimales : "4 800,000" = 4800 DT. Dans le JSON, écris les montants
@@ -209,6 +219,12 @@ RÈGLES ABSOLUES :
 - Ne jamais inventer une donnée absente : utiliser null et le signaler dans weaknesses
 - risks = [] si aucun risque identifié
 """
+
+# Les seuils du prompt suivent le fichier de paramètres (une seule source de vérité)
+SYSTEM_PROMPT = (SYSTEM_PROMPT
+                 .replace("__DTI_ACC__", f"{DTI_ACCEPTABLE:g}").replace("__DTI_MAX__", f"{DTI_MAX:g}")
+                 .replace("__MULT__", f"{MULTIPLE_SALAIRE:g}").replace("__DUREE__", str(DUREE_MAX_MOIS))
+                 .replace("__ANC__", str(ANCIENNETE_MIN_MOIS)).replace("__AGE__", str(AGE_MAX_FIN_CREDIT)))
 
 # ── Moteur de règles déterministe ─────────────────────────────────────────────
 
@@ -619,7 +635,7 @@ class AgentService:
         # Cache — la clé inclut la version des règles et le taux : changer l'un des deux
         # ne doit jamais ressortir une ancienne analyse (par exemple « À COMPLÉTER » faite
         # avant que le taux ne soit configuré)
-        cle_brute = f"{RULES_VERSION}|{_taux_annuel()}|{_max_chars_dossier()}|{document_text}"
+        cle_brute = f"{RULES_VERSION}|{PARAMETRES.empreinte}|{_taux_annuel()}|{_max_chars_dossier()}|{document_text}"
         cache_key = hashlib.md5(cle_brute.encode()).hexdigest()
         if cache_key in self._cache:
             logger.info("Cache HIT agent consommation")
@@ -665,6 +681,15 @@ class AgentService:
                 result_dict["simulations"]         = regles["simulations"]
                 result_dict["calculationNote"]     = " ".join([regles["calculationNote"], *notes])
                 result_dict["tauxAnnuelApplique"]  = regles["taux"]
+
+                # Score calculé par le code (grille à points) : le score du modèle n'est gardé qu'à titre indicatif
+                grille = calculer_score(PARAMETRES, regles["metrics"],
+                                        anciennete_en_mois(regles["metrics"].get("employmentStartDate")))
+                result_dict["scoreLLMIndicatif"] = result_dict.get("eligibilityScore")
+                result_dict["eligibilityScore"]  = grille["total"]
+                result_dict["scoreProvisoire"]   = grille["provisoire"]
+                result_dict["scoreDetail"]       = grille
+                result_dict["parametresRegles"]  = PARAMETRES.resume()
                 result_dict["donneesManquantes"]   = donnees_manquantes(
                     regles["metrics"], regles["taux"], dettes_connues, regles["regulatoryChecks"])
                 self._verifier_coherence(result_dict)
@@ -827,6 +852,22 @@ class AgentService:
         Si un critère BLOQUANT est KO, une décision ELIGIBLE du LLM est
         ramenée à CONDITIONNEL (score plafonné à 59) et un risque est ajouté.
         """
+        # Un score trop bas ne peut pas mener à « ELIGIBLE » : la décision est ramenée à CONDITIONNEL
+        score_actuel = result_dict.get("eligibilityScore")
+        if (result_dict.get("eligibility") == "ELIGIBLE" and score_actuel is not None
+                and int(score_actuel) < PARAMETRES.score_min_eligible and not result_dict.get("scoreProvisoire")):
+            logger.warning("Décision LLM ELIGIBLE corrigée en CONDITIONNEL (score %s < %s)",
+                           score_actuel, PARAMETRES.score_min_eligible)
+            result_dict["eligibility"] = "CONDITIONNEL"
+            risks = result_dict.get("risks") or []
+            risks.insert(0, {
+                "level":       "MEDIUM",
+                "description": f"Score de {int(score_actuel)}/100, inférieur au minimum de "
+                               f"{PARAMETRES.score_min_eligible} pour une décision favorable.",
+                "source":      "Grille de score",
+            })
+            result_dict["risks"] = risks
+
         ko_bloquants = [
             c for c in result_dict.get("regulatoryChecks", [])
             if c["status"] == "KO" and c["blocking"]
@@ -838,8 +879,9 @@ class AgentService:
         if result_dict.get("eligibility") == "ELIGIBLE":
             logger.warning("Décision LLM ELIGIBLE corrigée en CONDITIONNEL (critères KO : %s)", criteres)
             result_dict["eligibility"] = "CONDITIONNEL"
-            score = result_dict.get("eligibilityScore") or 0
-            result_dict["eligibilityScore"] = min(int(score), 59)
+        # Un critère bloquant en échec plafonne le score, quelle que soit la décision
+        score = result_dict.get("eligibilityScore") or 0
+        result_dict["eligibilityScore"] = min(int(score), PARAMETRES.plafond_score_si_ko)
 
         risks = result_dict.get("risks") or []
         risks.insert(0, {

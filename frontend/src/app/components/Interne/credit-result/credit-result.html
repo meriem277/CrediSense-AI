@@ -203,6 +203,36 @@
     </section>
   </div>
 
+  <!-- ── Détail du score : grille à points calculée par le code, pas par le modèle de langage ── -->
+  <section class="cr-card cr-score-detail" *ngIf="result.scoreDetail as detail">
+    <h4 class="cr-section-title">
+      Détail du score
+      <span class="cr-count">{{ detail.total }} / 100</span>
+    </h4>
+    <p class="cr-score-note">
+      Calculé par le système à partir des données du dossier : le même dossier donne toujours la même note.
+      <em *ngIf="detail.provisoire">Provisoire : les critères inconnus sont écartés du calcul.</em>
+    </p>
+    <ul class="score-criteres">
+      <li class="score-critere" *ngFor="let c of detail.criteres" [class.inconnu]="!c.connu">
+        <div class="score-critere-texte">
+          <strong>{{ c.libelle }}</strong>
+          <span class="score-critere-valeur">{{ c.valeur }}</span>
+        </div>
+        <div class="score-critere-barre" role="img"
+             [attr.aria-label]="c.connu ? (c.points + ' points sur ' + c.maximum) : 'Critère écarté : donnée inconnue'">
+          <i [style.width.%]="c.connu && c.maximum ? (c.points! / c.maximum) * 100 : 0" [ngClass]="classePointsCritere(c)"></i>
+        </div>
+        <div class="score-critere-points">{{ c.connu ? (c.points + ' / ' + c.maximum) : 'écarté' }}</div>
+        <p class="score-critere-explication">{{ c.explication }}</p>
+      </li>
+    </ul>
+    <p class="cr-prototype" *ngIf="detail.prototype || (result.parametresRegles && result.parametresRegles.statut !== 'VALIDE')">
+      <strong>Prototype.</strong> Les poids de la grille et les seuils d'acceptation sont des valeurs par défaut
+      indicatives, à valider avec la banque avant tout usage réel.
+    </p>
+  </section>
+
   <!-- ── Contrôles réglementaires (calculés par le moteur de règles, pas par le LLM) ── -->
   <section class="cr-card" *ngIf="result.regulatoryChecks && result.regulatoryChecks.length > 0">
     <h4 class="cr-section-title">

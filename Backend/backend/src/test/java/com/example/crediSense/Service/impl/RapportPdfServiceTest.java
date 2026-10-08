@@ -390,4 +390,59 @@ class RapportPdfServiceTest {
                 "offers", List.of("texte", 42, new HashMap<>())));
         assertTrue(service.generer(dossier, r, RapportPdfService.Version.AGENT).length > 0);
     }
+
+    // ── Détail du score (grille à points) ────────────────────────────────────
+
+    private Map<String, Object> resultatAvecDetailScore(boolean provisoire, boolean prototype) {
+        Map<String, Object> r = resultatEligible();
+        List<Map<String, Object>> criteres = new java.util.ArrayList<>(List.of(
+                Map.of("id", "endettement", "libelle", "Taux d'endettement", "points", 36, "maximum", 40, "connu", true, "valeur", "22,77 %", "explication", "x"),
+                Map.of("id", "contrat", "libelle", "Stabilité du contrat", "points", 20, "maximum", 20, "connu", true, "valeur", "CDI", "explication", "x")));
+        Map<String, Object> inconnu = new HashMap<>();
+        inconnu.put("id", "incidents"); inconnu.put("libelle", "Incidents de paiement"); inconnu.put("points", null);
+        inconnu.put("maximum", 15); inconnu.put("connu", false); inconnu.put("valeur", "inconnus"); inconnu.put("explication", "x");
+        criteres.add(inconnu);
+        r.put("scoreDetail", Map.of("methode", "grille-v1", "total", 78, "provisoire", provisoire, "prototype", prototype,
+                "criteres", criteres));
+        return r;
+    }
+
+    @Test
+    void lePdfAgentDetailleLeScoreParCritere() throws Exception {
+        String t = texte(service.generer(dossier, resultatAvecDetailScore(true, true), RapportPdfService.Version.AGENT));
+        assertTrue(t.toUpperCase().contains("DÉTAIL DU SCORE"), t);
+        assertTrue(t.contains("Taux d'endettement"), t);
+        assertTrue(t.contains("Stabilité du contrat"), t);
+        assertTrue(t.contains("écarté"), "un critère inconnu n'est pas affiché comme 0 : " + t);
+        assertTrue(t.contains("Score : 78 / 100"), t);
+        assertTrue(t.contains("provisoire"), t);
+    }
+
+    @Test
+    void lePdfAgentSignaleQueLaGrilleEstUnPrototype() throws Exception {
+        String prototype = texte(service.generer(dossier, resultatAvecDetailScore(false, true), RapportPdfService.Version.AGENT));
+        assertTrue(prototype.contains("Prototype"), prototype);
+        String valide = texte(service.generer(dossier, resultatAvecDetailScore(false, false), RapportPdfService.Version.AGENT));
+        assertFalse(valide.contains("Prototype"), valide);
+    }
+
+    @Test
+    void lePdfClientNeContientPasLeDetailDuScore() throws Exception {
+        String t = texte(service.generer(dossier, resultatAvecDetailScore(false, true), RapportPdfService.Version.CLIENT));
+        assertFalse(t.toUpperCase().contains("DÉTAIL DU SCORE"), t);
+        assertFalse(t.contains("Stabilité du contrat"), t);
+    }
+
+    @Test
+    void sansDetailDeScoreAucuneSectionNEstAjoutee() throws Exception {
+        String t = texte(service.generer(dossier, resultatEligible(), RapportPdfService.Version.AGENT));
+        assertFalse(t.toUpperCase().contains("DÉTAIL DU SCORE"), t);
+    }
+
+    @Test
+    void unDetailDeScoreMalFormeNePlantePas() throws Exception {
+        Map<String, Object> r = resultatEligible();
+        r.put("scoreDetail", Map.of("total", 50, "criteres", List.of("texte", 42, new HashMap<>())));
+        assertTrue(service.generer(dossier, r, RapportPdfService.Version.AGENT).length > 0);
+    }
 }

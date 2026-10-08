@@ -1,5 +1,5 @@
 {
-  "date": "2026-10-08 01:38",
+  "date": "2026-10-08 03:46",
   "machine": {
     "os": "Windows-10-10.0.26200-SP0",
     "python": "3.11.0",
@@ -84,11 +84,11 @@
       "dossiers_simules": 20000,
       "regles_microsecondes": {
         "n": 20000,
-        "moyenne": 38.0,
-        "mediane": 36.6,
-        "p95": 42.8,
-        "min": 29.5,
-        "max": 528.9
+        "moyenne": 91.4,
+        "mediane": 73.9,
+        "p95": 143.2,
+        "min": 53.4,
+        "max": 2199.6
       },
       "dossiers_endettement_>=30%": 10061,
       "dossiers_avec_au_moins_une_offre": 7767,
@@ -97,12 +97,32 @@
       "offres_invalides": 0,
       "proposition_microsecondes": {
         "n": 10061,
-        "moyenne": 14.2,
-        "mediane": 15.3,
-        "p95": 21.1,
-        "min": 3.5,
-        "max": 645.4
+        "moyenne": 34.1,
+        "mediane": 29.8,
+        "p95": 62.3,
+        "min": 6.1,
+        "max": 1547.5
       }
+    },
+    "grille_de_score": {
+      "profils": 5000,
+      "resultats_distincts_pour_2000_repetitions_du_meme_dossier": 1,
+      "ecart_type_sur_repetitions": 0.0,
+      "scores_hors_de_0_a_100": 0,
+      "scores_provisoires": 0,
+      "score_moyen": 63.9,
+      "score_min": 20,
+      "score_max": 100,
+      "duree_microsecondes": {
+        "n": 5000,
+        "moyenne": 46.6,
+        "mediane": 38.5,
+        "p95": 68.7,
+        "min": 34.5,
+        "max": 584.1
+      },
+      "statut_parametres": "PROTOTYPE",
+      "empreinte_parametres": "019db9"
     },
     "bout_en_bout": {
       "runs": 5,
@@ -127,7 +147,9 @@
       "dettes_exactes": "2/2",
       "mensualite_attendue": 228.263,
       "dti_attendu": 22.77,
-      "dti_exact": "2/2"
+      "dti_exact": "2/2",
+      "mesure_le": "2026-10-08 01:38",
+      "note": "Mesuré le 2026-10-08 01:38 avec l'ancien score du modèle de langage (avant la grille à points)."
     }
   }
 }

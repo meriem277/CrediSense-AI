@@ -187,7 +187,7 @@
   <tr><th style="width:50%">Dans le périmètre</th><th>Hors périmètre</th></tr>
   <tr><td>Crédit à la consommation ; cinq types de pièces (CIN, fiche de paie, relevé bancaire, attestation d'emploi, justificatif de domicile) ; trois rôles ; réponse au client par e-mail avec PDF ; déploiement sur une VM Azure</td><td>Crédit immobilier ; connexion à la centrale des risques de la BCT ; signature électronique ; grille de score propriétaire de la banque ; validation sur de vrais dossiers bancaires</td></tr>
 </table>
-<div class="box warn"><b>Honnêteté sur les seuils.</b> Les seuils réglementaires du moteur (30 % et 35 % d'endettement, 5 fois le salaire, 84 mois, 6 mois d'ancienneté, 70 ans) sont attribués à la BCT dans le code, mais n'ont pas été confrontés à une source officielle. Ils sont centralisés dans un seul module et doivent être validés avec la banque avant tout usage réel.</div>
+<div class="box warn"><b>Honnêteté sur les seuils : le moteur est un prototype.</b> Les seuils du moteur (30 % et 35 % d'endettement, 5 fois le salaire, 84 mois, 6 mois d'ancienneté, 70 ans) et les poids de la grille de score sont des <b>valeurs par défaut indicatives</b> : ils n'ont pas été confrontés à la politique de crédit de la banque ni aux circulaires de la BCT. Ils sont regroupés dans <b>un seul fichier de paramètres</b> où chaque seuil porte sa <b>source</b>, la personne qui l'a <b>validé</b> et la <b>date de validation</b>. Tant que ces champs sont vides, le statut est « PROTOTYPE » et l'application l'affiche à l'agent (écran et PDF).</div>
 
 <h2>1.4 Acteurs et besoins</h2>
 <table>
@@ -340,7 +340,7 @@
   <tr><td><b>Le LLM lit, les règles décident</b></td><td>Le modèle extrait et rédige. Mensualité, endettement, capacité, simulations, propositions d'ajustement et verdicts réglementaires sont recalculés en Python, sans modèle.</td></tr>
   <tr><td><b>Ne jamais inventer l'inconnu</b></td><td>Taux d'intérêt obligatoire ; dette inconnue ≠ dette nulle ; pas de calcul sans les données, mais une décision « À COMPLÉTER » qui liste ce qui manque.</td></tr>
   <tr><td><b>Humain dans la boucle</b></td><td>Un désaccord de type ou de CIN bloque jusqu'à confirmation ; un refus attend la validation ; une proposition de montant est indicative.</td></tr>
-  <tr><td><b>Traçabilité</b></td><td>Journal en ajout seul ; version des règles (<code>2026-10-b</code>) consignée avec chaque décision ; trace de la cascade de classification conservée.</td></tr>
+  <tr><td><b>Traçabilité</b></td><td>Journal en ajout seul ; version des règles (<code>2026-10-c</code>) consignée avec chaque décision ; trace de la cascade de classification conservée.</td></tr>
   <tr><td><b>Dégradation maîtrisée</b></td><td>Chaque panne (LLM, messagerie, classification) est absorbée : le traitement continue avec ce qui est disponible, l'erreur est enregistrée et visible.</td></tr>
   <tr><td><b>Moindre exposition</b></td><td>L'e-mail part du résultat <i>enregistré</i> et non de ce que le navigateur envoie ; CIN, RIB et IBAN sont masqués avant tout appel à un modèle externe.</td></tr>
 </table>
@@ -353,7 +353,7 @@
   <li><b>Données personnelles</b> : masquage des CIN, RIB et IBAN avant les appels externes ; le PDF n'est pas stocké (régénéré à la demande) ; le journal ne garde que l'identifiant du dossier.</li>
   <li><b>Transport</b> : HTTPS automatique (Let's Encrypt via Caddy).</li>
 </ul>
-<div class="box ko"><b>Points de sécurité non traités à ce jour.</b> Plusieurs routes (<code>/api/fichiers/**</code>, <code>/api/chatbot/**</code>, <code>/api/clients/**</code>) sont ouvertes sans authentification ; la route de lecture <code>/api/fichiers/view/**</code> sert un fichier à partir d'un chemin (risque de traversée de répertoire) ; des pièces d'identité de test sont suivies par git ; des clés d'API ont été exposées pendant le développement et doivent être renouvelées. Ces points sont à corriger avant tout usage réel (voir la conclusion).</div>
+<div class="box ko"><b>Points de sécurité non traités à ce jour.</b> Les routes de réponse aux propositions sont protégées (rôle CLIENT, dossiers du client seulement) et les routes des agents sont réservées aux agents. En revanche, plusieurs routes restent ouvertes sans authentification (<code>/api/fichiers/**</code>, <code>/api/chatbot/**</code>, la plupart des routes <code>/api/clients/**</code>, dont l'historique accessible avec une simple adresse e-mail) ; la route de lecture <code>/api/fichiers/view/**</code> sert un fichier à partir d'un chemin (risque de traversée de répertoire) ; des pièces d'identité de test sont suivies par git ; des clés d'API ont été exposées pendant le développement et doivent être renouvelées. Ces points sont à corriger avant tout usage réel (voir la conclusion).</div>
 
 <!-- ═════════ CHAPITRE 3 ═════════ -->
 <h1 id="ch3"><span class="num">Chapitre 3</span> — Réalisation</h1>
@@ -420,7 +420,7 @@
 <h3>Partage des rôles</h3>
 <table>
   <tr><th style="width:28%">Le modèle de langage…</th><th>Les règles déterministes…</th></tr>
-  <tr><td>lit le dossier et en extrait revenu, contrat, ancienneté, dettes ; rédige le résumé, les points forts, les risques et le plan ; propose un score et une décision</td><td>recalculent mensualité, taux d'endettement, capacité d'emprunt et simulations ; vérifient chaque critère ; corrigent la décision du modèle ; listent les données manquantes ; proposent des ajustements</td></tr>
+  <tr><td>lit le dossier et en extrait revenu, contrat, ancienneté, dettes ; rédige le résumé, les points forts, les risques et le plan ; propose une décision</td><td>recalculent mensualité, taux d'endettement, capacité d'emprunt et simulations ; <b>calculent le score</b> ; vérifient chaque critère ; corrigent la décision du modèle ; listent les données manquantes ; proposent des ajustements</td></tr>
 </table>
 <h3>Formules</h3>
 <ul>
@@ -454,9 +454,33 @@
 </table>
 <span class="legende">Tableau 3.4 — Les décisions</span>
 <p>Deux garde-fous s'appliquent après le modèle : un critère bloquant en échec ramène « ELIGIBLE » à « CONDITIONNEL » (score plafonné à 59), et des données indispensables manquantes transforment toute décision favorable en « À COMPLÉTER ». Un cache dont la clé contient le texte, la <b>version des règles</b>, le taux et la taille maximale évite de resservir une ancienne analyse après un changement.</p>
+<h3>Paramètres du moteur et statut « prototype »</h3>
+<p>Les seuils d'acceptation ne sont plus écrits dans le code mais dans un fichier JSON (<code>parametres_regles.json</code>). Pour chaque seuil : sa valeur, son unité, sa <b>source</b>, le <b>validateur</b> et la <b>date de validation</b>. Le fichier est vérifié au chargement (seuils cohérents, poids totalisant 100, fractions entre 0 et 1) ; s'il est absent ou invalide, le service ne s'arrête pas : il utilise les valeurs internes et le signale dans le résultat.</p>
+<ul>
+  <li><b>Statut</b> : « PROTOTYPE » tant qu'un seuil n'a pas de validateur et de date ; « VALIDE » seulement quand le fichier est marqué ainsi <i>et</i> que chaque seuil est signé et daté. Le statut, la liste des seuils non validés et une <b>empreinte</b> des valeurs sont ajoutés à chaque résultat.</li>
+  <li><b>Cache</b> : l'empreinte fait partie de la clé de cache, donc modifier un seuil ne ressert jamais une ancienne analyse.</li>
+  <li><b>Instruction du modèle de langage</b> : elle reprend les seuils du fichier, il n'existe plus de seconde copie à tenir à jour.</li>
+</ul>
+<h3>Score par grille à points</h3>
+<p><b>Problème mesuré.</b> Le score donné par le modèle de langage changeait d'un appel à l'autre pour le même dossier (78 puis 85) et ne s'expliquait pas. <b>Solution.</b> Le score est une somme de points par critère, calculée par le code (<code>score_grille.py</code>) ; le score proposé par le modèle n'est conservé qu'à titre indicatif.</p>
+<table>
+  <tr><th style="width:26%">Critère</th><th style="width:12%">Points max.</th><th>Calcul (valeurs par défaut du prototype)</th></tr>
+  <tr><td>Taux d'endettement</td><td class="num-d">40</td><td>plein jusqu'à 20 % ; 60 % des points à 30 % ; 20 % à 35 % ; 0 point à 40 % (interpolation linéaire entre ces repères)</td></tr>
+  <tr><td>Stabilité du contrat</td><td class="num-d">20</td><td>CDI et fonctionnaire : 100 % ; retraité : 70 % ; CDD : 50 % ; indépendant : 40 %</td></tr>
+  <tr><td>Ancienneté dans l'emploi</td><td class="num-d">15</td><td>paliers : moins de 6 mois : 0 ; 6 mois : 33 % ; 12 mois : 50 % ; 24 mois : 80 % ; 60 mois : 100 %</td></tr>
+  <tr><td>Incidents de paiement</td><td class="num-d">15</td><td>aucun : 100 % ; un : 33 % ; plus : 0</td></tr>
+  <tr><td>Montant demandé / salaire</td><td class="num-d">10</td><td>plein jusqu'à 2 fois le salaire ; 30 % au plafond de 5 fois ; 0 au-delà</td></tr>
+</table>
+<span class="legende">Tableau 3.3 bis — Grille de score (poids et paliers modifiables dans le fichier de paramètres)</span>
+<ul>
+  <li><b>Reproductible et explicable</b> : même dossier, même note ; l'agent voit « 95 = 40 + 20 + 15 + 15 + 5 » dans une carte « Détail du score » et dans le PDF agent.</li>
+  <li><b>Jamais de donnée devinée</b> : un critère inconnu (incidents non vérifiés, date d'embauche absente…) n'est ni compté comme zéro ni inventé ; il est <b>écarté</b>, le score est rapporté aux critères connus et marqué « provisoire ».</li>
+  <li><b>Cohérence avec la décision</b> : un critère bloquant en échec plafonne le score à 59 ; une décision « ELIGIBLE » avec un score définitif inférieur à 60 est ramenée à « CONDITIONNEL » (avec un risque expliquant pourquoi).</li>
+</ul>
+<div class="box warn"><b>Prototype.</b> Les poids et les paliers sont un choix de conception : une banque aurait sa propre grille. Ils sont affichés comme « à valider avec la banque » dans l'application, le PDF agent et ce rapport.</div>
 <h3>Propositions d'ajustement pour un dossier conditionnel</h3>
-<p>Pour un dossier CONDITIONNEL, le moteur calcule jusqu'à trois variantes, chacune <b>revérifiée</b> avec les mêmes règles : <b>montant réduit</b> à durée égale (arrondi aux 100 DT inférieurs) ; <b>même montant sur une durée allongée</b> (la plus courte, par pas de 6 mois, qui passe sous 30 %) ; <b>durée maximale et montant ajusté</b> lorsque l'allongement seul ne suffit pas. L'âge en fin de crédit borne la durée, le plafond de 5 fois le salaire borne le montant. Aucune offre n'est faite sur une donnée inconnue ; si l'endettement est déjà correct, le moteur explique que le caractère conditionnel vient d'autres critères et les liste. Les offres sont <b>indicatives</b>, visibles de l'agent (écran et PDF agent), et jamais envoyées au client sans validation.</p>
-<div class="box warn"><b>Limites.</b> Le score vient encore du modèle de langage : il est peu reproductible d'un appel à l'autre (mesuré au chapitre 4). Une grille de score déterministe, avec détail par critère, est la suite logique.</div>
+<p>Pour un dossier CONDITIONNEL, le moteur calcule jusqu'à trois variantes, chacune <b>revérifiée</b> avec les mêmes règles : <b>montant réduit</b> à durée égale (arrondi aux 100 DT inférieurs) ; <b>même montant sur une durée allongée</b> (la plus courte, par pas de 6 mois, qui passe sous 30 %) ; <b>durée maximale et montant ajusté</b> lorsque l'allongement seul ne suffit pas. L'âge en fin de crédit borne la durée, le plafond de 5 fois le salaire borne le montant. Aucune offre n'est faite sur une donnée inconnue ; si l'endettement est déjà correct, le moteur explique que le caractère conditionnel vient d'autres critères et les liste. Les offres sont <b>indicatives</b> pour l'agent. Une fois la réponse envoyée au client (après validation d'un agent si la configuration l'exige), elles figurent dans l'e-mail et dans le PDF client, et le client peut les accepter ou les refuser depuis son espace (section 3.6).</p>
+<div class="box warn"><b>Limites.</b> Les poids de la grille et les seuils ne sont pas validés par la banque (prototype). Le texte rédigé par le modèle de langage (résumé, analyse détaillée) peut encore citer ses propres chiffres, qui peuvent différer de ceux du moteur : l'analyse détaillée est donc repliée et marquée « indicative » dans l'écran de l'agent, et l'e-mail et le PDF d'un dossier conditionnel s'appuient sur le résumé et sur les chiffres du moteur.</div>
 
 <h2>3.6 Contrôle humain, notification et audit</h2>
 <h3>Réponse au client</h3>
@@ -472,6 +496,18 @@
 </table>
 <span class="legende">Tableau 3.5 — Comportement de l'envoi</span>
 <p><b>Garde-fou.</b> « Valider » envoie au serveur la décision que l'agent a sous les yeux ; si une nouvelle analyse l'a changée, le serveur répond 409 et n'envoie rien : le client ne reçoit jamais autre chose que ce qui a été relu.</p>
+<h3>Réponse du client aux propositions</h3>
+<p>Pour un dossier CONDITIONNEL qui a des propositions, l'<b>e-mail</b> détaille les chiffres du moteur (montant, durée, mensualité, endettement), les conditions à remplir et chaque option, avec un bouton vers l'espace client. Dans « Mes demandes », une alerte « Une proposition attend votre réponse » ouvre une fenêtre où le client choisit une option, puis <b>accepte</b> (après une étape de confirmation) ou <b>refuse</b> l'ensemble.</p>
+<table>
+  <tr><th style="width:28%">Règle</th><th>Application</th></tr>
+  <tr><td>Quand elles sont visibles</td><td>Seulement après l'<b>envoi</b> de la réponse (un agent qui a mis la réponse en validation garde la main), pour une décision CONDITIONNEL dont le moteur a calculé au moins une offre</td></tr>
+  <tr><td>Qui peut répondre</td><td>Le client connecté, sur ses propres demandes (route réservée au rôle CLIENT ; une demande qui n'est pas la sienne répond « introuvable »)</td></tr>
+  <tr><td>Une seule réponse</td><td>La seconde tentative reçoit une erreur 409 ; l'offre choisie est conservée telle que le client l'a vue</td></tr>
+  <tr><td>Nouvelle analyse</td><td>Si la décision ou l'offre choisie a changé, la réponse est effacée et le journal le consigne</td></tr>
+  <tr><td>Côté agent</td><td>Un bandeau « Le client a accepté une proposition » (ou « refusé ») avec l'offre ; le dossier n'est pas modifié automatiquement</td></tr>
+  <tr><td>Journal d'audit</td><td>Offre acceptée, propositions refusées, réponse réinitialisée</td></tr>
+</table>
+<p><b>Sécurité.</b> Le serveur reconnaît désormais le jeton du client (rôle CLIENT). En contrepartie, les routes des agents (<code>/api/dossiers/**</code> et toute route non publique) sont réservées aux rôles ADMIN et AGENT : un client connecté ne peut atteindre aucune route d'agent. Neuf tests chargent la vraie configuration de sécurité pour le vérifier.</p>
 <h3>Journal d'audit</h3>
 <p>La table <code>audit_events</code> est en <b>ajout seul</b> : entité immuable, aucun endpoint de modification ni de suppression, dossier référencé par son seul identifiant, écriture qui ne fait jamais échouer l'opération décrite. Elle consigne l'analyse (décision, score, version des règles, fournisseur d'IA, taux appliqué, informations manquantes), la confirmation d'une incohérence, la mise en attente, la validation, l'annulation, l'envoi ou son échec (destinataire, mode, PDF joint), le téléchargement du rapport et le changement de statut. L'acteur est l'agent connecté, ou « SYSTEME » pour une tâche automatique. Une frise « Journal du dossier » l'affiche à l'agent.</p>
 
@@ -522,16 +558,16 @@
 
 <h2>4.2 Résultats des tests automatisés</h2>
 <div class="kpi">
-  <div><b class="ok">162 / 162</b><span>tests Python</span></div>
-  <div><b class="ok">222 / 223</b><span>tests Java (1 hors périmètre)</span></div>
-  <div><b class="ok">152 / 152</b><span>tests Angular de nos écrans (161 / 167 au total)</span></div>
+  <div><b class="ok">231 / 231</b><span>tests Python</span></div>
+  <div><b class="ok">296 / 297</b><span>tests Java (1 hors périmètre)</span></div>
+  <div><b class="ok">227 / 227</b><span>tests Angular de nos écrans (235 / 241 au total)</span></div>
   <div><b class="ok">OK</b><span>construction du frontend</span></div>
 </div>
 <table>
   <tr><th style="width:17%">Couche</th><th style="width:8%">Tests</th><th>Détail par module</th></tr>
-  <tr><td>Service IA (Python)</td><td class="num-d">162</td><td>agent_regles (21) · propositions_ajustement (17) · classification_regles (24) · decoupage_rag (19) · recherche_hybride (18) · chatbot_memoire (17) · dettes_releve (12) · controle_type (10) · extraction_par_type (10) · dossier_texte (9) · chatbot_indexation (5)</td></tr>
-  <tr><td>Backend (Java)</td><td class="num-d">222</td><td>FichierServiceImpl (28) · NotificationValidation (29) · StatistiquesService (26) · DossierControllerRapport (23) · RapportPdfService (20) · AuditService (17) · NotificationDecisionService (15) · StatistiquesExcel (14) · AdminStatistiquesController (11) · ResultatEmailService (10) · IdentiteClient (9) · ChatbotServiceMemoire (9) · NotificationWiring (5) · DossierControllerEmail (3) · DossierControllerFichiers (3)</td></tr>
-  <tr><td>Frontend (Angular)</td><td class="num-d">152</td><td>statistiques (48) · credit-result (42) · pipeline-analyse (23) · upload-section (17) · export-button (8) · chat-assistant (7) · modèle de résultat (7)</td></tr>
+  <tr><td>Service IA (Python)</td><td class="num-d">231</td><td>score_grille (39) · parametres_regles (30) · agent_regles (21) · propositions_ajustement (17) · classification_regles (24) · decoupage_rag (19) · recherche_hybride (18) · chatbot_memoire (17) · dettes_releve (12) · controle_type (10) · extraction_par_type (10) · dossier_texte (9) · chatbot_indexation (5)</td></tr>
+  <tr><td>Backend (Java)</td><td class="num-d">296</td><td>PropositionClientService (24) · EmailConditionnel (12) · SecurityConfigAccesTest (9) · JwtAuthFilter (8) · ClientPropositionController (12) · FichierServiceImpl (28) · NotificationValidation (29) · StatistiquesService (26) · DossierControllerRapport (23) · RapportPdfService (20) · AuditService (17) · NotificationDecisionService (15) · StatistiquesExcel (14) · AdminStatistiquesController (11) · ResultatEmailService (10) · IdentiteClient (9) · ChatbotServiceMemoire (9) · NotificationWiring (5) · DossierControllerEmail (3) · DossierControllerFichiers (3)</td></tr>
+  <tr><td>Frontend (Angular)</td><td class="num-d">227</td><td>historique (47) · statistiques (48) · credit-result (70) · pipeline-analyse (23) · upload-section (17) · export-button (8) · chat-assistant (7) · modèle de résultat (7)</td></tr>
 </table>
 <span class="legende">Tableau 4.2 — Tests automatisés (résultats au 8 octobre 2026)</span>
 <div class="box ko"><b>Échecs connus, non liés à nos changements.</b> <b>DemoApplicationTests</b> (Java) exige une vraie base PostgreSQL : il échoue hors de l'environnement complet. Six tests Angular générés par défaut (<code>app</code>, <code>document</code>, <code>register</code>, <code>verify-email</code>, deux <code>reset-password</code>) échouent : aucun de ces fichiers n'a été modifié ; il faut soit les écrire pour de bon, soit les retirer.</div>
@@ -659,12 +695,21 @@
   <tr><td>Dettes détectées : 250 DT (exact)</td><td>2 sur 2</td></tr>
   <tr><td>Taux d'endettement : 22,77 % (référence indépendante : 22,77 %)</td><td>2 sur 2</td></tr>
   <tr><td>Décision</td><td>« ELIGIBLE » dans les 2 cas</td></tr>
-  <tr><td>Score du modèle de langage</td><td><b class="warn">78 et 85</b> (écart-type 3,5) : <b>les chiffres sont identiques d'un essai à l'autre, le score non</b></td></tr>
+  <tr><td>Score du modèle de langage <i>(avant la grille à points)</i></td><td><b class="warn">78 et 85</b> (écart-type 3,5) : <b>les chiffres sont identiques d'un essai à l'autre, le score non</b>. Corrigé ensuite par la grille (voir d)).</td></tr>
   <tr><td>Durée d'une analyse aboutie</td><td>10,3 s et 19,7 s (un appel externe)</td></tr>
 </table>
 <span class="legende">Tableau 4.10 — Décision de bout en bout sur le dossier fictif</span>
 <div class="box warn"><b>À lire avec prudence.</b> Deux analyses abouties seulement : c'est trop peu pour une statistique, mais suffisant pour montrer l'<b>essentiel</b> : les valeurs financières sont exactes et stables parce qu'elles viennent des règles, alors que le score varie parce qu'il vient du modèle. Les échecs 429 sont dus aux limites des offres gratuites des fournisseurs, atteintes par la rafale de mesures de la même session. Ils illustrent un risque d'exploitation réel : <b>la disponibilité du service dépend de fournisseurs externes</b> (voir 4.5).</div>
 
+<h4>d) Score par grille à points</h4>
+<p>La grille est évaluée sur 2 000 répétitions du même dossier et sur 5 000 dossiers simulés (mesure du 8 octobre 2026, fichier <code>kpi_decision.json</code>).</p>
+<div class="kpi">
+  <div><b class="ok">0</b><span>écart-type du score sur 2 000 répétitions du même dossier (un seul résultat distinct)</span></div>
+  <div><b class="ok">0</b><span>score hors de 0 à 100 sur 5 000 dossiers</span></div>
+  <div><b class="ok">39 µs</b><span>calcul du score (médiane ; P95 69 µs)</span></div>
+  <div><b>63,9</b><span>score moyen des dossiers simulés (de 20 à 100)</span></div>
+</div>
+<p>Avant la grille, le score du modèle de langage valait 78 puis 85 pour le même dossier (écart-type 3,5, mesure du tableau 4.10). Avec la grille, le même dossier donne toujours la même note, et chaque point est expliqué par un critère. <b>Limite</b> : cette mesure prouve la reproductibilité, pas la pertinence des poids, qui restent un choix de prototype à valider avec la banque. Le nombre de dossiers simulés n'est pas représentatif d'une clientèle réelle.</p>
 <h3>4.4.5 Chaîne complète : où va le temps</h3>
 <p>Pour un dossier de cinq pièces <b>scannées</b>, la somme des temps mesurés donne l'ordre de grandeur suivant (poste de développement) :</p>
 <div class="diag" style="text-align:left">
@@ -693,7 +738,7 @@
   <tr><td><b>Vitesse de l'OCR</b></td><td>44,5 s par page ; plus de 90 % du temps d'un dossier scanné</td><td>Un seul modèle de lecture selon la langue détectée, résolution adaptée, détection limitée, GPU, traitement en tâche de fond avec suivi</td></tr>
   <tr><td><b>Erreur silencieuse de classification</b></td><td>Attestation arabe classée « justificatif de domicile » avec une confiance jugée suffisante</td><td>Consulter le modèle de langage quand les règles s'abstiennent ; relever le seuil des embeddings ; règles arabes enrichies</td></tr>
   <tr><td><b>Disponibilité des fournisseurs de LLM</b></td><td>3 analyses sur 5 refusées par HTTP 429 (quota) pendant la mesure</td><td>Reprise automatique avec attente progressive, plan payant ou plus de fournisseurs, file d'attente des analyses</td></tr>
-  <tr><td><b>Score non reproductible</b></td><td>78 et 85 pour le même dossier (écart-type 3,5)</td><td>Grille de score déterministe avec détail par critère</td></tr>
+  <tr><td><b>Score non reproductible</b> <span class="ok">corrigé</span></td><td>78 et 85 pour le même dossier avec le modèle de langage (écart-type 3,5) ; <b>0</b> avec la grille à points</td><td>Faire valider les poids et les seuils par la banque</td></tr>
   <tr><td><b>Réponses de l'assistant</b></td><td>7 justes sur 9 ; une vraie erreur de montant</td><td>Re-classement des extraits, consigne de citer l'extrait, évaluation sur un échantillon plus large</td></tr>
 </table>
 <span class="legende">Tableau 4.11 — Faiblesses constatées et pistes</span>
@@ -724,7 +769,7 @@
   <tr><td>Offres invalides</td><td>0</td><td>0 / 12 912</td><td class="ok">atteint</td></tr>
   <tr><td>Latence du moteur de règles</td><td>≤ 1 ms</td><td>38 µs</td><td class="ok">atteint</td></tr>
   <tr><td>Analyses abouties (LLM externe)</td><td>≥ 95 %</td><td>2 / 5</td><td class="ko">non atteint (quota)</td></tr>
-  <tr><td>Reproductibilité du score</td><td>écart-type ≤ 2</td><td>3,5 (n = 2)</td><td class="ko">non atteint</td></tr>
+  <tr><td>Reproductibilité du score</td><td>écart-type ≤ 2</td><td>0 (grille, 2 000 répétitions) ; 3,5 avec l'ancien score du modèle</td><td class="ok">atteint (prototype)</td></tr>
   <tr><td><b>Déploiement</b></td><td colspan="4"><span class="todo-inline">à relever sur la VM (tableau 5.2)</span></td></tr>
 </table>
 <span class="legende">Tableau 4.12 — Mesures face aux objectifs proposés</span>
@@ -831,7 +876,7 @@
 <h3>Limites reconnues</h3>
 <ul>
   <li><b>Validation sur données fictives.</b> Les mesures prouvent le bon fonctionnement de la chaîne, pas sa précision sur de vrais dossiers : la qualité réelle de l'OCR, de la classification et de l'extraction ne sera connue qu'avec des documents bancaires réels.</li>
-  <li><b>Score non déterministe.</b> Il provient encore du modèle de langage.</li>
+  <li><b>Grille de score et seuils en prototype.</b> Le score est désormais calculé par le code (reproductible), mais ses poids et les seuils d'acceptation sont des valeurs par défaut à faire valider par la banque.</li>
   <li><b>Vitesse de l'OCR sur processeur</b> (de l'ordre de 40 secondes par page) : acceptable en traitement différé, pas pour un usage interactif.</li>
   <li><b>Seuils réglementaires non confrontés à une source officielle.</b></li>
   <li><b>Sécurité applicative et exploitation à finaliser</b> (routes ouvertes, secrets à renouveler, sauvegardes, supervision).</li>
@@ -840,7 +885,7 @@
 <table>
   <tr><th style="width:5%">#</th><th style="width:30%">Axe</th><th>Contenu</th></tr>
   <tr><td>1</td><td>Sécurité</td><td>Protéger toutes les routes, corriger la lecture de fichiers par chemin, retirer les données personnelles de l'historique git, renouveler les clés</td></tr>
-  <tr><td>2</td><td>Score déterministe</td><td>Grille de score par critère, détail explicable, remplacement du score du modèle</td></tr>
+  <tr><td>2</td><td>Validation de la grille et des seuils</td><td>Faire valider par la banque les poids de la grille et chaque seuil (source, validateur, date) pour passer du statut « prototype » à « validé »</td></tr>
   <tr><td>3</td><td>Jeu d'évaluation réel</td><td>Constituer, avec la banque, un corpus annoté (documents réels anonymisés) pour mesurer et recalibrer les seuils de la cascade</td></tr>
   <tr><td>4</td><td>Performance de l'OCR</td><td>Résolution adaptée, détection limitée, un seul modèle de lecture selon la langue détectée, GPU</td></tr>
   <tr><td>5</td><td>Conseiller de décision</td><td>Documents manquants demandés automatiquement au client ; scénarios pour les refus</td></tr>
@@ -892,6 +937,7 @@
 <table>
   <tr><th style="width:32%">Variable</th><th style="width:22%">Défaut</th><th>Effet</th></tr>
   <tr><td><code>CREDIT_TAUX_ANNUEL</code> (service IA)</td><td>aucun</td><td>Taux annuel du crédit, en décimal (0.10 = 10 %). <b>Obligatoire</b> : sans lui, aucune mensualité ni décision</td></tr>
+  <tr><td><code>REGLES_PARAMETRES</code> (service IA)</td><td>fichier livré</td><td>Chemin d'un autre fichier de paramètres (seuils et grille de score) ; un fichier invalide ramène aux valeurs internes</td></tr>
   <tr><td><code>AUTO_ENVOI_EMAIL</code></td><td><code>true</code></td><td>Coupe tout l'envoi automatique si <code>false</code> (le bouton manuel reste)</td></tr>
   <tr><td><code>VALIDATION_REQUISE_POUR</code></td><td><code>REFUS</code></td><td>Liste de décisions qui attendent une validation ; vide : aucune</td></tr>
   <tr><td><code>DELAI_ENVOI_MINUTES</code></td><td><code>0</code></td><td>Délai annulable avant l'envoi des autres décisions</td></tr>
@@ -921,7 +967,7 @@
 
 <p><b>Déploiement.</b> Tout tourne sur une machine virtuelle Azure, créée avec Terraform, donc reproductible. Les cinq services sont des conteneurs Docker orchestrés par Docker Compose. Les fichiers déposés et la base sont sur des volumes persistants, donc ils survivent aux mises à jour. Le code est construit et publié automatiquement par GitHub Actions.</p>
 
-<p><b>Ce qui reste à faire, et je préfère le dire.</b> Le score affiché vient encore du modèle de langage ; nous préparons une grille de score déterministe. La classification est en place, mais nous ne connaissons pas encore sa précision réelle : nous l'avons mesurée sur nos propres documents de test, ce qui est optimiste. Il nous faut de vrais documents de la banque pour la valider. Côté sécurité, plusieurs routes doivent encore être protégées avant un usage réel. Et le taux d'intérêt doit être fourni par la banque.</p>
+<p><b>Ce qui reste à faire, et je préfère le dire.</b> Le score est calculé par une grille à points reproductible, mais ses poids et nos seuils sont ceux d'un prototype : ils doivent être validés par la banque. La classification est en place, mais nous ne connaissons pas encore sa précision réelle : nous l'avons mesurée sur nos propres documents de test, ce qui est optimiste. Il nous faut de vrais documents de la banque pour la valider. Côté sécurité, plusieurs routes doivent encore être protégées avant un usage réel. Et le taux d'intérêt doit être fourni par la banque.</p>
 
 <p><b>Conclusion.</b> En résumé : une architecture à trois couches claire, un pipeline verrouillé étape par étape, un calcul que l'on peut expliquer, et un système qui préfère dire « il me manque une information » plutôt que d'inventer une réponse. Merci, je suis prêt pour vos questions.</p>
 </div>
@@ -935,7 +981,7 @@
   <tr><td>Que se passe-t-il si un document est illisible ?</td><td>Le statut OCR « FAILED » et sa raison s'affichent sur le document. Aucune extraction vide n'est enregistrée comme valide.</td></tr>
   <tr><td>Comment gérez-vous l'arabe ?</td><td>Deux lectures de la même zone, par un modèle arabe et un modèle latin, fusionnées zone par zone.</td></tr>
   <tr><td>Les données personnelles sont-elles protégées ?</td><td>Le chatbot masque RIB, IBAN et CIN, et les journaux n'affichent plus le texte OCR. Les routes API doivent encore être protégées : c'est notre priorité de sécurité.</td></tr>
-  <tr><td>Quelle est la précision ?</td><td>Mesurée le 8 octobre sur nos documents fictifs. OCR : 18 champs sur 18 retrouvés, F1 des mots 0,997. Classification : 96,2 % (25 sur 26) avec la cascade, contre 61,5 % avec les embeddings seuls. Recherche du chatbot : rappel@5 de 95,5 %. Calculs : écart nul à une référence indépendante, aucune offre invalide sur 12 912. Ces chiffres sont optimistes (documents écrits par nous) : la vraie précision se mesurera avec des documents réels de la banque. Score : il varie (78 et 85 pour le même dossier), car il vient du modèle de langage.</td></tr>
+  <tr><td>Quelle est la précision ?</td><td>Mesurée le 8 octobre sur nos documents fictifs. OCR : 18 champs sur 18 retrouvés, F1 des mots 0,997. Classification : 96,2 % (25 sur 26) avec la cascade, contre 61,5 % avec les embeddings seuls. Recherche du chatbot : rappel@5 de 95,5 %. Calculs : écart nul à une référence indépendante, aucune offre invalide sur 12 912. Ces chiffres sont optimistes (documents écrits par nous) : la vraie précision se mesurera avec des documents réels de la banque. Score : il variait avec le modèle de langage (78 et 85 pour le même dossier) ; il est maintenant calculé par une grille à points et ne varie plus (écart-type 0), mais les poids restent un choix de prototype à valider avec la banque.</td></tr>
   <tr><td>Un refus peut-il partir sans qu'un humain l'ait vu ?</td><td>Non par défaut : un refus attend « Valider et envoyer » de l'agent, qui peut aussi décider de ne pas l'envoyer. La validation porte sur la décision lue : si une nouvelle analyse l'a changée, le serveur refuse. Les autres décisions peuvent partir seules ou après un délai annulable, c'est réglable.</td></tr>
   <tr><td>Comment prouvez-vous qui a décidé quoi ?</td><td>Un journal d'audit en ajout seul : chaque analyse (décision, score, version des règles, fournisseur d'IA) et chaque étape de la réponse (mise en attente, validation, annulation, envoi, échec) est consignée avec l'agent et l'heure. Aucune route ne permet de le modifier.</td></tr>
   <tr><td>Que montre le tableau de bord ?</td><td>Taux d'acceptation (éligibles ÷ décisions définitives, avec une version « avec conditions »), répartition des décisions, délais de traitement et d'envoi, motifs de refus, évolution dans le temps et état des envois, avec un export Excel. Les définitions sont affichées à l'écran.</td></tr>

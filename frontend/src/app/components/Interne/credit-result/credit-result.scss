@@ -892,3 +892,23 @@ $trait:  #eceef3;
   small { font-size: 12px; color: $gris; }
   &.cr-reponse-ACCEPTEE { background: #f1faf6; border-color: #cdebdc; border-left-color: $vert; strong { color: #0b5f44; } }
 }
+
+/* ── Détail du score ── */
+.cr-score-note { margin: 0; font-size: 12.5px; line-height: 1.5; color: $gris; em { display: block; font-style: normal; color: #8a5a00; margin-top: 2px; } }
+.score-criteres { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.score-critere {
+  display: grid; grid-template-columns: 1.4fr 1.6fr auto; gap: 6px 16px; align-items: center; padding: 10px 0; border-top: 1px solid #f2f3f7;
+  &:first-child { border-top: none; }
+  .score-critere-texte { display: flex; flex-direction: column; strong { font-size: 13.5px; color: $encre; } }
+  .score-critere-valeur { font-size: 12px; color: $gris; }
+  .score-critere-barre { height: 9px; border-radius: 99px; background: #eef0f5; overflow: hidden;
+    i { display: block; height: 100%; border-radius: 99px; background: #c9ced8; transition: width 0.6s ease; }
+    i.pts-bon { background: $vert; } i.pts-moyen { background: $orange; } i.pts-faible { background: $rouge; } }
+  .score-critere-points { font-weight: 700; font-size: 13.5px; color: $encre; font-variant-numeric: tabular-nums; text-align: right; min-width: 56px; }
+  .score-critere-explication { grid-column: 1 / -1; margin: 0; font-size: 12px; color: $gris; }
+  &.inconnu .score-critere-points { color: #9aa1af; font-weight: 600; font-size: 12.5px; }
+}
+.cr-prototype {
+  margin: 4px 0 0; padding: 9px 12px; border-radius: 10px; background: #fff7e6; border: 1px solid #f1d9a8; font-size: 12px; line-height: 1.5; color: #5b4a1f;
+}
+@media (max-width: 760px) { .score-critere { grid-template-columns: 1fr auto; .score-critere-barre { grid-column: 1 / -1; order: 3; } } }
