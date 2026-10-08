@@ -1,0 +1,153 @@
+{
+  "date": "2026-10-08 01:26",
+  "machine": {
+    "os": "Windows-10-10.0.26200-SP0",
+    "python": "3.11.0",
+    "cpu": "Intel64 Family 6 Model 140 Stepping 1, GenuineIntel",
+    "coeurs": 8,
+    "gpu": "non (calcul sur processeur)"
+  },
+  "documents": [
+    {
+      "document": "CIN",
+      "pages": 1,
+      "natif": {
+        "cas": "PDF_NATIF",
+        "moteur": "pymupdf",
+        "duree_ms": 36.0,
+        "champs_retrouves": "5/5",
+        "manquants": []
+      },
+      "scan": {
+        "cas": "PDF_SCAN",
+        "moteur": "paddleocr-fusion",
+        "duree_ms": 32045.2,
+        "ms_par_page": 32045.2,
+        "champs_retrouves": "5/5",
+        "manquants": [],
+        "mots_rappel": 0.981,
+        "mots_precision": 1.0,
+        "mots_f1": 0.99,
+        "statut": "SUCCESS"
+      }
+    },
+    {
+      "document": "FICHE_PAIE",
+      "pages": 1,
+      "natif": {
+        "cas": "PDF_NATIF",
+        "moteur": "pymupdf",
+        "duree_ms": 23.9,
+        "champs_retrouves": "3/3",
+        "manquants": []
+      },
+      "scan": {
+        "cas": "PDF_SCAN",
+        "moteur": "paddleocr-fusion",
+        "duree_ms": 44680.0,
+        "ms_par_page": 44680.0,
+        "champs_retrouves": "3/3",
+        "manquants": [],
+        "mots_rappel": 1.0,
+        "mots_precision": 1.0,
+        "mots_f1": 1.0,
+        "statut": "SUCCESS"
+      }
+    },
+    {
+      "document": "RELEVE_BANCAIRE",
+      "pages": 3,
+      "natif": {
+        "cas": "PDF_NATIF",
+        "moteur": "pymupdf",
+        "duree_ms": 20.0,
+        "champs_retrouves": "3/3",
+        "manquants": []
+      },
+      "scan": {
+        "cas": "PDF_SCAN",
+        "moteur": "paddleocr-fusion",
+        "duree_ms": 145095.6,
+        "ms_par_page": 48365.2,
+        "champs_retrouves": "3/3",
+        "manquants": [],
+        "mots_rappel": 1.0,
+        "mots_precision": 1.0,
+        "mots_f1": 1.0,
+        "statut": "SUCCESS"
+      }
+    },
+    {
+      "document": "ATTESTATION_EMPLOI",
+      "pages": 1,
+      "natif": {
+        "cas": "PDF_NATIF",
+        "moteur": "pymupdf",
+        "duree_ms": 20.2,
+        "champs_retrouves": "4/4",
+        "manquants": []
+      },
+      "scan": {
+        "cas": "PDF_SCAN",
+        "moteur": "paddleocr-fusion",
+        "duree_ms": 48151.6,
+        "ms_par_page": 48151.6,
+        "champs_retrouves": "4/4",
+        "manquants": [],
+        "mots_rappel": 0.993,
+        "mots_precision": 0.993,
+        "mots_f1": 0.993,
+        "statut": "SUCCESS"
+      }
+    },
+    {
+      "document": "JUSTIFICATIF_DOMICILE",
+      "pages": 1,
+      "natif": {
+        "cas": "PDF_NATIF",
+        "moteur": "pymupdf",
+        "duree_ms": 39.0,
+        "champs_retrouves": "3/3",
+        "manquants": []
+      },
+      "scan": {
+        "cas": "PDF_SCAN",
+        "moteur": "paddleocr-fusion",
+        "duree_ms": 41813.5,
+        "ms_par_page": 41813.5,
+        "champs_retrouves": "3/3",
+        "manquants": [],
+        "mots_rappel": 1.0,
+        "mots_precision": 1.0,
+        "mots_f1": 1.0,
+        "statut": "SUCCESS"
+      }
+    }
+  ],
+  "synthese": {
+    "chargement_modeles_s": 9.7,
+    "champs_natif": "18/18",
+    "taux_champs_natif": 1.0,
+    "champs_scan": "18/18",
+    "taux_champs_scan": 1.0,
+    "natif_duree_ms": {
+      "n": 5,
+      "moyenne": 27.8,
+      "mediane": 23.9,
+      "p95": 38.4,
+      "min": 20.0,
+      "max": 39.0
+    },
+    "scan_duree_ms": {
+      "n": 5,
+      "moyenne": 62357.2,
+      "mediane": 44680.0,
+      "p95": 125706.8,
+      "min": 32045.2,
+      "max": 145095.6
+    },
+    "scan_ms_par_page": 44540.8,
+    "pages_scan": 7,
+    "mots_f1_moyen": 0.997
+  }
+}

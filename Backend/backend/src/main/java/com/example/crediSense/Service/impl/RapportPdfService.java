@@ -94,6 +94,7 @@ public class RapportPdfService {
             if (version == Version.AGENT) {
                 controles(document, writer, resultat);
                 capaciteEtSimulations(document, writer, resultat);
+                propositionsAjustement(document, writer, resultat);
                 listeSection(document, writer, "Points forts", liste(resultat, "strengths"));
                 listeSection(document, writer, "Points de vigilance", liste(resultat, "weaknesses"));
                 listeSection(document, writer, "Risques", liste(resultat, "risks"));
@@ -294,6 +295,42 @@ public class RapportPdfService {
             cellule(table, dti != null ? pourcent(dti) : "—", Font.NORMAL, null);
             cellule(table, dt(s.get("totalCost")), Font.NORMAL, null);
             cellule(table, libelleStatut(statut), Font.BOLD, couleurStatut(statut));
+        }
+        document.add(table);
+    }
+
+    /** Propositions de montant / durée d'un dossier conditionnel : réservées à l'agent, jamais au client. */
+    private void propositionsAjustement(Document document, PdfWriter writer, Map<String, Object> resultat) throws DocumentException {
+        Map<String, Object> propositions = carte(resultat, "adjustedOffers");
+        if (propositions.isEmpty()) return;
+
+        ouvrirSection(document, writer, "Propositions d'ajustement");
+        String message = texte(propositions, "message");
+        if (message != null && !message.isBlank()) {
+            Paragraph p = new Paragraph(nettoyer(message), police(10, Font.ITALIC, BaseColor.DARK_GRAY));
+            p.setSpacingAfter(4);
+            document.add(p);
+        }
+
+        List<Object> offres = liste(propositions, "offers");
+        if (offres.isEmpty()) return;
+
+        PdfPTable table = new PdfPTable(new float[]{3f, 1.8f, 1.2f, 1.8f, 1.5f, 1.8f});
+        table.setWidthPercentage(100);
+        table.setHeaderRows(1);
+        for (String titre : new String[]{"Proposition", "Montant", "Durée", "Mensualité", "Endettement", "Coût total"}) {
+            enteteCellule(table, titre);
+        }
+        for (Object o : offres) {
+            if (!(o instanceof Map<?, ?> offre)) continue;
+            cellule(table, String.valueOf(offre.get("label")), Font.BOLD, null);
+            cellule(table, dt(offre.get("amount")), Font.NORMAL, null);
+            Double duree = nombre(offre.get("duration"));
+            cellule(table, duree != null ? Math.round(duree) + " mois" : "—", Font.NORMAL, null);
+            cellule(table, dt(offre.get("monthlyPayment")), Font.NORMAL, null);
+            Double dti = nombre(offre.get("dti"));
+            cellule(table, dti != null ? pourcent(dti) : "—", Font.NORMAL, null);
+            cellule(table, dt(offre.get("totalCost")), Font.NORMAL, null);
         }
         document.add(table);
     }

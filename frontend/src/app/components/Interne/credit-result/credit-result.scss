@@ -656,3 +656,10 @@
 @media (max-width: 720px) {
   .cr-journal li { grid-template-columns: 1fr; gap: 2px; }
 }
+
+// ── Propositions d'ajustement : indicatives, jamais envoyées au client sans validation ──
+.cr-offres-note { margin: 0 0 10px; font-size: 13px; line-height: 1.5; color: #4b5563; }
+.cr-table-offres {
+  td strong { display: block; color: #1f2937; }
+  .cr-offre-detail { display: block; margin-top: 2px; font-size: 12px; color: #6b7280; font-weight: 400; }
+}

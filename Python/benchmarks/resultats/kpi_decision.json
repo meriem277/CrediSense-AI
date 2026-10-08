@@ -1,0 +1,133 @@
+{
+  "date": "2026-10-08 01:38",
+  "machine": {
+    "os": "Windows-10-10.0.26200-SP0",
+    "python": "3.11.0",
+    "cpu": "Intel64 Family 6 Model 140 Stepping 1, GenuineIntel",
+    "coeurs": 8,
+    "gpu": "non (calcul sur processeur)"
+  },
+  "detail": [
+    {
+      "run": 1,
+      "duree_ms": 19696,
+      "statut": "SUCCESS",
+      "decision": "ELIGIBLE",
+      "score": 85,
+      "revenu": 2100.0,
+      "dettes": 250.0,
+      "mensualite": 228.263,
+      "dti": 22.77,
+      "provider": "groq",
+      "donnees_manquantes": []
+    },
+    {
+      "run": 2,
+      "duree_ms": 1385,
+      "statut": "FAILURE",
+      "decision": "INDETERMINE",
+      "score": 0,
+      "revenu": null,
+      "dettes": null,
+      "mensualite": null,
+      "dti": null,
+      "provider": null,
+      "donnees_manquantes": []
+    },
+    {
+      "run": 3,
+      "duree_ms": 20289,
+      "statut": "FAILURE",
+      "decision": "INDETERMINE",
+      "score": 0,
+      "revenu": null,
+      "dettes": null,
+      "mensualite": null,
+      "dti": null,
+      "provider": null,
+      "donnees_manquantes": []
+    },
+    {
+      "run": 4,
+      "duree_ms": 10277,
+      "statut": "SUCCESS",
+      "decision": "ELIGIBLE",
+      "score": 78,
+      "revenu": 2100.0,
+      "dettes": 250.0,
+      "mensualite": 228.263,
+      "dti": 22.77,
+      "provider": "groq",
+      "donnees_manquantes": []
+    },
+    {
+      "run": 5,
+      "duree_ms": 9964,
+      "statut": "FAILURE",
+      "decision": "INDETERMINE",
+      "score": 0,
+      "revenu": null,
+      "dettes": null,
+      "mensualite": null,
+      "dti": null,
+      "provider": null,
+      "donnees_manquantes": []
+    }
+  ],
+  "synthese": {
+    "calcul_mensualite": {
+      "profils": 300,
+      "ecart_max_DT": 0.0,
+      "ecart_moyen_DT": 0.0
+    },
+    "moteur": {
+      "dossiers_simules": 20000,
+      "regles_microsecondes": {
+        "n": 20000,
+        "moyenne": 38.0,
+        "mediane": 36.6,
+        "p95": 42.8,
+        "min": 29.5,
+        "max": 528.9
+      },
+      "dossiers_endettement_>=30%": 10061,
+      "dossiers_avec_au_moins_une_offre": 7767,
+      "part_avec_offre": 0.772,
+      "offres_generees": 12912,
+      "offres_invalides": 0,
+      "proposition_microsecondes": {
+        "n": 10061,
+        "moyenne": 14.2,
+        "mediane": 15.3,
+        "p95": 21.1,
+        "min": 3.5,
+        "max": 645.4
+      }
+    },
+    "bout_en_bout": {
+      "runs": 5,
+      "reussis": 2,
+      "duree_ms": {
+        "n": 2,
+        "moyenne": 14986.5,
+        "mediane": 14986.5,
+        "p95": 19225.0,
+        "min": 10277,
+        "max": 19696
+      },
+      "decisions": {
+        "ELIGIBLE": 2
+      },
+      "scores": [
+        78,
+        85
+      ],
+      "ecart_type_score": 3.5,
+      "revenu_exact": "2/2",
+      "dettes_exactes": "2/2",
+      "mensualite_attendue": 228.263,
+      "dti_attendu": 22.77,
+      "dti_exact": "2/2"
+    }
+  }
+}

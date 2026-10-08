@@ -1,0 +1,417 @@
+{
+  "date": "2026-10-08 01:36",
+  "machine": {
+    "os": "Windows-10-10.0.26200-SP0",
+    "python": "3.11.0",
+    "cpu": "Intel64 Family 6 Model 140 Stepping 1, GenuineIntel",
+    "coeurs": 8,
+    "gpu": "non (calcul sur processeur)"
+  },
+  "detail": {
+    "retrieval": [
+      {
+        "question": "Quel est le numéro de CIN du client ?",
+        "genre": "exacte",
+        "attendu": "12015060",
+        "rang_dense": 36,
+        "rang_lexical": 1,
+        "rang_hybride": 2
+      },
+      {
+        "question": "Quel est le net à payer sur la fiche de paie ?",
+        "genre": "exacte",
+        "attendu": "2 100,000",
+        "rang_dense": 1,
+        "rang_lexical": 1,
+        "rang_hybride": 1
+      },
+      {
+        "question": "Quel est le salaire brut ?",
+        "genre": "exacte",
+        "attendu": "2 400,000",
+        "rang_dense": 1,
+        "rang_lexical": 1,
+        "rang_hybride": 1
+      },
+      {
+        "question": "Quelle est la date d'embauche ?",
+        "genre": "exacte",
+        "attendu": "01/09/2021",
+        "rang_dense": 1,
+        "rang_lexical": 1,
+        "rang_hybride": 1
+      },
+      {
+        "question": "Quelle est l'échéance du prêt en cours ?",
+        "genre": "exacte",
+        "attendu": "250,000",
+        "rang_dense": 3,
+        "rang_lexical": 1,
+        "rang_hybride": 1
+      },
+      {
+        "question": "Quel est le loyer mensuel ?",
+        "genre": "exacte",
+        "attendu": "600,000",
+        "rang_dense": 9,
+        "rang_lexical": 1,
+        "rang_hybride": 1
+      },
+      {
+        "question": "Quel est le solde au 30 septembre ?",
+        "genre": "exacte",
+        "attendu": "2 853,650",
+        "rang_dense": 2,
+        "rang_lexical": 2,
+        "rang_hybride": 2
+      },
+      {
+        "question": "Quel est le montant de la facture d'électricité ?",
+        "genre": "exacte",
+        "attendu": "88,400",
+        "rang_dense": 1,
+        "rang_lexical": 2,
+        "rang_hybride": 1
+      },
+      {
+        "question": "Quelle est la date de naissance ?",
+        "genre": "exacte",
+        "attendu": "14/03/1990",
+        "rang_dense": 1,
+        "rang_lexical": 1,
+        "rang_hybride": 1
+      },
+      {
+        "question": "Quel est le lieu de naissance ?",
+        "genre": "exacte",
+        "attendu": "Tunis",
+        "rang_dense": 2,
+        "rang_lexical": 1,
+        "rang_hybride": 1
+      },
+      {
+        "question": "Qui est l'employeur du client ?",
+        "genre": "exacte",
+        "attendu": "Exemple Tech",
+        "rang_dense": 4,
+        "rang_lexical": null,
+        "rang_hybride": 4
+      },
+      {
+        "question": "Quel poste occupe le client ?",
+        "genre": "exacte",
+        "attendu": "Ingénieur",
+        "rang_dense": 1,
+        "rang_lexical": 1,
+        "rang_hybride": 1
+      },
+      {
+        "question": "Combien gagne le client par mois ?",
+        "genre": "paraphrase",
+        "attendu": "2 100,000",
+        "rang_dense": 1,
+        "rang_lexical": null,
+        "rang_hybride": 1
+      },
+      {
+        "question": "Où habite le client ?",
+        "genre": "paraphrase",
+        "attendu": "Jasmins",
+        "rang_dense": 1,
+        "rang_lexical": null,
+        "rang_hybride": 1
+      },
+      {
+        "question": "Depuis quand travaille-t-il dans l'entreprise ?",
+        "genre": "paraphrase",
+        "attendu": "01/09/2021",
+        "rang_dense": 1,
+        "rang_lexical": 1,
+        "rang_hybride": 1
+      },
+      {
+        "question": "A-t-il un crédit en cours et de combien par mois ?",
+        "genre": "paraphrase",
+        "attendu": "250,000",
+        "rang_dense": 4,
+        "rang_lexical": 1,
+        "rang_hybride": 2
+      },
+      {
+        "question": "Combien paie-t-il pour se loger ?",
+        "genre": "paraphrase",
+        "attendu": "600,000",
+        "rang_dense": 12,
+        "rang_lexical": null,
+        "rang_hybride": 12
+      },
+      {
+        "question": "Quelle est la ville de résidence ?",
+        "genre": "paraphrase",
+        "attendu": "Ariana",
+        "rang_dense": 1,
+        "rang_lexical": null,
+        "rang_hybride": 1
+      },
+      {
+        "question": "Quelle est la société qui l'emploie ?",
+        "genre": "paraphrase",
+        "attendu": "Exemple Tech",
+        "rang_dense": 3,
+        "rang_lexical": 3,
+        "rang_hybride": 3
+      },
+      {
+        "question": "De quel montant dispose-t-il sur son compte à la fin du mois ?",
+        "genre": "paraphrase",
+        "attendu": "2 853,650",
+        "rang_dense": 1,
+        "rang_lexical": 3,
+        "rang_hybride": 4
+      },
+      {
+        "question": "Quel est son nom de famille ?",
+        "genre": "paraphrase",
+        "attendu": "TRABELSI",
+        "rang_dense": 1,
+        "rang_lexical": 1,
+        "rang_hybride": 1
+      },
+      {
+        "question": "Quel est son prénom ?",
+        "genre": "paraphrase",
+        "attendu": "Yassine",
+        "rang_dense": 1,
+        "rang_lexical": 1,
+        "rang_hybride": 1
+      }
+    ],
+    "reponses": [
+      {
+        "question": "Quel est le numéro de CIN du client ?",
+        "attendu": "12015060",
+        "statut": "SUCCESS",
+        "juste": false,
+        "duree_ms": 556.0,
+        "provider": "groq"
+      },
+      {
+        "question": "Quel est le net à payer sur la fiche de paie ?",
+        "attendu": "2 100,000",
+        "statut": "SUCCESS",
+        "juste": true,
+        "duree_ms": 2123.0,
+        "provider": "groq"
+      },
+      {
+        "question": "Quel est le salaire brut ?",
+        "attendu": "2 400,000",
+        "statut": "SUCCESS",
+        "juste": true,
+        "duree_ms": 1778.0,
+        "provider": "groq"
+      },
+      {
+        "question": "Quelle est la date d'embauche ?",
+        "attendu": "01/09/2021",
+        "statut": "SUCCESS",
+        "juste": true,
+        "duree_ms": 10228.0,
+        "provider": "groq"
+      },
+      {
+        "question": "Quelle est l'échéance du prêt en cours ?",
+        "attendu": "250,000",
+        "statut": "LLM_INDISPONIBLE",
+        "juste": false,
+        "duree_ms": 11904.0,
+        "provider": null
+      },
+      {
+        "question": "Quel est le loyer mensuel ?",
+        "attendu": "600,000",
+        "statut": "SUCCESS",
+        "juste": true,
+        "duree_ms": 6641.0,
+        "provider": "groq"
+      },
+      {
+        "question": "Quel est le solde au 30 septembre ?",
+        "attendu": "2 853,650",
+        "statut": "LLM_INDISPONIBLE",
+        "juste": false,
+        "duree_ms": 13780.0,
+        "provider": null
+      },
+      {
+        "question": "Quel est le montant de la facture d'électricité ?",
+        "attendu": "88,400",
+        "statut": "SUCCESS",
+        "juste": false,
+        "duree_ms": 5117.0,
+        "provider": "groq"
+      },
+      {
+        "question": "Quelle est la date de naissance ?",
+        "attendu": "14/03/1990",
+        "statut": "LLM_INDISPONIBLE",
+        "juste": false,
+        "duree_ms": 15232.0,
+        "provider": null
+      },
+      {
+        "question": "Quel est le lieu de naissance ?",
+        "attendu": "Tunis",
+        "statut": "SUCCESS",
+        "juste": true,
+        "duree_ms": 2697.0,
+        "provider": "groq"
+      },
+      {
+        "question": "Qui est l'employeur du client ?",
+        "attendu": "Exemple Tech",
+        "statut": "SUCCESS",
+        "juste": true,
+        "duree_ms": 17545.0,
+        "provider": "groq"
+      },
+      {
+        "question": "Quel poste occupe le client ?",
+        "attendu": "Ingénieur",
+        "statut": "SUCCESS",
+        "juste": true,
+        "duree_ms": 8163.0,
+        "provider": "groq"
+      }
+    ]
+  },
+  "synthese": {
+    "documents": 5,
+    "chunks": 45,
+    "chars_par_chunk": {
+      "moyenne": 172,
+      "min": 94,
+      "max": 422
+    },
+    "types_de_chunks": {
+      "identite": 2,
+      "contexte": 6,
+      "contrat": 2,
+      "credit": 2,
+      "revenu": 1,
+      "bancaire": 32
+    },
+    "indexation_ms": 4227.0,
+    "questions": 22,
+    "modes": {
+      "dense": {
+        "toutes": {
+          "rappel@1": 0.591,
+          "rappel@3": 0.773,
+          "rappel@5": 0.864,
+          "MRR": 0.699
+        },
+        "montants_et_numeros": {
+          "rappel@1": 0.5,
+          "rappel@3": 0.75,
+          "rappel@5": 0.833,
+          "MRR": 0.644
+        },
+        "tournures_libres": {
+          "rappel@1": 0.7,
+          "rappel@3": 0.8,
+          "rappel@5": 0.9,
+          "MRR": 0.767
+        },
+        "latence_ms": {
+          "n": 22,
+          "moyenne": 21.9,
+          "mediane": 21.2,
+          "p95": 31.6,
+          "min": 14.5,
+          "max": 31.8
+        }
+      },
+      "lexical": {
+        "toutes": {
+          "rappel@1": 0.591,
+          "rappel@3": 0.773,
+          "rappel@5": 0.773,
+          "MRR": 0.667
+        },
+        "montants_et_numeros": {
+          "rappel@1": 0.75,
+          "rappel@3": 0.917,
+          "rappel@5": 0.917,
+          "MRR": 0.833
+        },
+        "tournures_libres": {
+          "rappel@1": 0.4,
+          "rappel@3": 0.6,
+          "rappel@5": 0.6,
+          "MRR": 0.467
+        }
+      },
+      "hybride": {
+        "toutes": {
+          "rappel@1": 0.682,
+          "rappel@3": 0.864,
+          "rappel@5": 0.955,
+          "MRR": 0.792
+        },
+        "montants_et_numeros": {
+          "rappel@1": 0.75,
+          "rappel@3": 0.917,
+          "rappel@5": 1.0,
+          "MRR": 0.854
+        },
+        "tournures_libres": {
+          "rappel@1": 0.6,
+          "rappel@3": 0.8,
+          "rappel@5": 0.9,
+          "MRR": 0.717
+        },
+        "latence_ms": {
+          "n": 22,
+          "moyenne": 19.7,
+          "mediane": 17.8,
+          "p95": 31.7,
+          "min": 5.7,
+          "max": 31.8
+        }
+      }
+    },
+    "recuperateur_reel": {
+      "rappel_dans_les_extraits_envoyes_au_LLM": 0.955,
+      "extraits_envoyes": 12,
+      "latence_ms": {
+        "n": 22,
+        "moyenne": 20.8,
+        "mediane": 20.2,
+        "p95": 31.7,
+        "min": 2.6,
+        "max": 31.8
+      }
+    },
+    "reponses": {
+      "questions": 12,
+      "reponses_obtenues": 9,
+      "exactitude": 0.778,
+      "duree_ms": {
+        "n": 9,
+        "moyenne": 6094.2,
+        "mediane": 5117.0,
+        "p95": 14618.2,
+        "min": 556.0,
+        "max": 17545.0
+      },
+      "echecs": [
+        "Quel est le numéro de CIN du client ?",
+        "Quelle est l'échéance du prêt en cours ?",
+        "Quel est le solde au 30 septembre ?",
+        "Quel est le montant de la facture d'électricité ?",
+        "Quelle est la date de naissance ?"
+      ]
+    }
+  }
+}

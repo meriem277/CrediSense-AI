@@ -61,7 +61,7 @@ DUREES_SIMULEES     = [12, 24, 36, 48, 60, 84]
 
 # À incrémenter quand les règles changent : fait partie de la clé de cache, pour qu'une
 # ancienne analyse (faite avec d'anciennes règles ou un autre taux) ne soit jamais resservie.
-RULES_VERSION = "2026-10-a"
+RULES_VERSION = "2026-10-b"
 
 
 def _taux_annuel() -> Optional[float]:
@@ -471,6 +471,118 @@ def appliquer_regles(metrics: dict, dettes_connues: bool = True) -> dict:
     }
 
 
+# ── Propositions d'ajustement (dossier CONDITIONNEL) ─────────────────────────
+PAS_MONTANT   = 100     # DT : les montants proposés sont arrondis au pas inférieur
+MONTANT_MIN   = 500     # DT : en dessous, une offre n'a plus de sens
+PAS_DUREE     = 6       # mois : les durées proposées sont des multiples de 6
+
+# Critères qu'un changement de montant ou de durée peut améliorer ; tout autre critère non conforme
+# (ancienneté, contrat, incidents…) reste à traiter autrement et est signalé tel quel.
+CRITERES_AJUSTABLES = {"Taux d'endettement", "Plafond du montant", "Durée du crédit", "Âge en fin de crédit"}
+
+
+def _arrondi_inferieur(valeur: float) -> float:
+    return float(int(valeur // PAS_MONTANT) * PAS_MONTANT)
+
+
+def proposer_ajustements(metrics: dict, taux: Optional[float], dettes_connues: bool, checks: list) -> dict:
+    """
+    Pour un dossier CONDITIONNEL : montants et durées qui respectent le seuil d'endettement,
+    le plafond de 5 × salaire, la durée maximale et l'âge maximal en fin de crédit.
+
+    Entièrement déterministe (aucun LLM) : chaque offre est recalculée avec les mêmes formules que
+    la décision. Une offre n'est jamais proposée sur une donnée inconnue.
+
+    Retourne {"applicable": bool, "message": str, "offers": [...], "unresolved": [critères non conformes
+    qu'un changement de montant ou de durée ne règle pas]}. Chaque offre :
+    {"kind", "label", "amount", "duration", "monthlyPayment", "dti", "totalCost", "explanation"}.
+    """
+    revenu  = _num(metrics.get("monthlyIncome"))
+    montant = _num(metrics.get("requestedAmount"))
+    duree   = int(_num(metrics.get("duration")) or 0) or None
+    dettes  = _num(metrics.get("existingDebts")) or 0.0
+    age     = _num(metrics.get("clientAge"))
+
+    non_resolus = [c["criterion"] for c in checks
+                   if c.get("status") in ("KO", "ATTENTION", "A_VERIFIER")
+                   and c.get("criterion") not in CRITERES_AJUSTABLES
+                   and c.get("criterion") not in ("Taux d'intérêt appliqué", "Dettes existantes")]
+
+    def refus(message: str) -> dict:
+        return {"applicable": False, "message": message, "offers": [], "unresolved": non_resolus}
+
+    if taux is None or not (revenu and montant and duree) or not dettes_connues:
+        return refus("Pas assez d'informations fiables (taux, revenu, demande ou dettes) pour proposer un ajustement.")
+
+    plafond = MULTIPLE_SALAIRE * revenu
+    mens_max = DTI_ACCEPTABLE / 100 * revenu - dettes
+    mensualite = calculer_mensualite(montant, duree, taux)
+    dti = (mensualite + dettes) / revenu * 100
+
+    if dti < DTI_ACCEPTABLE and montant <= plafond and duree <= DUREE_MAX_MOIS:
+        return refus("L'endettement, le plafond et la durée sont déjà respectés : changer le montant ou la durée "
+                     "ne suffit pas. Le caractère conditionnel vient d'autres critères, à traiter avec le client.")
+    if mens_max <= 0:
+        return refus("Les dettes en cours absorbent déjà la capacité de remboursement : aucun montant ne passe "
+                     "sous le seuil d'endettement.")
+
+    # Durée la plus longue possible : plafond réglementaire, et âge en fin de crédit
+    duree_max = DUREE_MAX_MOIS
+    if age is not None:
+        duree_max = min(duree_max, int((AGE_MAX_FIN_CREDIT - age) * 12))
+    duree_max = (duree_max // PAS_DUREE) * PAS_DUREE if duree_max < DUREE_MAX_MOIS else duree_max
+
+    def offre(kind: str, label: str, m: float, n: int, explication: str) -> Optional[dict]:
+        mens = calculer_mensualite(m, n, taux)
+        d = (mens + dettes) / revenu * 100
+        # Revérification complète : on ne propose que ce qui passe tous les contrôles ajustables
+        if m < MONTANT_MIN or m > plafond or n > duree_max or d >= DTI_ACCEPTABLE:
+            return None
+        return {"kind": kind, "label": label, "amount": round(m, 3), "duration": n,
+                "monthlyPayment": round(mens, 3), "dti": round(d, 2), "totalCost": round(mens * n, 3),
+                "explanation": explication}
+
+    offres = []
+
+    # A. Même durée, montant réduit
+    montant_a = _arrondi_inferieur(min(montant_finançable(mens_max, duree, taux), plafond, montant))
+    a = offre("MONTANT_REDUIT", "Montant réduit, même durée", montant_a, duree,
+              f"Sur {duree} mois, {_dt(montant_a, 0)} est le montant le plus élevé qui garde l'endettement "
+              f"sous {DTI_ACCEPTABLE:.0f} %.") if duree <= duree_max and montant_a < montant else None
+    if a:
+        offres.append(a)
+
+    # B. Même montant, durée allongée (la plus courte qui convient)
+    b = None
+    if montant <= plafond:
+        for n in [n for n in range(duree + 1, duree_max + 1) if n % PAS_DUREE == 0 or n == duree_max]:
+            b = offre("DUREE_ALLONGEE", "Même montant, durée allongée", montant, n,
+                      f"En allongeant à {n} mois, le montant demandé passe sous {DTI_ACCEPTABLE:.0f} % "
+                      f"d'endettement, au prix d'un coût total plus élevé.")
+            if b:
+                break
+    if b:
+        offres.append(b)
+
+    # C. À défaut, durée maximale et montant maximal
+    if not b and duree_max > duree:
+        montant_c = _arrondi_inferieur(min(montant_finançable(mens_max, duree_max, taux), plafond, montant))
+        c = offre("COMBINE", "Durée maximale et montant ajusté", montant_c, duree_max,
+                  f"Sur {duree_max} mois, {_dt(montant_c, 0)} est le montant le plus élevé acceptable.")
+        if c and (not a or c["amount"] > a["amount"]):
+            offres.append(c)
+
+    if not offres:
+        return refus("Aucun montant d'au moins " + _dt(MONTANT_MIN, 0) + " ne respecte à la fois le seuil "
+                     "d'endettement, le plafond et la durée autorisée.")
+
+    message = "Propositions indicatives, calculées par les règles, sous réserve de validation par l'agent."
+    if non_resolus:
+        message += (" Attention : ces critères ne sont pas réglés par un changement de montant ou de durée : "
+                    + ", ".join(non_resolus) + ".")
+    return {"applicable": True, "message": message, "offers": offres, "unresolved": non_resolus}
+
+
 def donnees_manquantes(metrics: dict, taux: Optional[float], dettes_connues: bool, checks: list) -> list[str]:
     """
     Liste lisible de ce qui manque pour pouvoir rendre une décision, avec où le trouver.
@@ -557,6 +669,9 @@ class AgentService:
                     regles["metrics"], regles["taux"], dettes_connues, regles["regulatoryChecks"])
                 self._verifier_coherence(result_dict)
                 self._appliquer_donnees_manquantes(result_dict)
+                if result_dict.get("eligibility") == "CONDITIONNEL":
+                    result_dict["adjustedOffers"] = proposer_ajustements(
+                        regles["metrics"], regles["taux"], dettes_connues, regles["regulatoryChecks"])
 
             # Génère documentSources si absent
             if not result_dict.get('documentSources'):

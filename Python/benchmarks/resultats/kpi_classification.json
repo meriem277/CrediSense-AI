@@ -1,0 +1,560 @@
+{
+  "date": "2026-10-08 01:34",
+  "machine": {
+    "os": "Windows-10-10.0.26200-SP0",
+    "python": "3.11.0",
+    "cpu": "Intel64 Family 6 Model 140 Stepping 1, GenuineIntel",
+    "coeurs": 8,
+    "gpu": "non (calcul sur processeur)"
+  },
+  "documents": [
+    {
+      "document": "ASSURANCE_VIE__scan",
+      "attendu": "ASSURANCE_VIE",
+      "regles": "ASSURANCE_VIE",
+      "regles_ms": 17.06,
+      "embeddings": "ASSURANCE_VIE",
+      "embeddings_confiance": 0.732,
+      "embeddings_ms": 62.2,
+      "cascade_sans_llm": "ASSURANCE_VIE",
+      "cascade_sans_llm_methode": "regles",
+      "cascade_sans_llm_ms": 0.0,
+      "cascade": "ASSURANCE_VIE",
+      "cascade_methode": "regles",
+      "cascade_ms": 0.0
+    },
+    {
+      "document": "ATTESTATION_EMPLOI__natif_ar",
+      "attendu": "ATTESTATION_EMPLOI",
+      "regles": null,
+      "regles_ms": 15.75,
+      "embeddings": "JUSTIFICATIF_DOMICILE",
+      "embeddings_confiance": 0.635,
+      "embeddings_ms": 78.7,
+      "cascade_sans_llm": "JUSTIFICATIF_DOMICILE",
+      "cascade_sans_llm_methode": "embeddings",
+      "cascade_sans_llm_ms": 80.5,
+      "cascade": "JUSTIFICATIF_DOMICILE",
+      "cascade_methode": "embeddings",
+      "cascade_ms": 77.4
+    },
+    {
+      "document": "ATTESTATION_EMPLOI__natif_fr",
+      "attendu": "ATTESTATION_EMPLOI",
+      "regles": "ATTESTATION_EMPLOI",
+      "regles_ms": 10.8,
+      "embeddings": "ATTESTATION_EMPLOI",
+      "embeddings_confiance": 0.528,
+      "embeddings_ms": 104.1,
+      "cascade_sans_llm": "ATTESTATION_EMPLOI",
+      "cascade_sans_llm_methode": "regles",
+      "cascade_sans_llm_ms": 2.8,
+      "cascade": "ATTESTATION_EMPLOI",
+      "cascade_methode": "regles",
+      "cascade_ms": 2.0
+    },
+    {
+      "document": "ATTESTATION_EMPLOI__scan",
+      "attendu": "ATTESTATION_EMPLOI",
+      "regles": "ATTESTATION_EMPLOI",
+      "regles_ms": 2.0,
+      "embeddings": "FICHE_PAIE",
+      "embeddings_confiance": 0.578,
+      "embeddings_ms": 75.9,
+      "cascade_sans_llm": "ATTESTATION_EMPLOI",
+      "cascade_sans_llm_methode": "regles",
+      "cascade_sans_llm_ms": 0.0,
+      "cascade": "ATTESTATION_EMPLOI",
+      "cascade_methode": "regles",
+      "cascade_ms": 0.0
+    },
+    {
+      "document": "AUTRE__natif_menu",
+      "attendu": "AUTRE",
+      "regles": null,
+      "regles_ms": 0.0,
+      "embeddings": "AUTRE",
+      "embeddings_confiance": 0.318,
+      "embeddings_ms": 95.4,
+      "cascade_sans_llm": "AUTRE",
+      "cascade_sans_llm_methode": "embeddings_llm_indisponible",
+      "cascade_sans_llm_ms": 79.5,
+      "cascade": "AUTRE",
+      "cascade_methode": "llm_fallback",
+      "cascade_ms": 931.9
+    },
+    {
+      "document": "CIN__scan_ar",
+      "attendu": "CIN",
+      "regles": "CIN",
+      "regles_ms": 1.0,
+      "embeddings": "CIN",
+      "embeddings_confiance": 0.56,
+      "embeddings_ms": 27.7,
+      "cascade_sans_llm": "CIN",
+      "cascade_sans_llm_methode": "regles",
+      "cascade_sans_llm_ms": 0.0,
+      "cascade": "CIN",
+      "cascade_methode": "regles",
+      "cascade_ms": 0.0
+    },
+    {
+      "document": "CIN__scan_fr",
+      "attendu": "CIN",
+      "regles": "CIN",
+      "regles_ms": 0.0,
+      "embeddings": "CIN",
+      "embeddings_confiance": 0.672,
+      "embeddings_ms": 68.2,
+      "cascade_sans_llm": "CIN",
+      "cascade_sans_llm_methode": "regles",
+      "cascade_sans_llm_ms": 0.0,
+      "cascade": "CIN",
+      "cascade_methode": "regles",
+      "cascade_ms": 11.3
+    },
+    {
+      "document": "CONTRAT_TRAVAIL__natif",
+      "attendu": "CONTRAT_TRAVAIL",
+      "regles": "CONTRAT_TRAVAIL",
+      "regles_ms": 2.0,
+      "embeddings": "FICHE_PAIE",
+      "embeddings_confiance": 0.688,
+      "embeddings_ms": 111.4,
+      "cascade_sans_llm": "CONTRAT_TRAVAIL",
+      "cascade_sans_llm_methode": "regles",
+      "cascade_sans_llm_ms": 0.0,
+      "cascade": "CONTRAT_TRAVAIL",
+      "cascade_methode": "regles",
+      "cascade_ms": 0.0
+    },
+    {
+      "document": "DECLARATION_FISCALE__natif",
+      "attendu": "DECLARATION_FISCALE",
+      "regles": "DECLARATION_FISCALE",
+      "regles_ms": 0.0,
+      "embeddings": "DECLARATION_FISCALE",
+      "embeddings_confiance": 0.652,
+      "embeddings_ms": 117.0,
+      "cascade_sans_llm": "DECLARATION_FISCALE",
+      "cascade_sans_llm_methode": "regles",
+      "cascade_sans_llm_ms": 0.0,
+      "cascade": "DECLARATION_FISCALE",
+      "cascade_methode": "regles",
+      "cascade_ms": 8.1
+    },
+    {
+      "document": "FICHE_PAIE__natif",
+      "attendu": "FICHE_PAIE",
+      "regles": "FICHE_PAIE",
+      "regles_ms": 0.0,
+      "embeddings": "FICHE_PAIE",
+      "embeddings_confiance": 0.493,
+      "embeddings_ms": 112.0,
+      "cascade_sans_llm": "FICHE_PAIE",
+      "cascade_sans_llm_methode": "regles",
+      "cascade_sans_llm_ms": 0.0,
+      "cascade": "FICHE_PAIE",
+      "cascade_methode": "regles",
+      "cascade_ms": 0.0
+    },
+    {
+      "document": "FICHE_PAIE__scan",
+      "attendu": "FICHE_PAIE",
+      "regles": "FICHE_PAIE",
+      "regles_ms": 0.0,
+      "embeddings": "FICHE_PAIE",
+      "embeddings_confiance": 0.581,
+      "embeddings_ms": 81.4,
+      "cascade_sans_llm": "FICHE_PAIE",
+      "cascade_sans_llm_methode": "regles",
+      "cascade_sans_llm_ms": 0.0,
+      "cascade": "FICHE_PAIE",
+      "cascade_methode": "regles",
+      "cascade_ms": 0.0
+    },
+    {
+      "document": "JUSTIFICATIF_DOMICILE__natif_steg",
+      "attendu": "JUSTIFICATIF_DOMICILE",
+      "regles": "JUSTIFICATIF_DOMICILE",
+      "regles_ms": 14.09,
+      "embeddings": "JUSTIFICATIF_DOMICILE",
+      "embeddings_confiance": 0.513,
+      "embeddings_ms": 97.4,
+      "cascade_sans_llm": "JUSTIFICATIF_DOMICILE",
+      "cascade_sans_llm_methode": "regles",
+      "cascade_sans_llm_ms": 14.0,
+      "cascade": "JUSTIFICATIF_DOMICILE",
+      "cascade_methode": "regles",
+      "cascade_ms": 0.0
+    },
+    {
+      "document": "JUSTIFICATIF_DOMICILE__scan_sonede",
+      "attendu": "JUSTIFICATIF_DOMICILE",
+      "regles": "JUSTIFICATIF_DOMICILE",
+      "regles_ms": 0.0,
+      "embeddings": "FICHE_PAIE",
+      "embeddings_confiance": 0.581,
+      "embeddings_ms": 73.3,
+      "cascade_sans_llm": "JUSTIFICATIF_DOMICILE",
+      "cascade_sans_llm_methode": "regles",
+      "cascade_sans_llm_ms": 1.0,
+      "cascade": "JUSTIFICATIF_DOMICILE",
+      "cascade_methode": "regles",
+      "cascade_ms": 0.0
+    },
+    {
+      "document": "RELEVE_BANCAIRE__natif_2pages",
+      "attendu": "RELEVE_BANCAIRE",
+      "regles": "RELEVE_BANCAIRE",
+      "regles_ms": 3.76,
+      "embeddings": "CIN",
+      "embeddings_confiance": 0.493,
+      "embeddings_ms": 107.8,
+      "cascade_sans_llm": "RELEVE_BANCAIRE",
+      "cascade_sans_llm_methode": "regles",
+      "cascade_sans_llm_ms": 3.9,
+      "cascade": "RELEVE_BANCAIRE",
+      "cascade_methode": "regles",
+      "cascade_ms": 2.0
+    },
+    {
+      "document": "RELEVE_BANCAIRE__scan",
+      "attendu": "RELEVE_BANCAIRE",
+      "regles": "RELEVE_BANCAIRE",
+      "regles_ms": 1.99,
+      "embeddings": "CIN",
+      "embeddings_confiance": 0.54,
+      "embeddings_ms": 68.3,
+      "cascade_sans_llm": "RELEVE_BANCAIRE",
+      "cascade_sans_llm_methode": "regles",
+      "cascade_sans_llm_ms": 0.0,
+      "cascade": "RELEVE_BANCAIRE",
+      "cascade_methode": "regles",
+      "cascade_ms": 0.0
+    },
+    {
+      "document": "TITRE_SEJOUR__scan",
+      "attendu": "TITRE_SEJOUR",
+      "regles": "TITRE_SEJOUR",
+      "regles_ms": 13.74,
+      "embeddings": "CIN",
+      "embeddings_confiance": 0.706,
+      "embeddings_ms": 58.5,
+      "cascade_sans_llm": "TITRE_SEJOUR",
+      "cascade_sans_llm_methode": "regles",
+      "cascade_sans_llm_ms": 0.0,
+      "cascade": "TITRE_SEJOUR",
+      "cascade_methode": "regles",
+      "cascade_ms": 2.0
+    },
+    {
+      "document": "dossier_natif_ATTESTATION_EMPLOI",
+      "attendu": "ATTESTATION_EMPLOI",
+      "regles": "ATTESTATION_EMPLOI",
+      "regles_ms": 3.74,
+      "embeddings": "CIN",
+      "embeddings_confiance": 0.407,
+      "embeddings_ms": 95.5,
+      "cascade_sans_llm": "ATTESTATION_EMPLOI",
+      "cascade_sans_llm_methode": "regles",
+      "cascade_sans_llm_ms": 0.0,
+      "cascade": "ATTESTATION_EMPLOI",
+      "cascade_methode": "regles",
+      "cascade_ms": 0.0
+    },
+    {
+      "document": "dossier_natif_CIN",
+      "attendu": "CIN",
+      "regles": "CIN",
+      "regles_ms": 8.26,
+      "embeddings": "CIN",
+      "embeddings_confiance": 0.551,
+      "embeddings_ms": 87.4,
+      "cascade_sans_llm": "CIN",
+      "cascade_sans_llm_methode": "regles",
+      "cascade_sans_llm_ms": 0.0,
+      "cascade": "CIN",
+      "cascade_methode": "regles",
+      "cascade_ms": 0.0
+    },
+    {
+      "document": "dossier_natif_FICHE_PAIE",
+      "attendu": "FICHE_PAIE",
+      "regles": "FICHE_PAIE",
+      "regles_ms": 13.78,
+      "embeddings": "FICHE_PAIE",
+      "embeddings_confiance": 0.477,
+      "embeddings_ms": 90.0,
+      "cascade_sans_llm": "FICHE_PAIE",
+      "cascade_sans_llm_methode": "regles",
+      "cascade_sans_llm_ms": 4.0,
+      "cascade": "FICHE_PAIE",
+      "cascade_methode": "regles",
+      "cascade_ms": 3.0
+    },
+    {
+      "document": "dossier_natif_JUSTIFICATIF_DOMICILE",
+      "attendu": "JUSTIFICATIF_DOMICILE",
+      "regles": "JUSTIFICATIF_DOMICILE",
+      "regles_ms": 2.0,
+      "embeddings": "JUSTIFICATIF_DOMICILE",
+      "embeddings_confiance": 0.527,
+      "embeddings_ms": 78.0,
+      "cascade_sans_llm": "JUSTIFICATIF_DOMICILE",
+      "cascade_sans_llm_methode": "regles",
+      "cascade_sans_llm_ms": 0.0,
+      "cascade": "JUSTIFICATIF_DOMICILE",
+      "cascade_methode": "regles",
+      "cascade_ms": 0.0
+    },
+    {
+      "document": "dossier_natif_RELEVE_BANCAIRE",
+      "attendu": "RELEVE_BANCAIRE",
+      "regles": "RELEVE_BANCAIRE",
+      "regles_ms": 16.08,
+      "embeddings": "CIN",
+      "embeddings_confiance": 0.453,
+      "embeddings_ms": 84.4,
+      "cascade_sans_llm": "RELEVE_BANCAIRE",
+      "cascade_sans_llm_methode": "regles",
+      "cascade_sans_llm_ms": 11.0,
+      "cascade": "RELEVE_BANCAIRE",
+      "cascade_methode": "regles",
+      "cascade_ms": 0.0
+    },
+    {
+      "document": "dossier_scan_ATTESTATION_EMPLOI",
+      "attendu": "ATTESTATION_EMPLOI",
+      "regles": "ATTESTATION_EMPLOI",
+      "regles_ms": 0.0,
+      "embeddings": "CIN",
+      "embeddings_confiance": 0.499,
+      "embeddings_ms": 79.8,
+      "cascade_sans_llm": "ATTESTATION_EMPLOI",
+      "cascade_sans_llm_methode": "regles",
+      "cascade_sans_llm_ms": 0.0,
+      "cascade": "ATTESTATION_EMPLOI",
+      "cascade_methode": "regles",
+      "cascade_ms": 0.0
+    },
+    {
+      "document": "dossier_scan_CIN",
+      "attendu": "CIN",
+      "regles": "CIN",
+      "regles_ms": 0.0,
+      "embeddings": "CIN",
+      "embeddings_confiance": 0.522,
+      "embeddings_ms": 80.4,
+      "cascade_sans_llm": "CIN",
+      "cascade_sans_llm_methode": "regles",
+      "cascade_sans_llm_ms": 0.0,
+      "cascade": "CIN",
+      "cascade_methode": "regles",
+      "cascade_ms": 0.0
+    },
+    {
+      "document": "dossier_scan_FICHE_PAIE",
+      "attendu": "FICHE_PAIE",
+      "regles": "FICHE_PAIE",
+      "regles_ms": 0.0,
+      "embeddings": "FICHE_PAIE",
+      "embeddings_confiance": 0.482,
+      "embeddings_ms": 88.8,
+      "cascade_sans_llm": "FICHE_PAIE",
+      "cascade_sans_llm_methode": "regles",
+      "cascade_sans_llm_ms": 7.1,
+      "cascade": "FICHE_PAIE",
+      "cascade_methode": "regles",
+      "cascade_ms": 3.4
+    },
+    {
+      "document": "dossier_scan_JUSTIFICATIF_DOMICILE",
+      "attendu": "JUSTIFICATIF_DOMICILE",
+      "regles": "JUSTIFICATIF_DOMICILE",
+      "regles_ms": 2.0,
+      "embeddings": "JUSTIFICATIF_DOMICILE",
+      "embeddings_confiance": 0.544,
+      "embeddings_ms": 73.4,
+      "cascade_sans_llm": "JUSTIFICATIF_DOMICILE",
+      "cascade_sans_llm_methode": "regles",
+      "cascade_sans_llm_ms": 0.0,
+      "cascade": "JUSTIFICATIF_DOMICILE",
+      "cascade_methode": "regles",
+      "cascade_ms": 0.0
+    },
+    {
+      "document": "dossier_scan_RELEVE_BANCAIRE",
+      "attendu": "RELEVE_BANCAIRE",
+      "regles": "RELEVE_BANCAIRE",
+      "regles_ms": 16.7,
+      "embeddings": "RELEVE_BANCAIRE",
+      "embeddings_confiance": 0.445,
+      "embeddings_ms": 78.1,
+      "cascade_sans_llm": "RELEVE_BANCAIRE",
+      "cascade_sans_llm_methode": "regles",
+      "cascade_sans_llm_ms": 0.0,
+      "cascade": "RELEVE_BANCAIRE",
+      "cascade_methode": "regles",
+      "cascade_ms": 20.5
+    }
+  ],
+  "synthese": {
+    "documents": 26,
+    "regles": {
+      "couverture": "24/26",
+      "taux_couverture": 0.923,
+      "precision_quand_elles_tranchent": 1.0,
+      "erreurs": [],
+      "duree_ms": {
+        "n": 26,
+        "moyenne": 5.6,
+        "mediane": 2.0,
+        "p95": 16.5,
+        "min": 0.0,
+        "max": 17.1
+      }
+    },
+    "embeddings_seuls": {
+      "exactitude": 0.615,
+      "justes": "16/26",
+      "f1_macro": 0.578,
+      "erreurs": [
+        "ATTESTATION_EMPLOI__natif_ar : ATTESTATION_EMPLOI → JUSTIFICATIF_DOMICILE",
+        "ATTESTATION_EMPLOI__scan : ATTESTATION_EMPLOI → FICHE_PAIE",
+        "CONTRAT_TRAVAIL__natif : CONTRAT_TRAVAIL → FICHE_PAIE",
+        "JUSTIFICATIF_DOMICILE__scan_sonede : JUSTIFICATIF_DOMICILE → FICHE_PAIE",
+        "RELEVE_BANCAIRE__natif_2pages : RELEVE_BANCAIRE → CIN",
+        "RELEVE_BANCAIRE__scan : RELEVE_BANCAIRE → CIN",
+        "TITRE_SEJOUR__scan : TITRE_SEJOUR → CIN",
+        "dossier_natif_ATTESTATION_EMPLOI : ATTESTATION_EMPLOI → CIN",
+        "dossier_natif_RELEVE_BANCAIRE : RELEVE_BANCAIRE → CIN",
+        "dossier_scan_ATTESTATION_EMPLOI : ATTESTATION_EMPLOI → CIN"
+      ],
+      "duree_ms": {
+        "n": 26,
+        "moyenne": 83.7,
+        "mediane": 80.9,
+        "p95": 111.8,
+        "min": 27.7,
+        "max": 117.0
+      }
+    },
+    "cascade_sans_llm": {
+      "exactitude": 0.962,
+      "justes": "25/26",
+      "f1_macro": 0.978,
+      "erreurs": [
+        "ATTESTATION_EMPLOI__natif_ar : ATTESTATION_EMPLOI → JUSTIFICATIF_DOMICILE"
+      ],
+      "duree_ms": {
+        "n": 26,
+        "moyenne": 7.8,
+        "mediane": 0.0,
+        "p95": 63.1,
+        "min": 0.0,
+        "max": 80.5
+      },
+      "repartition_methodes": {
+        "regles": 24,
+        "embeddings": 1,
+        "embeddings_llm_indisponible": 1
+      }
+    },
+    "classes": {
+      "ASSURANCE_VIE": {
+        "precision": 1.0,
+        "rappel": 1.0,
+        "f1": 1.0,
+        "support": 1
+      },
+      "ATTESTATION_EMPLOI": {
+        "precision": 1.0,
+        "rappel": 0.8,
+        "f1": 0.889,
+        "support": 5
+      },
+      "AUTRE": {
+        "precision": 1.0,
+        "rappel": 1.0,
+        "f1": 1.0,
+        "support": 1
+      },
+      "CIN": {
+        "precision": 1.0,
+        "rappel": 1.0,
+        "f1": 1.0,
+        "support": 4
+      },
+      "CONTRAT_TRAVAIL": {
+        "precision": 1.0,
+        "rappel": 1.0,
+        "f1": 1.0,
+        "support": 1
+      },
+      "DECLARATION_FISCALE": {
+        "precision": 1.0,
+        "rappel": 1.0,
+        "f1": 1.0,
+        "support": 1
+      },
+      "FICHE_PAIE": {
+        "precision": 1.0,
+        "rappel": 1.0,
+        "f1": 1.0,
+        "support": 4
+      },
+      "JUSTIFICATIF_DOMICILE": {
+        "precision": 0.8,
+        "rappel": 1.0,
+        "f1": 0.889,
+        "support": 4
+      },
+      "RELEVE_BANCAIRE": {
+        "precision": 1.0,
+        "rappel": 1.0,
+        "f1": 1.0,
+        "support": 4
+      },
+      "TITRE_SEJOUR": {
+        "precision": 1.0,
+        "rappel": 1.0,
+        "f1": 1.0,
+        "support": 1
+      }
+    },
+    "cascade_complete": {
+      "exactitude": 0.962,
+      "justes": "25/26",
+      "f1_macro": 0.978,
+      "erreurs": [
+        "ATTESTATION_EMPLOI__natif_ar : ATTESTATION_EMPLOI → JUSTIFICATIF_DOMICILE"
+      ],
+      "duree_ms": {
+        "n": 26,
+        "moyenne": 40.8,
+        "mediane": 0.0,
+        "p95": 63.2,
+        "min": 0.0,
+        "max": 931.9
+      },
+      "repartition_methodes": {
+        "regles": 24,
+        "embeddings": 1,
+        "llm_fallback": 1
+      }
+    },
+    "appels_llm": {
+      "nombre": 1,
+      "part": 0.038,
+      "duree_ms": {
+        "n": 1,
+        "moyenne": 931.9,
+        "mediane": 931.9,
+        "p95": 931.9,
+        "min": 931.9,
+        "max": 931.9
+      }
+    }
+  }
+}

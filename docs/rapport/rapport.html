@@ -2,218 +2,439 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<title>CrediSense AI — Rapport technique</title>
+<title>CrediSense AI — Rapport de projet de fin d'études</title>
 <style>
-  @page { size: A4; margin: 18mm 16mm; }
-  :root { --ink:#1b2430; --muted:#5b6675; --line:#d9dee6; --accent:#c8402f; --gold:#f2a900; --soft:#f5f7fa; --ok:#1f7a4d; --warn:#b36b00; --ko:#b3261e; }
+  @page { size: A4; margin: 20mm 18mm 20mm 18mm; }
+  :root { --ink:#1b2430; --muted:#5b6675; --line:#d9dee6; --accent:#c8402f; --gold:#f2a900; --soft:#f5f7fa; --ok:#1f7a4d; --warn:#b36b00; --ko:#b3261e; --blue:#2563a8; }
   * { box-sizing: border-box; }
-  body { font-family: "Segoe UI", Arial, sans-serif; color: var(--ink); font-size: 10.5pt; line-height: 1.5; margin: 0; }
-  h1 { font-size: 26pt; margin: 0 0 4px; }
-  h2 { font-size: 16pt; border-bottom: 3px solid var(--gold); padding-bottom: 4px; margin: 28px 0 10px; page-break-after: avoid; }
-  h3 { font-size: 12.5pt; margin: 18px 0 6px; color: var(--accent); page-break-after: avoid; }
-  h4 { font-size: 11pt; margin: 12px 0 4px; page-break-after: avoid; }
-  p { margin: 6px 0; }
-  ul, ol { margin: 6px 0 6px 20px; padding: 0; }
+  body { font-family: "Segoe UI", Arial, sans-serif; color: var(--ink); font-size: 10.8pt; line-height: 1.55; margin: 0; text-align: justify; hyphens: auto; }
+  h1 { font-size: 22pt; margin: 0 0 14px; color: var(--ink); border-bottom: 4px solid var(--gold); padding-bottom: 8px; text-align: left; page-break-before: always; page-break-after: avoid; }
+  h1 .num { color: var(--accent); }
+  h2 { font-size: 14.5pt; margin: 24px 0 8px; color: var(--ink); border-left: 5px solid var(--gold); padding-left: 9px; text-align: left; page-break-after: avoid; }
+  h3 { font-size: 12pt; margin: 16px 0 5px; color: var(--accent); text-align: left; page-break-after: avoid; }
+  h4 { font-size: 10.8pt; margin: 11px 0 3px; text-align: left; page-break-after: avoid; }
+  p { margin: 6px 0; orphans: 3; widows: 3; }
+  ul, ol { margin: 6px 0 6px 22px; padding: 0; }
   li { margin: 2px 0; }
   code { font-family: Consolas, monospace; font-size: 9.2pt; background: var(--soft); padding: 1px 4px; border-radius: 3px; }
-  .cover { padding: 60px 0 30px; border-bottom: 6px solid var(--gold); margin-bottom: 20px; }
-  .cover .sub { color: var(--muted); font-size: 13pt; }
-  .meta { color: var(--muted); font-size: 9.5pt; margin-top: 14px; }
-  table { border-collapse: collapse; width: 100%; margin: 8px 0 12px; font-size: 9.5pt; page-break-inside: auto; }
-  th, td { border: 1px solid var(--line); padding: 5px 7px; vertical-align: top; text-align: left; }
+  table { border-collapse: collapse; width: 100%; margin: 8px 0 4px; font-size: 9.4pt; text-align: left; hyphens: manual; }
+  th, td { border: 1px solid var(--line); padding: 5px 7px; vertical-align: top; }
   th { background: var(--soft); }
   tr { page-break-inside: avoid; }
-  .box { border-left: 5px solid var(--gold); background: var(--soft); padding: 8px 12px; margin: 10px 0; page-break-inside: avoid; }
-  .box.warn { border-color: var(--warn); }
-  .box.ko { border-color: var(--ko); }
-  .box.ok { border-color: var(--ok); }
+  caption, .legende { caption-side: bottom; font-size: 9pt; color: var(--muted); text-align: center; margin: 2px 0 12px; font-style: italic; }
+  .legende { display: block; }
+  .box { border-left: 5px solid var(--gold); background: var(--soft); padding: 8px 12px; margin: 10px 0; page-break-inside: avoid; text-align: left; }
+  .box.warn { border-color: var(--warn); } .box.ko { border-color: var(--ko); } .box.ok { border-color: var(--ok); } .box.todo { border-color: var(--blue); background: #eef4fb; }
   .ok { color: var(--ok); font-weight: 600; } .warn { color: var(--warn); font-weight: 600; } .ko { color: var(--ko); font-weight: 600; }
+  .muted { color: var(--muted); }
+  .num-d { text-align: right; white-space: nowrap; }
+  /* Page de garde */
+  .cover { height: 250mm; display: flex; flex-direction: column; justify-content: space-between; text-align: center; page-break-after: always; }
+  .cover .top { font-size: 11pt; color: var(--muted); border-bottom: 1px solid var(--line); padding-bottom: 10px; }
+  .cover h1 { font-size: 32pt; border: none; page-break-before: avoid; text-align: center; margin: 0; }
+  .cover .sub { font-size: 14pt; color: var(--muted); margin-top: 8px; }
+  .cover .titre { border-top: 6px solid var(--gold); border-bottom: 6px solid var(--gold); padding: 36px 10px; }
+  .cover .bas { font-size: 11pt; text-align: left; line-height: 1.9; }
+  .todo-inline { background: #eef4fb; border: 1px dashed var(--blue); padding: 0 5px; border-radius: 3px; color: var(--blue); }
+  /* Sommaire */
+  .toc { page-break-after: always; text-align: left; }
+  .toc h1 { page-break-before: avoid; }
+  .toc ol { list-style: none; margin: 0; padding: 0; }
+  .toc > ol > li { margin: 9px 0 2px; font-weight: 600; }
+  .toc ol ol { margin: 2px 0 0 18px; font-weight: 400; }
+  .toc a { color: var(--ink); text-decoration: none; }
   /* Diagrammes */
-  .diag { border: 1px solid var(--line); border-radius: 8px; padding: 14px; margin: 10px 0; background: #fff; page-break-inside: avoid; }
+  .diag { border: 1px solid var(--line); border-radius: 8px; padding: 14px; margin: 10px 0 2px; background: #fff; page-break-inside: avoid; text-align: left; }
   .row { display: flex; gap: 10px; align-items: stretch; justify-content: center; margin: 6px 0; }
-  .node { border: 2px solid var(--ink); border-radius: 8px; padding: 6px 10px; text-align: center; font-size: 9.2pt; background: #fff; flex: 1; }
+  .node { border: 2px solid var(--ink); border-radius: 8px; padding: 6px 10px; text-align: center; font-size: 9.2pt; background: #fff; flex: 1; hyphens: manual; }
   .node small { display: block; color: var(--muted); font-size: 8pt; }
-  .node.a { border-color: #2563a8; background: #eef4fb; }
-  .node.b { border-color: var(--ok); background: #eef8f2; }
-  .node.c { border-color: var(--accent); background: #fcefed; }
-  .node.d { border-color: var(--gold); background: #fff8e6; }
+  .node.a { border-color: var(--blue); background: #eef4fb; } .node.b { border-color: var(--ok); background: #eef8f2; }
+  .node.c { border-color: var(--accent); background: #fcefed; } .node.d { border-color: var(--gold); background: #fff8e6; }
   .arrow { text-align: center; color: var(--muted); font-size: 9pt; margin: 2px 0; }
+  /* Barres de mesure */
+  .barre { display: flex; align-items: center; gap: 8px; margin: 3px 0; font-size: 9.4pt; }
+  .barre .lib { flex: 0 0 31%; text-align: left; }
+  .barre .piste { flex: 1; background: var(--soft); height: 13px; border-radius: 0 4px 4px 0; }
+  .barre .val { flex: 0 0 22%; font-variant-numeric: tabular-nums; text-align: left; }
+  .barre i { display: block; height: 13px; border-radius: 0 4px 4px 0; background: var(--blue); }
+  .barre i.v { background: var(--ok); } .barre i.o { background: var(--gold); } .barre i.r { background: var(--accent); }
+  .kpi { display: flex; gap: 10px; margin: 10px 0; }
+  .kpi div { flex: 1; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; background: #fff; text-align: left; }
+  .kpi b { display: block; font-size: 17pt; line-height: 1.2; }
+  .kpi span { color: var(--muted); font-size: 8.8pt; }
   .step { display: flex; gap: 10px; margin: 8px 0; page-break-inside: avoid; }
-  .step .n { flex: 0 0 30px; height: 30px; border-radius: 50%; background: var(--accent); color: #fff; font-weight: 700; display: flex; align-items: center; justify-content: center; }
-  .step .t { flex: 1; }
-  .pb { page-break-before: always; }
+  .step .n { flex: 0 0 28px; height: 28px; border-radius: 50%; background: var(--accent); color: #fff; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+  .step .t { flex: 1; text-align: left; }
   .speech p { font-size: 11pt; margin: 9px 0; }
 </style>
 </head>
 <body>
 
+<!-- ═════════ PAGE DE GARDE ═════════ -->
 <div class="cover">
-  <h1>CrediSense AI</h1>
-  <div class="sub">Rapport technique complet : architecture, pipeline de A à Z, changements, tests, speech</div>
-  <div class="meta">Projet : analyse automatisée de dossiers de crédit à la consommation (contexte bancaire tunisien)<br>
-  Branche : <code>deploy/azure</code> · Dernier commit : <code>b8302511</code> · Rapport du 7 octobre 2026</div>
+  <div class="top"><span class="todo-inline">[Établissement d'enseignement]</span> · Année universitaire 2025 – 2026</div>
+  <div class="titre">
+    <div class="sub" style="margin:0 0 14px">Rapport de projet de fin d'études</div>
+    <h1>CrediSense AI</h1>
+    <div class="sub">Plateforme d'aide à la décision pour le crédit à la consommation :<br>lecture des dossiers par OCR, classification, assistant documentaire (RAG) et moteur de décision hybride</div>
+  </div>
+  <div class="bas">
+    <b>Réalisé par :</b> Meriem Rehouma<br>
+    <b>Encadrant académique :</b> <span class="todo-inline">[nom]</span><br>
+    <b>Encadrant professionnel :</b> <span class="todo-inline">[nom]</span><br>
+    <b>Organisme d'accueil :</b> <span class="todo-inline">[organisme]</span> · contexte applicatif : Attijari Bank<br>
+    <b>Soutenance :</b> <span class="todo-inline">[date]</span>
+  </div>
 </div>
 
-<h2>1. En bref</h2>
-<p>CrediSense AI reçoit les pièces d'un client (CIN, fiche de paie, relevé bancaire, attestation de travail…), les lit par OCR, en extrait les données, puis calcule si le crédit demandé est supportable. Le client dépose sa demande sur un portail. Un agent de la banque vérifie les documents, lance l'analyse et obtient un résultat expliqué : décision, contrôles réglementaires, capacité d'emprunt, simulations de durée, points forts et points de vigilance.</p>
-<p>Le projet tourne en production sur une machine virtuelle Azure, déployée par Terraform et Docker Compose, derrière un reverse proxy HTTPS.</p>
+<!-- ═════════ REMERCIEMENTS / RÉSUMÉ ═════════ -->
+<h1 style="page-break-before: avoid">Remerciements</h1>
+<div class="box todo"><b>À rédiger par l'auteure.</b> Cette page est personnelle : remerciements aux encadrants, à l'organisme d'accueil, à la famille. Elle n'est volontairement pas écrite à votre place.</div>
 
-<h3>Ce qui a été fait pendant ce travail</h3>
+<h1>Résumé</h1>
+<p>L'étude d'une demande de crédit à la consommation oblige aujourd'hui un conseiller à relire cinq ou six pièces, souvent scannées, en arabe et en français, à recalculer à la main le taux d'endettement et à vérifier la cohérence de l'identité. Ce travail est long, répétitif et source d'erreurs. Ce projet réalise <b>CrediSense AI</b>, une plateforme qui assiste le conseiller de bout en bout, sans jamais se substituer à lui.</p>
+<p>La plateforme se compose d'un portail Angular, d'un backend Spring Boot qui orchestre le traitement et d'un service d'intelligence artificielle FastAPI. Les pièces sont lues par un <b>OCR</b> (PaddleOCR, arabe et français), classées par une <b>cascade à trois niveaux</b> (règles, embeddings, modèle de langage), structurées par extraction JSON adaptée au type de document, puis exploitées par un <b>assistant documentaire (RAG)</b> à recherche hybride. Le cœur du système est un <b>moteur de décision hybride</b> : le modèle de langage lit et rédige, mais tous les chiffres et toutes les décisions réglementaires sont recalculés par des règles déterministes, versionnées et testées. Chaque décision est relue par un humain avant d'être envoyée, tracée dans un journal d'audit, et suivie par un tableau de bord avec export Excel.</p>
+<p>L'évaluation porte sur un jeu de documents fictifs. Sur ce jeu, l'OCR retrouve la totalité des champs attendus, y compris sur les scans, mais reste lent sur processeur (de l'ordre de 40 secondes par page). Les mesures détaillées de chaque étape, la méthode pour les reproduire et leurs limites sont présentées au chapitre 4. L'application est déployée sur Microsoft Azure avec Terraform, Docker Compose et un reverse proxy HTTPS, et mise à jour par GitHub Actions.</p>
+<p><b>Mots-clés :</b> crédit à la consommation, OCR, classification de documents, RAG, recherche hybride, moteur de règles, modèle de langage, aide à la décision, traçabilité, déploiement cloud.</p>
+
+<h1>Abstract</h1>
+<p>Assessing a consumer-credit application forces a loan officer to read five or six documents, often scanned, in Arabic and French, to recompute the debt ratio by hand and to cross-check the applicant's identity. <b>CrediSense AI</b> assists the officer from end to end without replacing them. The platform combines an Angular portal, a Spring Boot orchestration backend and a FastAPI AI service. Documents go through OCR (PaddleOCR, Arabic and French), a three-level classification cascade (rules, embeddings, language model), type-aware JSON extraction and a hybrid-retrieval question-answering assistant (RAG). The core is a <b>hybrid decision engine</b>: the language model reads and writes, but every figure and regulatory verdict is recomputed by deterministic, versioned, tested rules. Each decision is reviewed by a human before sending, recorded in an append-only audit log and summarised in a dashboard with Excel export. Evaluation on a fictitious document set shows complete field recall in OCR, with a processing time of about 40 seconds per scanned page on CPU. The system is deployed on Microsoft Azure with Terraform, Docker Compose and GitHub Actions.</p>
+<p><b>Keywords:</b> consumer credit, OCR, document classification, retrieval-augmented generation, hybrid search, rule engine, large language model, decision support, auditability, cloud deployment.</p>
+
+<!-- ═════════ SOMMAIRE ═════════ -->
+<div class="toc">
+<h1>Sommaire</h1>
+<ol>
+  <li><a href="#intro">Introduction générale</a></li>
+  <li><a href="#ch1">Chapitre 1 — Contexte et cadrage du projet</a>
+    <ol><li>Contexte</li><li>Problématique</li><li>Objectifs et périmètre</li><li>Acteurs et besoins</li><li>Exigences</li><li>Méthodologie de travail</li></ol></li>
+  <li><a href="#ch2">Chapitre 2 — Conception et architecture</a>
+    <ol><li>Vue d'ensemble</li><li>Choix technologiques</li><li>Architecture du backend et modèle de données</li><li>Architecture du service d'intelligence artificielle</li><li>Chaîne de traitement d'un dossier</li><li>Principes de conception</li><li>Sécurité</li></ol></li>
+  <li><a href="#ch3">Chapitre 3 — Réalisation</a>
+    <ol><li>OCR</li><li>Classification des documents</li><li>Extraction de données</li><li>Assistant documentaire (RAG)</li><li>Moteur de décision hybride</li><li>Contrôle humain, notification et audit</li><li>Statistiques et export</li><li>Interface utilisateur</li></ol></li>
+  <li><a href="#ch4">Chapitre 4 — Tests et évaluation des performances</a>
+    <ol><li>Stratégie de tests</li><li>Résultats des tests automatisés</li><li>Protocole de mesure</li><li>Indicateurs de performance par étape</li><li>Analyse, limites et menaces sur la validité</li><li>Synthèse à présenter en soutenance</li></ol></li>
+  <li><a href="#ch5">Chapitre 5 — Déploiement</a>
+    <ol><li>Environnement cible</li><li>Infrastructure en tant que code</li><li>Conteneurisation</li><li>Intégration et déploiement continus</li><li>Configuration et secrets</li><li>Mise en ligne d'une version</li><li>Mesures de déploiement</li></ol></li>
+  <li><a href="#concl">Conclusion générale et perspectives</a></li>
+  <li><a href="#annexes">Annexes</a>
+    <ol><li>Glossaire</li><li>Points d'entrée de l'API</li><li>Variables de configuration</li><li>Speech de présentation de l'architecture</li><li>Commandes de reproduction des mesures</li></ol></li>
+</ol>
+</div>
+
+<h1 style="page-break-before: avoid">Liste des abréviations</h1>
 <table>
-  <tr><th style="width:26%">Chantier</th><th>Résultat</th></tr>
-  <tr><td>Audit du projet</td><td>Relecture complète : défauts de sécurité, appels LLM en double, texte tronqué, calculs optimistes.</td></tr>
-  <tr><td>Déploiement Azure</td><td>VM créée par Terraform sur un abonnement étudiant (contraintes de région, de quota et de capacité résolues), stack Docker Compose, HTTPS automatique, mise à jour par GitHub Actions.</td></tr>
-  <tr><td>Image du service IA</td><td>Build corrigé : versions de PaddleOCR / PaddlePaddle alignées (3.x), dépendances numériques figées.</td></tr>
-  <tr><td>OCR</td><td>Photos (JPG, PNG, TIFF…) acceptées, format détecté par le contenu du fichier, formats non supportés refusés avec un message clair, fusion arabe + français, raison d'échec affichée à l'agent.</td></tr>
-  <tr><td>Fichiers du client</td><td>Les dépôts du client n'étaient pas dans le volume persistant, donc perdus à chaque redéploiement. Corrigé.</td></tr>
-  <tr><td>Scoring</td><td>Plus de troncature à 4 000 caractères : budget de 12 000 caractères réparti entre les documents. Appel de scoring en double supprimé, attente artificielle de 3 s supprimée.</td></tr>
-  <tr><td>Chatbot</td><td>L'indexation n'appelle plus le LLM pour rien, et chaque document est indexé avec son propre libellé.</td></tr>
-  <tr><td>Pipeline d'analyse</td><td>Deux étapes réellement verrouillées : « Vérifier les documents » puis « Analyser ». Contrôle du CIN avec confirmation de l'agent, et refus côté serveur (409) sans cette confirmation.</td></tr>
-  <tr><td>Classification des documents</td><td>Branchée dans le pipeline : un document déposé dans le mauvais emplacement est détecté (cascade règles, embeddings, LLM). Un désaccord bloque « Analyser » jusqu'à confirmation de l'agent, et l'extraction JSON est adaptée au type réel du document.</td></tr>
-  <tr><td>Réponse automatique au client</td><td>Dès que la décision est prise, le serveur envoie l'e-mail de réponse au client avec le rapport PDF en pièce jointe, sans clic de l'agent. Pas de doublon, un échec n'annule jamais l'analyse, et l'agent voit l'état de l'envoi. Le nom de la banque est « Attijari Bank » partout.</td></tr>
-  <tr><td>Contrôle humain avant l'envoi</td><td>Un refus n'est plus envoyé tout seul : il attend « Valider et envoyer » de l'agent, qui peut aussi choisir de ne pas l'envoyer. Les autres décisions partent tout de suite ou après un délai annulable. La validation porte sur la décision lue : si une nouvelle analyse l'a changée, le serveur refuse.</td></tr>
-  <tr><td>Journal d'audit</td><td>Table en ajout seul : qui a décidé quoi, quand, avec quelle version des règles et quel fournisseur d'IA, et quel e-mail est parti, validé, annulé ou en échec. Visible en frise sur chaque dossier.</td></tr>
-  <tr><td>Tableau de bord administrateur</td><td>Taux d'acceptation, répartition des décisions, délais, motifs de refus, évolution dans le temps, état des envois, avec export Excel (4 feuilles). Réservé au rôle ADMIN.</td></tr>
-  <tr><td>Calcul du crédit</td><td>Taux d'intérêt obligatoire, dettes inconnues jamais comptées comme zéro, nouvelle décision « À COMPLÉTER » : un dossier incomplet ne sort plus « éligible ».</td></tr>
-  <tr><td>Écran de résultat</td><td>Affiche tout ce que le moteur calcule, plus le cas « à compléter », le score provisoire et le taux utilisé. E-mail client adapté.</td></tr>
-  <tr><td>Identité visuelle</td><td>Icône et titre de l'onglet : l'icône Angular par défaut est remplacée par l'emblème Attijari.</td></tr>
-  <tr><td>Données de test</td><td>Dossier fictif complet de 5 documents pour le CIN 12015060 (versions natives et scannées).</td></tr>
+  <tr><th style="width:18%">Sigle</th><th>Signification</th></tr>
+  <tr><td>API</td><td>Application Programming Interface</td></tr>
+  <tr><td>BCT</td><td>Banque Centrale de Tunisie</td></tr>
+  <tr><td>BM25</td><td>Best Matching 25 : fonction de classement par mots exacts</td></tr>
+  <tr><td>CER / F1</td><td>Character Error Rate / moyenne harmonique de la précision et du rappel</td></tr>
+  <tr><td>CI/CD</td><td>Intégration continue / déploiement continu</td></tr>
+  <tr><td>CIN</td><td>Carte d'identité nationale</td></tr>
+  <tr><td>DTI</td><td>Debt-to-Income : taux d'endettement (charges mensuelles ÷ revenu net)</td></tr>
+  <tr><td>FAISS</td><td>Facebook AI Similarity Search : bibliothèque de recherche de vecteurs</td></tr>
+  <tr><td>JWT</td><td>JSON Web Token</td></tr>
+  <tr><td>KPI</td><td>Key Performance Indicator : indicateur clé de performance</td></tr>
+  <tr><td>LLM</td><td>Large Language Model : grand modèle de langage</td></tr>
+  <tr><td>MDH</td><td>Moteur de décision hybride (règles déterministes + modèle de langage)</td></tr>
+  <tr><td>MRR</td><td>Mean Reciprocal Rank : rang moyen inverse de la première bonne réponse</td></tr>
+  <tr><td>OCR</td><td>Optical Character Recognition : reconnaissance optique de caractères</td></tr>
+  <tr><td>RAG</td><td>Retrieval-Augmented Generation : génération appuyée sur une recherche documentaire</td></tr>
+  <tr><td>RRF</td><td>Reciprocal Rank Fusion : fusion de classements</td></tr>
+  <tr><td>SSR</td><td>Server-Side Rendering : rendu côté serveur</td></tr>
 </table>
 
-<h2>2. Architecture</h2>
+<!-- ═════════ INTRODUCTION ═════════ -->
+<h1 id="intro">Introduction générale</h1>
+<p>Un établissement bancaire qui accorde un crédit à la consommation doit répondre à une question en apparence simple : <i>ce client peut-il rembourser ?</i> Pour y répondre, un conseiller réunit une carte d'identité, une fiche de paie, un relevé bancaire, une attestation de travail et un justificatif de domicile. Il lit chaque pièce, vérifie que l'identité est la même partout, repère les crédits déjà en cours, calcule la mensualité et le taux d'endettement, puis confronte le résultat aux seuils réglementaires. Les pièces sont souvent des scans, en arabe et en français ; le calcul est répété à chaque dossier ; l'erreur d'un chiffre peut conduire à accorder un crédit qui ne sera pas remboursé ou à refuser un client solvable.</p>
+<p>L'intelligence artificielle générative semble offrir un raccourci : confier le dossier à un modèle de langage et lui demander une décision. Ce raccourci est dangereux dans un contexte bancaire. Un modèle de langage peut inventer un chiffre, ne donne pas deux fois la même réponse et ne peut pas justifier précisément une décision. Le projet part donc d'un constat inverse : <b>le modèle de langage est excellent pour lire et rédiger, mauvais pour calculer et décider</b>. L'architecture est construite autour de cette séparation.</p>
+<p>Ce rapport présente <b>CrediSense AI</b>, une plateforme qui assiste le conseiller sans jamais le remplacer. Il est organisé en cinq chapitres. Le <b>chapitre 1</b> pose le contexte, la problématique, les objectifs et les exigences. Le <b>chapitre 2</b> décrit la conception et l'architecture. Le <b>chapitre 3</b> détaille la réalisation, étape par étape : OCR, classification, extraction, assistant documentaire, moteur de décision, contrôle humain et audit, statistiques. Le <b>chapitre 4</b> présente la stratégie de tests et, surtout, les <b>indicateurs de performance mesurés</b> pour chaque étape, avec la méthode pour les reproduire et leurs limites. Le <b>chapitre 5</b> décrit le déploiement sur Microsoft Azure. Une conclusion dresse le bilan et les perspectives.</p>
+<div class="box"><b>Convention de lecture.</b> Tout chiffre de performance de ce rapport est soit <i>mesuré</i> (avec la date, le jeu de données et la commande qui le produit), soit signalé comme <i>à mesurer</i>. Aucun chiffre n'est estimé ou inventé. Les mesures portent sur un <b>jeu de documents fictifs</b> généré pour le projet : elles prouvent le bon fonctionnement de la chaîne, pas sa précision sur de vrais dossiers bancaires.</div>
+
+<!-- ═════════ CHAPITRE 1 ═════════ -->
+<h1 id="ch1"><span class="num">Chapitre 1</span> — Contexte et cadrage du projet</h1>
+<p>Ce chapitre situe le projet : le contexte bancaire, le problème à résoudre, les objectifs fixés, les acteurs concernés et les exigences qui en découlent.</p>
+
+<h2>1.1 Contexte</h2>
+<p>Le crédit à la consommation est un produit de masse : les montants sont modestes, les dossiers nombreux, les délais de réponse attendus par les clients courts. En Tunisie, les pièces justificatives sont fournies en arabe, en français ou dans les deux langues, sous forme de PDF natifs, de scans ou de photos. L'étude d'un dossier repose sur des règles prudentielles de la Banque Centrale de Tunisie (BCT) : plafond d'endettement, durée maximale, plafond du montant en fonction du salaire, âge maximal en fin de crédit.</p>
+<p>Le travail du conseiller se décompose en quatre tâches : <b>lire</b> les pièces, <b>contrôler</b> leur cohérence, <b>calculer</b> la capacité de remboursement, <b>décider</b> et <b>répondre</b> au client. Les trois premières sont mécaniques et se prêtent à l'automatisation ; la quatrième engage la responsabilité de la banque.</p>
+
+<h2>1.2 Problématique</h2>
+<p>La question centrale est : <b>comment automatiser la lecture et le calcul d'un dossier de crédit avec des techniques d'intelligence artificielle, tout en gardant une décision fiable, explicable et contrôlée par un humain ?</b> Elle se décline en cinq difficultés.</p>
+<table>
+  <tr><th style="width:5%">#</th><th style="width:30%">Difficulté</th><th>Conséquence si elle n'est pas traitée</th></tr>
+  <tr><td>1</td><td>Les pièces sont hétérogènes (natif, scan, photo, arabe, français)</td><td>Texte illisible ou incomplet, donc données fausses</td></tr>
+  <tr><td>2</td><td>Le client choisit lui-même où il dépose chaque pièce</td><td>Un relevé déposé comme fiche de paie fausse le revenu et les dettes</td></tr>
+  <tr><td>3</td><td>Un modèle de langage invente, varie et n'explique pas ses calculs</td><td>Décision non reproductible, indéfendable devant un audit</td></tr>
+  <tr><td>4</td><td>Une donnée absente peut être confondue avec une valeur nulle</td><td>Un dossier incomplet sort « éligible » (dette inconnue comptée comme 0)</td></tr>
+  <tr><td>5</td><td>La banque doit rendre des comptes sur chaque décision</td><td>Impossible de savoir qui a décidé quoi, quand, avec quelles règles</td></tr>
+</table>
+<span class="legende">Tableau 1.1 — Les cinq difficultés à résoudre</span>
+
+<h2>1.3 Objectifs et périmètre</h2>
+<h3>Objectifs</h3>
+<ol>
+  <li><b>Lire</b> automatiquement les pièces d'un dossier, natives ou scannées, en arabe et en français.</li>
+  <li><b>Vérifier</b> la nature de chaque pièce et la cohérence de l'identité.</li>
+  <li><b>Calculer</b> mensualité, taux d'endettement, capacité d'emprunt et simulations, de façon reproductible.</li>
+  <li><b>Proposer</b> une décision (éligible, conditionnel, refus, à compléter) expliquée critère par critère.</li>
+  <li><b>Aider</b> le conseiller à interroger le dossier en langage naturel (assistant documentaire).</li>
+  <li><b>Contrôler et tracer</b> : validation humaine avant l'envoi, journal d'audit, tableau de bord.</li>
+  <li><b>Déployer</b> l'ensemble sur un cloud public, de façon reproductible.</li>
+</ol>
+<h3>Périmètre</h3>
+<table>
+  <tr><th style="width:50%">Dans le périmètre</th><th>Hors périmètre</th></tr>
+  <tr><td>Crédit à la consommation ; cinq types de pièces (CIN, fiche de paie, relevé bancaire, attestation d'emploi, justificatif de domicile) ; trois rôles ; réponse au client par e-mail avec PDF ; déploiement sur une VM Azure</td><td>Crédit immobilier ; connexion à la centrale des risques de la BCT ; signature électronique ; grille de score propriétaire de la banque ; validation sur de vrais dossiers bancaires</td></tr>
+</table>
+<div class="box warn"><b>Honnêteté sur les seuils.</b> Les seuils réglementaires du moteur (30 % et 35 % d'endettement, 5 fois le salaire, 84 mois, 6 mois d'ancienneté, 70 ans) sont attribués à la BCT dans le code, mais n'ont pas été confrontés à une source officielle. Ils sont centralisés dans un seul module et doivent être validés avec la banque avant tout usage réel.</div>
+
+<h2>1.4 Acteurs et besoins</h2>
+<table>
+  <tr><th style="width:16%">Acteur</th><th>Besoin</th><th style="width:36%">Fonctions offertes</th></tr>
+  <tr><td><b>Client</b><br><span class="muted">sans compte, via le portail public</span></td><td>Déposer une demande et ses pièces, recevoir une réponse claire</td><td>Création de la demande, dépôt des pièces par type, réponse par e-mail avec rapport PDF</td></tr>
+  <tr><td><b>Agent</b><br><span class="muted">conseiller bancaire, rôle AGENT</span></td><td>Étudier vite et sûrement un dossier, rester maître de la décision</td><td>Vérification des documents, analyse, résultat expliqué, assistant documentaire, validation avant envoi, journal du dossier</td></tr>
+  <tr><td><b>Administrateur</b><br><span class="muted">rôle ADMIN</span></td><td>Piloter l'activité et gérer les agents</td><td>Gestion des agents, tableau de bord statistique, export Excel</td></tr>
+</table>
+<span class="legende">Tableau 1.2 — Acteurs, besoins et fonctions</span>
+
+<h2>1.5 Exigences</h2>
+<h3>Exigences fonctionnelles</h3>
+<table>
+  <tr><th style="width:9%">Réf.</th><th>Exigence</th><th style="width:22%">Chapitre</th></tr>
+  <tr><td>EF1</td><td>Lire un PDF natif, un scan ou une photo, en arabe et en français</td><td>3.1</td></tr>
+  <tr><td>EF2</td><td>Classer chaque pièce et signaler un désaccord avec le type déclaré</td><td>3.2</td></tr>
+  <tr><td>EF3</td><td>Extraire les données utiles, avec un schéma adapté au type de pièce</td><td>3.3</td></tr>
+  <tr><td>EF4</td><td>Vérifier que le CIN lu est celui du client, sur chaque pièce</td><td>3.3, 3.6</td></tr>
+  <tr><td>EF5</td><td>Répondre à des questions sur le dossier avec les sources</td><td>3.4</td></tr>
+  <tr><td>EF6</td><td>Calculer mensualité, endettement, capacité, simulations ; rendre une décision expliquée</td><td>3.5</td></tr>
+  <tr><td>EF7</td><td>Proposer un montant ou une durée ajustés pour un dossier conditionnel</td><td>3.5</td></tr>
+  <tr><td>EF8</td><td>Faire valider une réponse par un agent avant l'envoi ; pouvoir l'annuler</td><td>3.6</td></tr>
+  <tr><td>EF9</td><td>Journaliser chaque décision et chaque action ; fournir statistiques et export</td><td>3.6, 3.7</td></tr>
+</table>
+<h3>Exigences non fonctionnelles</h3>
+<table>
+  <tr><th style="width:9%">Réf.</th><th style="width:22%">Qualité</th><th>Exigence</th></tr>
+  <tr><td>ENF1</td><td>Fiabilité des chiffres</td><td>Un chiffre financier est reproductible : même entrée, même sortie</td></tr>
+  <tr><td>ENF2</td><td>Honnêteté</td><td>Une donnée inconnue n'est jamais traitée comme nulle ; aucune valeur inventée</td></tr>
+  <tr><td>ENF3</td><td>Traçabilité</td><td>Journal en ajout seul, version des règles consignée avec chaque décision</td></tr>
+  <tr><td>ENF4</td><td>Disponibilité</td><td>Une panne du modèle de langage ou de la messagerie ne perd aucun dossier</td></tr>
+  <tr><td>ENF5</td><td>Performance</td><td>Étapes déterministes en millisecondes ; temps de l'OCR mesuré et documenté</td></tr>
+  <tr><td>ENF6</td><td>Confidentialité</td><td>CIN, RIB et IBAN masqués avant tout envoi à un modèle externe ; rôles ADMIN et AGENT</td></tr>
+  <tr><td>ENF7</td><td>Maintenabilité</td><td>Chaque module est testé ; la chaîne de déploiement est reproductible</td></tr>
+</table>
+
+<h2>1.6 Méthodologie de travail</h2>
+<p>Le projet a été conduit de façon itérative : chaque lot de fonctionnalités a été développé avec ses tests, mesuré, puis livré dans un commit. Les décisions de conception ont été prises sur des <b>mesures</b> et non sur des intuitions. Exemple : les embeddings seuls classaient une attestation de travail comme une carte d'identité (similarité 0,407 contre 0,403 pour la bonne réponse) ; cette mesure a conduit à ajouter un niveau de règles en amont. Chaque étape de la chaîne est évaluée indépendamment avant d'être branchée dans le pipeline.</p>
+
+<!-- ═════════ CHAPITRE 2 ═════════ -->
+<h1 id="ch2"><span class="num">Chapitre 2</span> — Conception et architecture</h1>
+<p>Ce chapitre présente l'architecture du système, les choix technologiques et les principes qui guident la conception. Il se termine par le déroulement complet du traitement d'un dossier.</p>
+
+<h2>2.1 Vue d'ensemble</h2>
 <div class="diag">
-  <div class="row"><div class="node d"><b>Client / Agent</b><small>navigateur</small></div></div>
+  <div class="row"><div class="node d"><b>Client / Agent / Administrateur</b><small>navigateur</small></div></div>
   <div class="arrow">▼ HTTPS (443)</div>
-  <div class="row"><div class="node c"><b>Caddy</b><small>reverse proxy, certificat HTTPS automatique (Let's Encrypt)</small></div></div>
+  <div class="row"><div class="node c"><b>Caddy</b><small>reverse proxy · certificat HTTPS automatique · limite 100 Mo</small></div></div>
   <div class="arrow">▼ <code>/api/*</code> vers le backend · le reste vers le frontend</div>
   <div class="row">
-    <div class="node a"><b>Frontend Angular (SSR)</b><small>port 4000 · portail client et espace agent</small></div>
-    <div class="node a"><b>Backend Spring Boot</b><small>port 8081 · API REST, JWT, logique métier, orchestration</small></div>
+    <div class="node a"><b>Frontend Angular (SSR)</b><small>port 4000 · portail client, espace agent, administration</small></div>
+    <div class="node a"><b>Backend Spring Boot</b><small>port 8081 · API REST, JWT, orchestration, e-mails, audit</small></div>
   </div>
-  <div class="arrow">▼ HTTP interne (réseau Docker)</div>
+  <div class="arrow">▼ HTTP, réseau Docker privé</div>
   <div class="row">
-    <div class="node b"><b>Service IA FastAPI</b><small>port 8002 · OCR PaddleOCR, extraction, chatbot RAG, scoring</small></div>
-    <div class="node b"><b>PostgreSQL 16</b><small>dossiers, fichiers, OCR, extractions, décisions</small></div>
+    <div class="node b"><b>Service IA FastAPI</b><small>port 8002 · OCR, classification, extraction, RAG, décision</small></div>
+    <div class="node b"><b>PostgreSQL 16</b><small>dossiers, fichiers, OCR, décisions, journal</small></div>
   </div>
   <div class="arrow">▼ API externes</div>
-  <div class="row"><div class="node d"><b>LLM : Groq, Mistral</b><small>route ordonnée avec bascule automatique si un fournisseur est saturé (429)</small></div></div>
-  <div class="row" style="margin-top:10px"><div class="node"><b>Volume « uploads »</b><small>/data/uploads, partagé par backend et IA, persistant</small></div><div class="node"><b>Volume « pgdata »</b><small>données PostgreSQL, persistant</small></div></div>
+  <div class="row"><div class="node d"><b>Modèles de langage : Groq, Mistral</b><small>ordre de préférence par tâche, bascule automatique en cas de saturation (HTTP 429)</small></div></div>
 </div>
+<span class="legende">Figure 2.1 — Architecture de déploiement : six conteneurs sur une machine virtuelle</span>
 
 <h3>Rôle de chaque brique</h3>
 <table>
-  <tr><th style="width:20%">Brique</th><th>Rôle</th><th style="width:28%">Choix technique</th></tr>
-  <tr><td>Frontend</td><td>Portail client (inscription, demande, dépôt de pièces, historique) et espace agent (dossiers, pipeline, résultat, chatbot, export).</td><td>Angular, composants standalone, rendu serveur (SSR)</td></tr>
-  <tr><td>Backend</td><td>Authentification, gestion des dossiers et fichiers, <b>orchestration du pipeline</b>, calcul de cohérence du CIN, sauvegarde des résultats, e-mails.</td><td>Spring Boot, JPA/Hibernate, JWT, Spring Mail</td></tr>
-  <tr><td>Service IA</td><td>OCR, extraction structurée par LLM, détection de dettes par règles, scoring (LLM + règles), chatbot sur le dossier.</td><td>FastAPI, PaddleOCR 3.x, PyMuPDF, MiniLM (embeddings), Pydantic</td></tr>
-  <tr><td>Base de données</td><td>Source de vérité : dossiers, fichiers, texte OCR, extractions JSON, analyse agent, décision finale (avec le résultat complet en JSON).</td><td>PostgreSQL 16</td></tr>
-  <tr><td>Proxy</td><td>Termine le HTTPS, route <code>/api</code> vers le backend, limite à 100 Mo par requête.</td><td>Caddy 2</td></tr>
+  <tr><th style="width:18%">Brique</th><th>Rôle</th><th style="width:26%">Technologies</th></tr>
+  <tr><td>Frontend</td><td>Portail client (demande, dépôt des pièces), espace agent (pipeline, résultat, chatbot), administration (agents, statistiques)</td><td>Angular, composants autonomes, SSR</td></tr>
+  <tr><td>Backend</td><td>Authentification, dossiers, fichiers, <b>orchestration du pipeline</b>, cohérence du CIN, notification, journal d'audit, statistiques, PDF et Excel</td><td>Spring Boot, JPA/Hibernate, JWT, iText, Apache POI</td></tr>
+  <tr><td>Service IA</td><td>OCR, classification, extraction, assistant documentaire, moteur de décision</td><td>FastAPI, PaddleOCR, PyMuPDF, MiniLM, FAISS, Pydantic</td></tr>
+  <tr><td>Base de données</td><td>Source de vérité : tout est reconstructible depuis elle (hors index mémoire du chatbot)</td><td>PostgreSQL 16</td></tr>
+  <tr><td>Proxy</td><td>Termine le HTTPS, route les requêtes</td><td>Caddy 2</td></tr>
 </table>
+<span class="legende">Tableau 2.1 — Les briques du système</span>
 
-<h3>Déploiement</h3>
-<ul>
-  <li><b>Infrastructure</b> : Terraform crée le groupe de ressources, le réseau, la VM Linux et un script <code>cloud-init</code> qui installe Docker et écrit les fichiers de configuration (<code>.env</code>, <code>ai.env</code>) dans <code>/opt/credisense</code>.</li>
-  <li><b>Images</b> : le workflow GitHub Actions construit les trois images (backend, frontend, ai) et les publie sur GHCR, puis met la VM à jour par SSH. Sur la VM actuelle, les images ont été construites localement (<code>IMAGE_TAG=latest</code>, <code>--pull never</code>).</li>
-  <li><b>Secrets</b> : clés LLM, SMTP, JWT et mot de passe base viennent des fichiers d'environnement, jamais du code.</li>
-  <li><b>Abonnement étudiant</b> : région limitée par une politique, quota par famille de VM, erreurs de capacité (<code>SkuNotAvailable</code>). Le script <code>recover-state.sh</code> et les commentaires de <code>terraform.tfvars.example</code> documentent ces cas.</li>
-</ul>
+<h2>2.2 Choix technologiques</h2>
+<table>
+  <tr><th style="width:22%">Choix</th><th>Justification</th><th style="width:30%">Alternative écartée</th></tr>
+  <tr><td>Deux langages : Java et Python</td><td>Le monde métier (sécurité, transactions, base) est solide en Java ; l'écosystème IA (OCR, embeddings) vit en Python. Les deux se parlent par HTTP simple et se déploient séparément.</td><td>Tout en Python : moins de maturité côté sécurité et transactions</td></tr>
+  <tr><td>PaddleOCR</td><td>Modèles arabe et latin, exécution locale (les pièces d'identité ne quittent pas le serveur pour la lecture), précision constatée sur nos scans</td><td>OCR en ligne : données personnelles envoyées à un tiers</td></tr>
+  <tr><td>MiniLM multilingue</td><td>Embeddings 384 dimensions, français et arabe, rapide sur processeur</td><td>Modèles plus gros : latence et mémoire</td></tr>
+  <tr><td>FAISS + BM25</td><td>Le sens (FAISS) et les mots exacts (BM25) se complètent ; les montants et numéros sont mal pesés par les seuls embeddings</td><td>Recherche dense seule</td></tr>
+  <tr><td>Règles déterministes pour les chiffres</td><td>Reproductibilité, explicabilité, testabilité (section 2.6)</td><td>Décision laissée au modèle de langage</td></tr>
+  <tr><td>Plusieurs fournisseurs de LLM</td><td>Bascule automatique si l'un est saturé : le service reste disponible</td><td>Fournisseur unique</td></tr>
+  <tr><td>PostgreSQL</td><td>Transactions, types JSON, maturité</td><td>Base documentaire : peu adaptée aux jointures du modèle</td></tr>
+  <tr><td>Docker Compose sur une VM</td><td>Adapté à la charge et au budget d'un abonnement étudiant ; reproductible</td><td>Kubernetes : surdimensionné ici</td></tr>
+</table>
+<span class="legende">Tableau 2.2 — Choix technologiques et alternatives</span>
 
-<h2 class="pb">3. Le pipeline de A à Z</h2>
-<p>Le pipeline a deux acteurs : le client dépose, l'agent vérifie puis analyse. Chaque étape a un point d'entrée précis dans le code.</p>
+<h2>2.3 Architecture du backend et modèle de données</h2>
+<p>Le backend suit une architecture en couches classique : <b>contrôleurs</b> (API REST) → <b>services</b> (logique métier) → <b>dépôts</b> (accès aux données JPA) → <b>entités</b>. L'authentification est assurée par des jetons JWT, avec deux rôles (<code>ADMIN</code> et <code>AGENT</code>) ; le portail client public passe par des routes dédiées.</p>
+<table>
+  <tr><th style="width:22%">Entité</th><th>Contenu</th></tr>
+  <tr><td><code>Client</code></td><td>Identité du demandeur (nom, prénom, CIN, e-mail)</td></tr>
+  <tr><td><code>Dossier</code></td><td>Demande de crédit : montant, durée, contrat, statut (en attente, en cours, approuvé, refusé)</td></tr>
+  <tr><td><code>Fichier</code></td><td>Pièce déposée : type déclaré, type détecté, confiance, méthode, conflit, trace de la classification (JSON)</td></tr>
+  <tr><td><code>OcrResult</code></td><td>Texte brut et nettoyé, statut (<code>SUCCESS</code> ou <code>FAILED</code>), raison de l'échec</td></tr>
+  <tr><td><code>JsonExtraction</code></td><td>Données structurées extraites d'un fichier, score de confiance</td></tr>
+  <tr><td><code>AgentAnalysis</code></td><td>Synthèse de l'analyse : score, revenus, endettement, décision</td></tr>
+  <tr><td><code>DecisionFinale</code></td><td>Décision, justification, <b>résultat complet en JSON</b>, état de l'envoi (statut, mode, acteur, heure prévue), date de la dernière décision</td></tr>
+  <tr><td><code>AuditEvent</code></td><td>Journal en ajout seul : type, acteur, décision, score, version des règles, détail</td></tr>
+  <tr><td><code>Agent</code></td><td>Conseiller ou administrateur (rôle, mot de passe chiffré)</td></tr>
+</table>
+<span class="legende">Tableau 2.3 — Principales entités</span>
+<p>Choix notable : le <b>résultat complet de l'analyse est conservé en JSON</b> avec la décision. Il permet de régénérer à tout moment le rapport PDF et les statistiques sans relancer l'analyse, et de relire exactement ce que l'agent a vu.</p>
 
-<div class="step"><div class="n">A</div><div class="t"><h4>Le client crée sa demande</h4>
-<p>Le portail client (<code>/client/demande</code>) envoie le montant, la durée et le type de contrat à <code>POST /api/public/demande</code>. Un dossier est créé en base avec le statut <code>EN_ATTENTE</code>.</p></div></div>
+<h2>2.4 Architecture du service d'intelligence artificielle</h2>
+<table>
+  <tr><th style="width:30%">Module</th><th>Responsabilité</th></tr>
+  <tr><td><code>ocr_service.py</code></td><td>Détection du format par octets, lecture native (PyMuPDF) ou OCR (PaddleOCR), fusion arabe et latin, cache par empreinte SHA-256</td></tr>
+  <tr><td><code>classification_regles.py</code><br><code>nlp_service.py</code><br><code>llm_classifier_service.py</code><br><code>document_classifier_service.py</code></td><td>Les trois niveaux de la cascade et leur orchestration, avec trace niveau par niveau</td></tr>
+  <tr><td><code>controle_type.py</code></td><td>Comparaison type déclaré / type détecté, seuil de fiabilité par méthode</td></tr>
+  <tr><td><code>groq_service.py</code></td><td>Extraction JSON : schéma et consignes par type de document, validation Pydantic, score de confiance</td></tr>
+  <tr><td><code>dossier_texte.py</code><br><code>dettes_releve.py</code></td><td>Budget de texte réparti entre les documents ; détecteur de dettes par règles dans le relevé</td></tr>
+  <tr><td><code>decoupage_rag.py</code><br><code>recherche_hybride.py</code><br><code>chatbot_service.py</code></td><td>Découpage structurel et sémantique, BM25 et fusion RRF, assistant documentaire avec mémoire</td></tr>
+  <tr><td><code>agent_service.py</code></td><td><b>Moteur de décision hybride</b> : lecture par LLM, règles déterministes, garde-fous, propositions d'ajustement</td></tr>
+  <tr><td><code>llm_client.py</code></td><td>Routeur de fournisseurs de modèles de langage avec bascule automatique</td></tr>
+</table>
+<span class="legende">Tableau 2.4 — Modules du service IA</span>
 
-<div class="step"><div class="n">B</div><div class="t"><h4>Le client dépose ses pièces</h4>
-<p><code>POST /api/public/upload</code> (<code>DemandeCreditController</code>). Le nom du fichier et le CIN sont assainis, le fichier est écrit dans <code>upload.base-path</code> (volume persistant <code>/data/uploads</code>), puis une ligne <code>Fichier</code> est créée avec le type de document choisi par le client (« AUTRE » par défaut).</p></div></div>
-
-<div class="step"><div class="n">C</div><div class="t"><h4>L'agent ouvre le dossier</h4>
-<p>L'espace agent charge les fichiers (<code>GET /api/dossiers/{id}/fichiers</code>). Chaque document porte son statut OCR (<code>ocrStatut</code>, <code>ocrErreur</code>), son JSON extrait et sa cohérence de CIN. Le composant <code>pipeline-analyse</code> affiche quatre étapes : documents, cohérence du CIN, analyse, score.</p></div></div>
-
-<div class="step"><div class="n">D</div><div class="t"><h4>Étape 1 : « Vérifier les documents »</h4>
-<p><code>POST /api/fichiers/verifier-dossier/{id}</code> → <code>verifierDossier()</code> → <code>lireEtExtraire()</code>.</p>
-<ol>
-  <li><b>Saut des documents déjà traités</b> : un document est « déjà vérifié » s'il a un texte OCR réussi et une extraction non vide. Il n'est ni relu ni renvoyé au LLM.</li>
-  <li><b>OCR</b> : le backend envoie le fichier au service IA (<code>POST /ocr</code>). Le format est détecté par les premiers octets du fichier (PDF, JPG, PNG, TIFF, BMP, WebP). Un PDF natif est lu directement avec PyMuPDF. Un scan ou une photo passe par PaddleOCR : détection des zones, lecture par le modèle arabe et par le modèle latin, fusion zone par zone, regroupement par ligne, normalisation Unicode. Le Word et le HEIC sont refusés avec un message explicite.</li>
-  <li><b>Enregistrement</b> : <code>ocr_results</code> reçoit le texte, le statut (<code>SUCCESS</code> ou <code>FAILED</code>) et la raison de l'échec.</li>
-  <li><b>Classification</b> : le texte est envoyé à <code>POST /ai/classify-hybrid</code> avec le type déclaré par le client. Le service renvoie le type détecté, sa confiance, la méthode, et un bloc « contrôle » : concordant, en désaccord, ou sans conclusion (section 4). Le résultat est enregistré sur le fichier (<code>typeDetecte</code>, <code>confianceType</code>, <code>methodeType</code>, <code>typeConflit</code>). Si la classification tombe en panne, le pipeline continue avec le type déclaré.</li>
-  <li><b>Extraction JSON adaptée au type</b> : le texte est envoyé à <code>POST /ai/extract-json</code> avec le <b>type retenu</b> (le type détecté s'il est fiable, sinon le type déclaré). Le schéma demandé au LLM et les consignes dépendent de ce type : une CIN ne demande que nom, prénom et numéro ; une fiche de paie demande le « net à payer » et pas le brut ; un relevé demande les échéances de crédit et les incidents. Le résultat est validé par Pydantic, avec un score de confiance selon le type. Une extraction vide ou en échec n'est <b>pas</b> enregistrée : le document ne peut donc pas être « validé » à tort.</li>
-  <li><b>Cohérence du CIN</b> : <code>toResponse()</code> compare, en chiffres uniquement, le CIN extrait de chaque document au CIN du client. Résultat : cohérent, incohérent ou sans objet (justificatif de domicile par exemple).</li>
-</ol></div></div>
-
-<div class="step"><div class="n">E</div><div class="t"><h4>Verrou : le bouton « Analyser »</h4>
-<p>Il n'est actif que si les étapes 1 et 2 sont valides. Si seul le CIN est incohérent, ou si le contenu d'un document ne correspond pas à son type déclaré, l'agent peut continuer après une <b>confirmation explicite</b> (il a vérifié à la main). Le serveur applique la même règle : <code>POST /api/fichiers/analyser-dossier/{id}</code> répond <b>409</b> (<code>CIN_INCOHERENT</code> ou <code>TYPE_INCOHERENT</code>) sans le paramètre <code>confirmerIncoherence=true</code>. Une seule confirmation couvre les deux cas. Aucun appel LLM n'est gaspillé sur un dossier douteux.</p>
-<p><b>Après la confirmation, le pipeline passe au vert.</b> Le contrôle manuel de l'agent vaut validation : les étapes « Vérification CIN » et « Validation des documents » deviennent vertes avec la mention « incohérence confirmée manuellement par l'agent ». C'est vrai aussi à la réouverture d'un dossier déjà analysé, puisque le serveur refuse d'analyser un dossier incohérent sans confirmation. La confirmation ne masque rien d'autre : un nom manquant sur la CIN ou un document requis absent restent en erreur.</p></div></div>
-
-<div class="step"><div class="n">F</div><div class="t"><h4>Étape 2 : « Analyser » (<code>analyserEtScorer()</code>)</h4>
-<ol>
-  <li>Relit uniquement ce qui manque (normalement rien).</li>
-  <li>Indexe les textes pour le chatbot (<code>POST /ai/chat/index</code>), sans appel LLM.</li>
-  <li>Assemble le texte du dossier avec un en-tête par document (<code>=== TYPE (nom) ===</code>, avec le type détecté quand il contredit le type déclaré) et ajoute en tête la <b>demande du client</b> (montant, durée, contrat), absente de tous les documents.</li>
-  <li>Vérifie l'identité : le nom et le prénom du client dans le dossier sont comparés à ceux lus dans les documents (<code>alerteIdentite</code>). Cette vérification relance une extraction LLM sur le texte complet du dossier.</li>
-  <li>Appelle le scoring : <code>POST /ai/score/consommation</code>.</li>
-</ol></div></div>
-
-<div class="step"><div class="n">G</div><div class="t"><h4>Le scoring dans le service IA (<code>AgentService.analyser_consommation</code>)</h4>
-<ol>
-  <li><b>Cache</b> : la clé contient le texte, la version des règles, le taux et la taille maximale. Changer l'un d'eux ne ressert jamais une ancienne analyse.</li>
-  <li><b>Budget de texte</b> : 12 000 caractères répartis équitablement entre les documents. Un document trop long garde son début et sa fin. Aucun document n'est supprimé. Un avertissement signale tout raccourcissement.</li>
-  <li><b>Un seul appel LLM</b> (tâche « analyse », température 0,1, JSON imposé) : il lit le dossier et propose revenus, contrat, ancienneté, dettes, points forts, risques, plan, score et décision. Le JSON tronqué est réparé automatiquement.</li>
-  <li><b>Dettes</b> : détecteur par règles dans le relevé bancaire (<code>dettes_releve.py</code>) et valeur lue par le LLM. On garde la plus élevée, avec un avertissement en cas d'écart. Un « 0 » sans relevé lisible n'est pas une preuve : la dette reste inconnue.</li>
-  <li><b>Couche déterministe</b> (<code>appliquer_regles</code>) : le LLM n'a plus la main sur les chiffres. Mensualité, taux d'endettement (DTI), capacité d'emprunt et simulations sont recalculés en Python (section 4).</li>
-  <li><b>Garde-fous</b> : un critère bloquant en échec ramène « ELIGIBLE » à « CONDITIONNEL » (score plafonné à 59). Des données indispensables manquantes transforment toute décision favorable en « À COMPLÉTER ».</li>
-</ol></div></div>
-
-<div class="step"><div class="n">H</div><div class="t"><h4>Sauvegarde et statut</h4>
-<p>Le backend enregistre : <code>AgentAnalysis</code> (score, revenus, endettement, décision), <code>DecisionFinale</code> (justification, message au client, <b>résultat complet en JSON</b>) et met à jour le statut du dossier : <code>ELIGIBLE → APPROUVE</code>, <code>REFUS → REFUSE</code>, toute autre décision → <code>EN_COURS</code>.</p></div></div>
-
-<div class="box ok"><b>Envoi automatique de la réponse.</b> Juste après l'enregistrement de la décision (étape H), <code>NotificationDecisionService</code> envoie au client l'e-mail de réponse avec le <b>rapport PDF version client</b> en pièce jointe.
-<ul>
-  <li><b>Contrôle humain</b> : un refus attend la validation d'un agent avant de partir (voir la section 4) ; les autres décisions partent immédiatement, ou après un délai annulable si on en configure un.</li>
-  <li><b>Décisions notifiées</b> : éligible, refus, conditionnel, « à compléter » (qui demande au client les pièces manquantes). Une analyse échouée techniquement (INDETERMINE) n'envoie rien.</li>
-  <li><b>Pas de doublon</b> : relancer l'analyse sans que la décision change ne renvoie pas d'e-mail ; si elle change (« à compléter » puis « éligible »), le client reçoit la nouvelle.</li>
-  <li><b>Un échec ne casse rien</b> : l'erreur est enregistrée et affichée à l'agent, l'analyse est rendue normalement, et l'envoi est retenté à l'analyse suivante ou par le bouton « Envoyer la réponse au client ».</li>
-  <li><b>Interrupteur</b> : <code>AUTO_ENVOI_EMAIL=false</code> coupe l'envoi automatique ; le bouton manuel reste.</li>
-  <li><b>L'e-mail part du résultat enregistré</b>, pas de ce que le navigateur envoie : un appel falsifié ne peut pas changer ce que reçoit le client.</li>
-</ul></div>
-<div class="step"><div class="n">I</div><div class="t"><h4>Résultat pour l'agent et le client</h4>
-<p>L'écran de résultat (<code>credit-result</code>) affiche la décision, le score (marqué « provisoire » si des données manquent), la liste des données manquantes, les contrôles réglementaires, la capacité, les simulations par durée, les points forts, les points de vigilance, les conditions et le taux utilisé. <code>POST /api/dossiers/{id}/send-result-email</code> envoie au client un message adapté à la décision. Pour « À COMPLÉTER », il ne cite que des pièces que le client peut fournir, jamais un réglage technique.</p>
-<p>Le chatbot (<code>POST /api/chatbot/question</code> → <code>/ai/chat</code>) répond aux questions de l'agent sur le dossier par recherche dans les documents indexés (RAG), avec masquage des RIB, IBAN et CIN.</p></div></div>
-
+<h2>2.5 Chaîne de traitement d'un dossier</h2>
 <div class="diag">
   <div class="row">
     <div class="node d"><b>A</b> Demande<small>montant, durée, contrat</small></div>
     <div class="node d"><b>B</b> Dépôt des pièces<small>volume persistant</small></div>
-    <div class="node a"><b>D</b> Vérifier<small>OCR → extraction → CIN</small></div>
-    <div class="node c"><b>E</b> Verrou<small>CIN ok ou confirmé</small></div>
+    <div class="node a"><b>C</b> OCR<small>natif ou scan</small></div>
+    <div class="node a"><b>D</b> Classification<small>règles → embeddings → LLM</small></div>
+    <div class="node a"><b>E</b> Extraction<small>JSON typé, CIN</small></div>
   </div>
-  <div class="arrow">▼</div>
+  <div class="arrow">▼ verrou : CIN cohérent, ou confirmé par l'agent</div>
   <div class="row">
-    <div class="node b"><b>F</b> Assemblage<small>en-têtes + demande + identité</small></div>
-    <div class="node b"><b>G</b> Scoring<small>1 appel LLM + règles</small></div>
-    <div class="node b"><b>H</b> Sauvegarde<small>décision + statut</small></div>
-    <div class="node a"><b>I</b> Résultat + e-mail</div>
+    <div class="node b"><b>F</b> Indexation RAG<small>chunks + FAISS + BM25</small></div>
+    <div class="node b"><b>G</b> Décision hybride<small>1 appel LLM + règles</small></div>
+    <div class="node b"><b>H</b> Sauvegarde<small>décision + audit</small></div>
+    <div class="node c"><b>I</b> Contrôle humain<small>valider, différer, annuler</small></div>
+    <div class="node d"><b>J</b> E-mail + PDF<small>réponse au client</small></div>
   </div>
 </div>
+<span class="legende">Figure 2.2 — Chaîne de traitement, du dépôt à la réponse</span>
 
-<h2 class="pb">4. Le moteur de décision</h2>
-<h3>Qui fait quoi : le LLM et les règles</h3>
-<p>L'« agent IA » est <b>un appel LLM suivi de règles déterministes</b>. Ce n'est pas un agent autonome avec des outils. Le LLM <i>lit</i> les documents. Les règles <i>calculent et contrôlent</i>. Ce partage est volontaire : un chiffre financier doit être reproductible et vérifiable.</p>
+<div class="step"><div class="n">A</div><div class="t"><b>Demande.</b> Le portail envoie le montant, la durée et le type de contrat ; un dossier est créé en base (statut <code>EN_ATTENTE</code>).</div></div>
+<div class="step"><div class="n">B</div><div class="t"><b>Dépôt.</b> Chaque pièce est écrite dans un volume persistant, avec un nom de fichier et un CIN assainis, et enregistrée avec le type choisi par le client.</div></div>
+<div class="step"><div class="n">C–E</div><div class="t"><b>« Vérifier les documents ».</b> Pour chaque pièce non encore traitée : OCR, enregistrement du texte, classification (le type détecté est comparé au type déclaré), extraction JSON avec le <b>type retenu</b>, puis comparaison, chiffre par chiffre, du CIN lu au CIN du client. Une extraction vide ou en échec n'est pas enregistrée : un document ne peut donc pas être « validé » à tort.</div></div>
+<div class="step"><div class="n">⛔</div><div class="t"><b>Verrou.</b> « Analyser » n'est actif que si les étapes précédentes sont valides. Si le CIN est incohérent ou si un type est contredit, l'agent peut poursuivre après une confirmation explicite ; le serveur applique la même règle (réponse 409 sans confirmation).</div></div>
+<div class="step"><div class="n">F–G</div><div class="t"><b>« Analyser ».</b> Indexation du dossier pour l'assistant, assemblage du texte (un en-tête par document, la demande du client en tête), vérification d'identité, puis appel du moteur de décision.</div></div>
+<div class="step"><div class="n">H–J</div><div class="t"><b>Décision et réponse.</b> Le résultat complet est enregistré, le statut du dossier mis à jour et l'événement ajouté au journal. Selon la configuration, la réponse part immédiatement, après un délai annulable, ou attend la validation d'un agent (refus par défaut).</div></div>
 
+<h2>2.6 Principes de conception</h2>
+<table>
+  <tr><th style="width:26%">Principe</th><th>Application</th></tr>
+  <tr><td><b>Le LLM lit, les règles décident</b></td><td>Le modèle extrait et rédige. Mensualité, endettement, capacité, simulations, propositions d'ajustement et verdicts réglementaires sont recalculés en Python, sans modèle.</td></tr>
+  <tr><td><b>Ne jamais inventer l'inconnu</b></td><td>Taux d'intérêt obligatoire ; dette inconnue ≠ dette nulle ; pas de calcul sans les données, mais une décision « À COMPLÉTER » qui liste ce qui manque.</td></tr>
+  <tr><td><b>Humain dans la boucle</b></td><td>Un désaccord de type ou de CIN bloque jusqu'à confirmation ; un refus attend la validation ; une proposition de montant est indicative.</td></tr>
+  <tr><td><b>Traçabilité</b></td><td>Journal en ajout seul ; version des règles (<code>2026-10-b</code>) consignée avec chaque décision ; trace de la cascade de classification conservée.</td></tr>
+  <tr><td><b>Dégradation maîtrisée</b></td><td>Chaque panne (LLM, messagerie, classification) est absorbée : le traitement continue avec ce qui est disponible, l'erreur est enregistrée et visible.</td></tr>
+  <tr><td><b>Moindre exposition</b></td><td>L'e-mail part du résultat <i>enregistré</i> et non de ce que le navigateur envoie ; CIN, RIB et IBAN sont masqués avant tout appel à un modèle externe.</td></tr>
+</table>
+<span class="legende">Tableau 2.5 — Principes de conception</span>
+
+<h2>2.7 Sécurité</h2>
+<ul>
+  <li><b>Authentification et rôles</b> : jetons JWT, rôles ADMIN et AGENT ; routes d'administration réservées à ADMIN.</li>
+  <li><b>Secrets</b> : clés d'API, SMTP, JWT et mot de passe de base fournis par fichiers d'environnement sur la VM, jamais dans le code.</li>
+  <li><b>Données personnelles</b> : masquage des CIN, RIB et IBAN avant les appels externes ; le PDF n'est pas stocké (régénéré à la demande) ; le journal ne garde que l'identifiant du dossier.</li>
+  <li><b>Transport</b> : HTTPS automatique (Let's Encrypt via Caddy).</li>
+</ul>
+<div class="box ko"><b>Points de sécurité non traités à ce jour.</b> Plusieurs routes (<code>/api/fichiers/**</code>, <code>/api/chatbot/**</code>, <code>/api/clients/**</code>) sont ouvertes sans authentification ; la route de lecture <code>/api/fichiers/view/**</code> sert un fichier à partir d'un chemin (risque de traversée de répertoire) ; des pièces d'identité de test sont suivies par git ; des clés d'API ont été exposées pendant le développement et doivent être renouvelées. Ces points sont à corriger avant tout usage réel (voir la conclusion).</div>
+
+<!-- ═════════ CHAPITRE 3 ═════════ -->
+<h1 id="ch3"><span class="num">Chapitre 3</span> — Réalisation</h1>
+<p>Ce chapitre décrit comment chaque étape de la chaîne a été réalisée : le problème posé, la solution retenue, son fonctionnement et ses limites. Les résultats chiffrés sont regroupés au chapitre 4.</p>
+
+<h2>3.1 OCR : lire les pièces natives et scannées</h2>
+<h3>Problème</h3>
+<p>Une pièce peut être un PDF « natif » (texte sélectionnable), un scan sans texte, ou une photo. Elle peut mêler arabe et français. L'extension du fichier ne dit rien de son contenu : un fichier renommé en <code>.pdf</code> peut être un document Word.</p>
+<h3>Solution</h3>
+<ol>
+  <li><b>Détection du format par les premiers octets</b> (PDF, JPEG, PNG, TIFF, BMP, WebP). Un format non supporté (Word, HEIC) est refusé avec un message clair affiché à l'agent.</li>
+  <li><b>Détection natif ou scanné</b> : un PDF dont le texte est exploitable est lu directement avec PyMuPDF (quelques dizaines de millisecondes). Sinon chaque page est rendue en image.</li>
+  <li><b>OCR PaddleOCR</b> : détection des zones de texte, puis lecture de chaque zone par le modèle <b>arabe</b> et par le modèle <b>latin</b>, et fusion zone par zone selon la confiance. Les zones sont regroupées par ligne et le texte est normalisé (Unicode). Les images sont réduites au-delà de 4 000 pixels et la taille d'un fichier est limitée à 25 Mo.</li>
+  <li><b>Cache</b> par empreinte SHA-256 du fichier : relire un fichier identique est instantané.</li>
+  <li><b>Persistance</b> : le texte, le statut (<code>SUCCESS</code> ou <code>FAILED</code>) et la raison d'un échec sont enregistrés par fichier, une seule ligne par fichier.</li>
+</ol>
+<h3>Limites</h3>
+<p>La fusion de deux modèles double le coût de lecture : c'est la principale cause de la lenteur mesurée au chapitre 4. L'ordre de lecture d'un texte mêlant arabe et latin peut différer de l'ordre visuel, ce qui n'empêche pas l'extraction (qui travaille sur le sens) mais interdit de mesurer l'OCR par distance d'édition caractère à caractère (voir 4.3).</p>
+
+<h2>3.2 Classification des documents</h2>
+<h3>Problème</h3>
+<p>Le client choisit l'emplacement de chaque pièce. Un relevé bancaire déposé dans « fiche de paie » serait traité comme une fiche de paie : revenu et dettes seraient faux, et le calcul de décision avec.</p>
+<h3>Solution : une cascade à trois niveaux</h3>
+<table>
+  <tr><th style="width:17%">Niveau</th><th>Fonctionnement</th><th style="width:20%">Coût</th></tr>
+  <tr><td><b>0. Règles</b></td><td>Mots-clés par type, en trois forces : titres (« attestation de travail », « bulletin de paie »…), forts, faibles. Le poids d'un titre dépend de sa <b>position</b> : plein en haut du texte, réduit plus bas (une attestation qui cite « la carte d'identité nationale » n'est pas une CIN). Texte normalisé, français et arabe. Les règles ne répondent que si le verdict est net (score ≥ 5 et écart ≥ 3) et ne répondent jamais « AUTRE ».</td><td>instantané, gratuit, reproductible</td></tr>
+  <tr><td><b>1. Embeddings</b></td><td>Similarité (MiniLM multilingue) avec des phrases de référence ; verdict retenu au-dessus de 0,55.</td><td>quelques ms, local</td></tr>
+  <tr><td><b>2. LLM</b></td><td>Seulement en zone grise (similarité entre 0,20 et 0,55) ; en cas de panne, le verdict des embeddings est conservé.</td><td>un appel externe, rare</td></tr>
+</table>
+<span class="legende">Tableau 3.1 — Les trois niveaux de la classification</span>
+<p><b>Contrôle déclaré / détecté.</b> Un conflit n'est signalé que si le verdict est <b>fiable</b>, avec un seuil par méthode car les échelles de confiance ne sont pas comparables (règles 0,80 ; embeddings 0,55 ; LLM 0,70). Un verdict incertain, « AUTRE » ou un type non déclaré ne bloque rien. En cas de conflit fiable, le <b>type détecté pilote l'extraction</b> ; le type déclaré n'est pas écrasé, et l'analyse reste verrouillée jusqu'à la confirmation de l'agent.</p>
+<p><b>Traçabilité.</b> Chaque verdict est accompagné de la <b>trace de la cascade</b> (niveau consulté ou non, a tranché ou non, pourquoi). Elle est stockée avec le fichier et affichée à l'agent dans le popup « Détail de la classification » ; une ligne lisible apparaît aussi sur chaque document (« Détecté : Relevé bancaire · règles par mots-clés · confiance 90 % »).</p>
+
+<h2>3.3 Extraction de données</h2>
+<p>Le texte de chaque pièce est transformé en JSON par un modèle de langage, avec deux précautions. D'abord, le <b>schéma demandé dépend du type retenu</b> : une CIN ne demande que le nom, le prénom et le numéro (demander quinze champs à une CIN pousse le modèle à en inventer) ; une fiche de paie demande le « net à payer » et pas le brut ; un relevé demande les échéances de crédit et les incidents. Ensuite, la réponse est <b>validée par Pydantic</b> et accompagnée d'un score de confiance calculé selon les champs attendus pour ce type.</p>
+<p><b>Cohérence du CIN.</b> Le backend compare, en chiffres uniquement, le CIN extrait de chaque pièce au CIN du client : cohérent, incohérent ou sans objet. <b>Vérification d'identité</b> : le nom et le prénom du client sont comparés à ceux lus dans les pièces par ensemble de mots, sans tenir compte de l'ordre, des accents ni de la casse (une fiche client enregistrée avec nom et prénom inversés ne déclenche plus de fausse alerte).</p>
+<p><b>Budget de texte.</b> Le dossier est envoyé au modèle avec un budget de 12 000 caractères réparti équitablement entre les documents ; un document trop long garde son début et sa fin, aucun n'est supprimé, et tout raccourcissement est signalé.</p>
+<p><b>Détecteur de dettes.</b> Les crédits en cours sont repérés <i>par règles</i> dans le relevé (échéances de prêt regroupées par date, salaire et solde exclus, plus forte somme mensuelle sur les deux derniers mois) et comparés à la valeur lue par le modèle : on retient la plus élevée, avec un avertissement en cas d'écart. Un « 0 » sans relevé lisible n'est pas une preuve : la dette reste <i>inconnue</i>.</p>
+
+<h2>3.4 Assistant documentaire (RAG)</h2>
+<p>L'agent peut poser des questions au dossier en langage naturel (« quel est le net à payer ? », « y a-t-il un crédit en cours ? »). On ne donne pas tout le dossier au modèle à chaque question : on <i>cherche</i> d'abord les passages utiles, puis on les lui fournit avec la question.</p>
+<h3>Indexation et découpage</h3>
+<table>
+  <tr><th style="width:22%">Type de texte</th><th>Découpage</th></tr>
+  <tr><td>Relevé bancaire</td><td><b>Un chunk par opération</b>, avec répétition de l'en-tête des colonnes et déduction du sens crédit/débit à partir du solde (jamais inventé si le solde ne colle pas)</td></tr>
+  <tr><td>Document court</td><td>Un seul chunk, jamais coupé</td></tr>
+  <tr><td>Texte libre</td><td>Coupure aux <b>changements de sujet</b> (semantic chunking : similarité des embeddings avant et après chaque frontière)</td></tr>
+  <tr><td>Tous</td><td>450 caractères au plus, ce que le modèle d'embedding lit réellement</td></tr>
+</table>
+<span class="legende">Tableau 3.2 — Découpage structurel et sémantique</span>
+<p>Les chunks sont transformés en vecteurs (MiniLM, 384 dimensions) rangés dans un index <b>FAISS</b> (recherche exacte par cosinus), doublé d'un index lexical <b>BM25</b> écrit en Python. Un index existe par dossier, en mémoire.</p>
+<h3>Recherche hybride</h3>
+<ul>
+  <li><b>Sens</b> (FAISS) : « salaire » retrouve « net à payer », en français comme en arabe.</li>
+  <li><b>Mots exacts</b> (BM25) : montants, noms et numéros, que les embeddings pèsent mal.</li>
+  <li><b>Fusion RRF</b> : un chunk bien classé par l'une ou l'autre recherche remonte.</li>
+  <li><b>Couverture</b> : au moins deux extraits par document, puis complément jusqu'à douze.</li>
+</ul>
+<h3>Mémoire de conversation et garde-fous</h3>
+<p>Les six derniers échanges sont transmis au modèle, et une question « relance » (« Et depuis quand ? ») est cherchée avec la ou les questions précédentes. L'historique vient du navigateur : il n'est pas cru (seuls les rôles « user » et « assistant » sont gardés, les identifiants sensibles masqués, les messages tronqués). CIN, RIB et IBAN sont masqués avant l'envoi au modèle et dans la réponse ; le prompt impose de ne répondre que d'après le dossier.</p>
+
+<h2>3.5 Moteur de décision hybride (MDH)</h2>
+<div class="box"><b>Nom de cette partie.</b> L'ancien nom « agent IA de décision » laissait croire à un agent autonome qui prend des décisions. Ce n'est pas le cas, et c'est volontaire. Le nom retenu est <b>« moteur de décision hybride »</b> : <i>hybride</i> parce qu'il combine un modèle de langage (qui lit et rédige) et des règles déterministes (qui calculent et tranchent) ; <i>moteur</i> parce qu'il applique des règles versionnées et testables, sans autonomie d'action. Alternative possible : « module d'aide à la décision de crédit ».</div>
+<h3>Partage des rôles</h3>
+<table>
+  <tr><th style="width:28%">Le modèle de langage…</th><th>Les règles déterministes…</th></tr>
+  <tr><td>lit le dossier et en extrait revenu, contrat, ancienneté, dettes ; rédige le résumé, les points forts, les risques et le plan ; propose un score et une décision</td><td>recalculent mensualité, taux d'endettement, capacité d'emprunt et simulations ; vérifient chaque critère ; corrigent la décision du modèle ; listent les données manquantes ; proposent des ajustements</td></tr>
+</table>
 <h3>Formules</h3>
 <ul>
-  <li><b>Mensualité</b> : annuité constante, <code>M = C × i / (1 − (1 + i)^−n)</code>, avec <code>i = taux annuel / 12</code>.</li>
-  <li><b>Taux d'endettement (DTI)</b> : <code>(mensualité + dettes mensuelles) / revenu net × 100</code>.</li>
-  <li><b>Mensualité maximale</b> : <code>30 % × revenu − dettes</code>. Le <b>montant finançable</b> en découle (inverse de la formule d'annuité), plafonné à 5 × le salaire.</li>
-  <li><b>Simulations</b> : durées 12, 24, 36, 48, 60 et 84 mois, plus la durée demandée. Pour chacune : mensualité, DTI, coût total, statut.</li>
+  <li><b>Mensualité</b> (annuité constante) : <code>M = C × i / (1 − (1 + i)<sup>−n</sup>)</code>, avec <code>i</code> = taux annuel ÷ 12.</li>
+  <li><b>Taux d'endettement</b> : <code>DTI = (M + dettes mensuelles) ÷ revenu net × 100</code>.</li>
+  <li><b>Mensualité maximale</b> : <code>30 % × revenu − dettes</code> ; le <b>montant finançable</b> en découle par inversion de la formule d'annuité, plafonné à 5 fois le salaire.</li>
+  <li><b>Simulations</b> : durées de 12, 24, 36, 48, 60 et 84 mois et durée demandée ; mensualité, DTI, coût total et statut pour chacune.</li>
 </ul>
-
-<h3>Les contrôles</h3>
+<h3>Contrôles réglementaires</h3>
 <table>
-  <tr><th>Contrôle</th><th>Seuil</th><th>Bloquant</th><th>Si la donnée manque</th></tr>
-  <tr><td>Taux d'intérêt appliqué</td><td>taux configuré, entre 0 et 50 %</td><td>oui si absent</td><td>« non configuré » : aucun calcul</td></tr>
-  <tr><td>Taux d'endettement</td><td>&lt; 30 % OK · 30–35 % attention · &gt; 35 % KO</td><td>oui</td><td>« inconnu », aucune valeur inventée</td></tr>
-  <tr><td>Dettes existantes</td><td>relevé bancaire lisible</td><td>oui si inconnues</td><td>« à confirmer »</td></tr>
+  <tr><th>Contrôle</th><th>Seuil</th><th style="width:11%">Bloquant</th><th style="width:30%">Si la donnée manque</th></tr>
+  <tr><td>Taux d'intérêt appliqué</td><td>taux configuré, entre 0 et 50 %</td><td>oui</td><td>aucun calcul, « à renseigner »</td></tr>
+  <tr><td>Taux d'endettement</td><td>&lt; 30 % OK · 30–35 % attention · &gt; 35 % KO</td><td>oui</td><td>« inconnu », rien d'inventé</td></tr>
+  <tr><td>Dettes existantes</td><td>relevé bancaire lisible</td><td>oui</td><td>« à confirmer »</td></tr>
   <tr><td>Plafond du montant</td><td>≤ 5 × salaire net</td><td>oui</td><td>à vérifier</td></tr>
   <tr><td>Durée</td><td>≤ 84 mois</td><td>oui</td><td>à vérifier</td></tr>
   <tr><td>Ancienneté dans l'emploi</td><td>≥ 6 mois</td><td>oui</td><td>à vérifier (attestation)</td></tr>
@@ -221,314 +442,464 @@
   <tr><td>Incidents de paiement</td><td>0</td><td>si &gt; 0</td><td>à vérifier (centrale des risques)</td></tr>
   <tr><td>Âge en fin de crédit</td><td>≤ 70 ans</td><td>oui</td><td>contrôle non affiché</td></tr>
 </table>
-<div class="box warn"><b>À savoir.</b> Les seuils (30 %, 35 %, 5 × salaire, 84 mois, 6 mois, 70 ans) sont attribués à la réglementation BCT dans le code, mais je ne les ai pas vérifiés auprès d'une source officielle. À valider avec la banque avant tout usage réel.</div>
-
-<h3>Les décisions possibles</h3>
+<span class="legende">Tableau 3.3 — Contrôles du moteur de décision</span>
+<h3>Décisions possibles et garde-fous</h3>
 <table>
-  <tr><th>Décision</th><th>Sens</th><th>Statut du dossier</th></tr>
-  <tr><td><span class="ok">ELIGIBLE</span></td><td>Tout est connu, aucun critère bloquant en échec.</td><td>APPROUVE</td></tr>
-  <tr><td><span class="warn">CONDITIONNEL</span></td><td>Acceptable avec garanties, ou un critère bloquant est en échec.</td><td>EN_COURS</td></tr>
-  <tr><td><span class="ko">REFUS</span></td><td>Refus fondé sur un critère connu.</td><td>REFUSE</td></tr>
-  <tr><td><b>A_COMPLETER</b> (nouveau)</td><td>Des informations indispensables manquent : aucune décision n'est rendue, la liste des manques est affichée, le score est « provisoire » et plafonné à 59.</td><td>EN_COURS</td></tr>
-  <tr><td>INDETERMINE</td><td>Le LLM a échoué ou est saturé.</td><td>EN_COURS</td></tr>
+  <tr><th style="width:20%">Décision</th><th>Sens</th><th style="width:20%">Statut du dossier</th></tr>
+  <tr><td><span class="ok">ELIGIBLE</span></td><td>Tout est connu, aucun critère bloquant en échec</td><td>APPROUVE</td></tr>
+  <tr><td><span class="warn">CONDITIONNEL</span></td><td>Acceptable avec garanties, ou un critère bloquant en échec</td><td>EN_COURS</td></tr>
+  <tr><td><span class="ko">REFUS</span></td><td>Refus fondé sur un critère connu</td><td>REFUSE</td></tr>
+  <tr><td><b>A_COMPLETER</b></td><td>Des informations indispensables manquent : aucune décision rendue, liste des manques, score « provisoire » plafonné à 59</td><td>EN_COURS</td></tr>
+  <tr><td>INDETERMINE</td><td>Le modèle de langage a échoué</td><td>EN_COURS</td></tr>
 </table>
+<span class="legende">Tableau 3.4 — Les décisions</span>
+<p>Deux garde-fous s'appliquent après le modèle : un critère bloquant en échec ramène « ELIGIBLE » à « CONDITIONNEL » (score plafonné à 59), et des données indispensables manquantes transforment toute décision favorable en « À COMPLÉTER ». Un cache dont la clé contient le texte, la <b>version des règles</b>, le taux et la taille maximale évite de resservir une ancienne analyse après un changement.</p>
+<h3>Propositions d'ajustement pour un dossier conditionnel</h3>
+<p>Pour un dossier CONDITIONNEL, le moteur calcule jusqu'à trois variantes, chacune <b>revérifiée</b> avec les mêmes règles : <b>montant réduit</b> à durée égale (arrondi aux 100 DT inférieurs) ; <b>même montant sur une durée allongée</b> (la plus courte, par pas de 6 mois, qui passe sous 30 %) ; <b>durée maximale et montant ajusté</b> lorsque l'allongement seul ne suffit pas. L'âge en fin de crédit borne la durée, le plafond de 5 fois le salaire borne le montant. Aucune offre n'est faite sur une donnée inconnue ; si l'endettement est déjà correct, le moteur explique que le caractère conditionnel vient d'autres critères et les liste. Les offres sont <b>indicatives</b>, visibles de l'agent (écran et PDF agent), et jamais envoyées au client sans validation.</p>
+<div class="box warn"><b>Limites.</b> Le score vient encore du modèle de langage : il est peu reproductible d'un appel à l'autre (mesuré au chapitre 4). Une grille de score déterministe, avec détail par critère, est la suite logique.</div>
 
-<h3>La classification des documents</h3>
-<p><b>Problème.</b> Le type d'un document vient de l'emplacement choisi par le client à l'upload. Un relevé bancaire déposé dans « fiche de paie » serait traité comme une fiche de paie : revenu et dettes faux. La classification vérifie la <i>nature réelle</i> du document.</p>
-<p><b>Cascade à trois niveaux</b> (<code>DocumentClassifierService</code>) :</p>
+<h2>3.6 Contrôle humain, notification et audit</h2>
+<h3>Réponse au client</h3>
+<p>Dès que la décision est enregistrée, le serveur génère le <b>rapport PDF version client</b> (iText) et l'envoie par e-mail. Le PDF est régénéré à la demande à partir du résultat enregistré (jamais périmé, aucune donnée personnelle de plus au repos). Il en existe deux versions : <b>client</b> (décision, explication, informations à fournir, chiffres de la demande, sans contrôles internes ni risques) et <b>agent</b> (rapport complet). Un chiffre non calculé s'écrit « Non calculé », jamais 0.</p>
+<h3>Contrôle humain avant l'envoi</h3>
 <table>
-  <tr><th style="width:18%">Niveau</th><th>Fonctionnement</th><th style="width:22%">Coût</th></tr>
-  <tr><td>0. Règles</td><td>Mots-clés par type, en trois forces : <b>titres</b> (« ATTESTATION DE TRAVAIL », « BULLETIN DE PAIE »…), <b>forts</b> et <b>faibles</b>. Le poids d'un titre dépend de sa position : plein poids tout en haut du texte, poids réduit plus bas. Une attestation qui cite « la carte d'identité nationale » n'est donc pas classée CIN. Texte normalisé (sans accents ni voyelles arabes), français et arabe. Les règles répondent seulement si le verdict est net (score ≥ 5 et écart ≥ 3), sinon elles s'abstiennent, et ne répondent jamais « AUTRE ».</td><td>instantané, gratuit, reproductible</td></tr>
-  <tr><td>1. Embeddings</td><td>Similarité sémantique (MiniLM multilingue) avec des phrases de référence. Si la similarité dépasse 0,55, verdict retenu.</td><td>quelques ms, local</td></tr>
-  <tr><td>2. LLM</td><td>Seulement dans la zone grise (similarité entre 0,20 et 0,55). Si le LLM est indisponible, on garde le verdict des embeddings.</td><td>un appel LLM, rare</td></tr>
+  <tr><th style="width:30%">Cas</th><th>Comportement</th></tr>
+  <tr><td>Décision soumise à validation (par défaut : <b>refus</b>)</td><td>État « en attente de validation » ; l'agent choisit « Valider et envoyer » ou « Ne pas envoyer » ; l'envoi direct est masqué</td></tr>
+  <tr><td>Autre décision, délai à 0</td><td>Envoi immédiat</td></tr>
+  <tr><td>Autre décision, délai de N minutes</td><td>État « programmé » : envoi à l'échéance par une tâche planifiée (toutes les 30 s), annulable avant</td></tr>
+  <tr><td>Nouvelle analyse, même décision</td><td>Aucun changement (pas de remise en attente, pas de renvoi, pas de résurrection d'une réponse annulée)</td></tr>
+  <tr><td>Nouvelle analyse, décision différente</td><td>Nouveau cycle pour la nouvelle décision</td></tr>
 </table>
-<p><b>Contrôle déclaré / détecté</b> (<code>controle_type.py</code>). On ne signale un conflit que si le verdict est <b>fiable</b>. Chaque méthode a son seuil : règles 0,80, embeddings 0,55, LLM 0,70 (leurs échelles de confiance ne sont pas comparables). Un verdict incertain, « AUTRE » ou un type non déclaré ne produit jamais de conflit : il ne bloque rien. En cas de conflit fiable, le <b>type détecté</b> pilote l'extraction JSON et le texte vu par l'IA de scoring ; le type déclaré n'est pas écrasé.</p>
-<div class="box ok"><b>Choix de conception.</b> Un désaccord bloque « Analyser » jusqu'à confirmation de l'agent, comme pour le CIN : la banque garde la main, et aucune correction automatique n'est faite.</div>
-
-<h4>Traçabilité : le popup « Détail de la classification »</h4>
-<p>L'agent doit pouvoir voir <i>exactement</i> ce qui s'est passé. Le service IA renvoie donc, avec chaque verdict, la <b>trace de la cascade</b> niveau par niveau : consulté ou non, a tranché ou non, et pourquoi. Le backend la conserve sur le document (colonne <code>classificationJson</code>) et l'écran l'affiche.</p>
-<ul>
-  <li><b>Sur chaque document</b> : une ligne lisible sans rien ouvrir, par exemple « Détecté : Relevé bancaire · règles par mots-clés · confiance 90 % ». Une similarité d'embeddings est affichée comme telle (« similarité 0,56 »), jamais comme un pourcentage.</li>
-  <li><b>Popup</b> (bouton « Détail de la classification ») : type déclaré, type détecté, type utilisé pour l'extraction, verdict (conforme, contradiction, sans conclusion, type complété), puis les trois niveaux :
-    <ul>
-      <li><i>Règles</i> : mots-clés reconnus, classement des candidats avec leurs scores, seuils à atteindre.</li>
-      <li><i>Embeddings</i> : meilleur candidat, similarité, seuil, candidats.</li>
-      <li><i>LLM</i> : réponse, confiance, justification, fournisseur ; ou « indisponible » avec la raison.</li>
-    </ul>
-    Un niveau non consulté est indiqué comme tel, avec la raison (« les règles ont tranché »). Le popup montre aussi le CIN lu dans le document face au CIN du client.</li>
-</ul>
-
-<h4>Mesures</h4>
-<table>
-  <tr><th>Jeu</th><th>Résultat</th></tr>
-  <tr><td>Embeddings seuls, 5 documents natifs du dossier de test</td><td><span class="warn">3 / 5</span> : l'attestation de travail est lue comme CIN (0,407 contre 0,403 pour la bonne réponse) et le relevé bancaire aussi. Seule la CIN dépasse le seuil de 0,55 : les 4 autres dépendraient du LLM.</td></tr>
-  <tr><td>Règles, 5 natifs + 5 scans (texte OCR réel)</td><td><span class="ok">10 / 10</span>, aucune abstention.</td></tr>
-  <tr><td>Règles, vraie attestation de travail (document qui n'est pas dans le dossier de test)</td><td><span class="ok">correct</span>. Une première version s'abstenait : la mention de la CIN en haut de page faisait presque jeu égal. C'est ce cas qui a conduit au poids selon la position.</td></tr>
-  <tr><td>Règles, attestation de <i>réussite</i> d'une école (OCR réel)</td><td><span class="ok">abstention</span> : elle n'est pas classée « attestation de travail ». Le LLM tranche ensuite.</td></tr>
-</table>
-<div class="box warn"><b>À lire avec prudence.</b> Le dossier de test a été généré par nous : ses titres ressemblent à nos mots-clés, donc le 10 / 10 est optimiste. Les deux documents réels (attestation de travail, attestation de réussite) sont un échantillon trop petit pour donner un pourcentage. La précision réelle ne sera connue qu'avec de vrais documents de la banque (CIN, fiches de paie, relevés d'Attijari).</div>
-
-<h3>Contrôle humain avant l'envoi de la réponse</h3>
-<p><b>Problème.</b> L'envoi automatique faisait partir un refus chez le client dès que l'IA avait tranché, alors que le score vient du modèle de langage. Une banque veut qu'un humain puisse relire avant.</p>
-<table>
-  <tr><th style="width:24%">Cas</th><th>Comportement</th></tr>
-  <tr><td>Décision qui exige une validation (par défaut : <b>refus</b>)</td><td>État « en attente de validation » : rien n'est envoyé. L'agent voit un bandeau ambre avec <b>Valider et envoyer</b> et <b>Ne pas envoyer</b>. Le bouton d'envoi direct disparaît pour qu'on ne contourne pas la validation.</td></tr>
-  <tr><td>Autre décision, délai à 0</td><td>Envoi immédiat (comportement précédent).</td></tr>
-  <tr><td>Autre décision, délai de N minutes</td><td>État « programmé » : <b>Envoyer maintenant</b> ou <b>Annuler l'envoi</b> d'ici là ; une tâche planifiée (toutes les 30 s) envoie à l'échéance.</td></tr>
-  <tr><td>Nouvelle analyse, même décision</td><td>Rien ne change : une réponse en attente n'est pas remise en attente, une réponse annulée ne ressuscite pas, une réponse envoyée n'est pas renvoyée.</td></tr>
-  <tr><td>Nouvelle analyse, décision différente</td><td>Un nouveau cycle commence pour la nouvelle décision.</td></tr>
-</table>
-<p><b>Garde-fou.</b> « Valider » envoie au serveur la décision que l'agent a sous les yeux. Si une nouvelle analyse l'a changée entre-temps, le serveur répond 409 et n'envoie rien : le client ne reçoit jamais autre chose que ce qui a été relu. L'écran relit alors l'état réel du dossier.</p>
-<p><b>Réglages</b> (variables d'environnement du backend) : <code>VALIDATION_REQUISE_POUR</code> (liste de décisions, par défaut <code>REFUS</code> ; vide : aucune), <code>DELAI_ENVOI_MINUTES</code> (par défaut 0), <code>AUTO_ENVOI_EMAIL</code> (couper tout l'automatique).</p>
-
+<span class="legende">Tableau 3.5 — Comportement de l'envoi</span>
+<p><b>Garde-fou.</b> « Valider » envoie au serveur la décision que l'agent a sous les yeux ; si une nouvelle analyse l'a changée, le serveur répond 409 et n'envoie rien : le client ne reçoit jamais autre chose que ce qui a été relu.</p>
 <h3>Journal d'audit</h3>
-<p>Une table <code>audit_events</code> en <b>ajout seul</b> : l'entité est immuable pour Hibernate, aucun endpoint ne modifie ni ne supprime une ligne, et le dossier n'est référencé que par son identifiant (le journal survit à sa suppression). Écrire dans le journal ne fait jamais échouer l'opération décrite.</p>
+<p>La table <code>audit_events</code> est en <b>ajout seul</b> : entité immuable, aucun endpoint de modification ni de suppression, dossier référencé par son seul identifiant, écriture qui ne fait jamais échouer l'opération décrite. Elle consigne l'analyse (décision, score, version des règles, fournisseur d'IA, taux appliqué, informations manquantes), la confirmation d'une incohérence, la mise en attente, la validation, l'annulation, l'envoi ou son échec (destinataire, mode, PDF joint), le téléchargement du rapport et le changement de statut. L'acteur est l'agent connecté, ou « SYSTEME » pour une tâche automatique. Une frise « Journal du dossier » l'affiche à l'agent.</p>
+
+<h2>3.7 Statistiques et export</h2>
+<p>Un onglet « Statistiques » de l'espace administrateur, alimenté par <code>GET /api/admin/statistiques</code> (rôle ADMIN, 30 jours par défaut, 800 jours au plus), présente le taux d'acceptation (éligibles ÷ décisions définitives, absent et non 0 % s'il n'y en a aucune), la répartition des décisions, les délais de traitement (dépôt → décision) et d'envoi, les motifs de refus, l'évolution par jour ou par semaine et l'état des envois. L'<b>export Excel</b> (Apache POI) contient quatre feuilles (Synthèse, Décisions avec filtre et en-tête figé, Motifs, Évolution), de vraies dates et de vrais nombres, et jamais le CIN.</p>
+<p>Les graphiques sont en SVG sans bibliothèque, avec marques fines, grille discrète, une infobulle par colonne (souris et clavier) et une vue en tableau de chaque graphique ; aucune information ne repose sur la couleur seule.</p>
+
+<h2>3.8 Interface utilisateur</h2>
 <table>
-  <tr><th style="width:26%">Événement</th><th>Ce qui est consigné</th></tr>
-  <tr><td>Analyse terminée</td><td>décision, score, <b>version des règles</b> (renvoyée désormais par le service IA), fournisseur d'IA, taux appliqué, informations manquantes</td></tr>
-  <tr><td>Incohérence confirmée</td><td>l'agent qui a poursuivi malgré un CIN incohérent ou un type de document contredit, et lesquels</td></tr>
-  <tr><td>Réponse mise en attente, validée, annulée</td><td>qui, quand, pour quelle décision, pourquoi (validation requise ou délai)</td></tr>
-  <tr><td>Réponse envoyée, en échec</td><td>destinataire, mode (automatique, après délai, après validation, à la demande), PDF joint ou non, ou l'erreur</td></tr>
-  <tr><td>Rapport PDF téléchargé, statut modifié</td><td>version du rapport ; ancien et nouveau statut</td></tr>
+  <tr><th style="width:24%">Écran</th><th>Contenu</th></tr>
+  <tr><td>Portail client</td><td>Demande de crédit, dépôt des pièces par type, confirmation</td></tr>
+  <tr><td>Pipeline de l'agent</td><td>Quatre étapes (vérification du CIN, validation des documents, analyse, score) réellement verrouillées ; message « déposé comme X, le contenu ressemble à Y » ; popup de classification</td></tr>
+  <tr><td>Résultat</td><td>Décision, score (« provisoire » si incomplet), chiffres clés (« Non calculé » plutôt que 0), contrôles, capacité, propositions d'ajustement, simulations, points forts et de vigilance, bandeau d'envoi, journal du dossier, export PDF</td></tr>
+  <tr><td>Assistant</td><td>Conversation avec mémoire et sources</td></tr>
+  <tr><td>Administration</td><td>Agents et tableau de bord statistique</td></tr>
 </table>
-<p>L'acteur est l'agent connecté (lu dans le jeton), ou « SYSTEME » pour une tâche automatique. L'écran de résultat affiche une frise « Journal du dossier » : date, acteur, phrase lisible écrite par le serveur, et version des règles.</p>
+<span class="legende">Tableau 3.6 — Écrans principaux</span>
 
-<h3>Tableau de bord administrateur et export Excel</h3>
-<p>Nouvel onglet « Statistiques » de l'espace administrateur, alimenté par <code>GET /api/admin/statistiques?du=&amp;au=</code> (réservé au rôle ADMIN ; période par défaut : 30 jours, maximum 800 jours).</p>
+<!-- ═════════ CHAPITRE 4 ═════════ -->
+<h1 id="ch4"><span class="num">Chapitre 4</span> — Tests et évaluation des performances</h1>
+<p>Ce chapitre répond à deux questions : <b>le système fait-il ce qu'il doit faire</b> (tests de fonctionnement) et <b>à quel niveau de performance</b> (indicateurs mesurés, étape par étape). Les deux sont distincts : un test passe ou échoue ; un indicateur se mesure et se compare à un objectif.</p>
+
+<h2>4.1 Stratégie de tests</h2>
+<h3>Ce qu'il faut tester à chaque étape</h3>
+<p>Pour chaque étape de la chaîne, on teste le <b>fonctionnement</b> (cas normaux, cas limites, pannes) et on mesure la <b>performance</b> (exactitude, vitesse). Le tableau suivant résume ce qui a été retenu, et sert de modèle pour toute étape ajoutée.</p>
 <table>
-  <tr><th style="width:26%">Indicateur</th><th>Définition</th></tr>
-  <tr><td>Décision définitive</td><td>éligible, conditionnel ou refus. « À compléter » n'est pas une décision (le dossier attend des pièces) ; « indéterminée » est un échec technique.</td></tr>
-  <tr><td>Taux d'acceptation</td><td>éligibles ÷ décisions définitives ; « avec conditions » : (éligibles + conditionnels) ÷ décisions définitives. Absent (et non 0 %) s'il n'y a aucune décision définitive.</td></tr>
-  <tr><td>Délai de traitement</td><td>du dépôt du dossier à la décision (moyenne, médiane, maximum).</td></tr>
-  <tr><td>Délai d'envoi</td><td>de la décision à l'envoi de la réponse ; il comprend l'attente de validation.</td></tr>
-  <tr><td>Motifs</td><td>critères réglementaires en échec pour un refus (« attention » aussi pour un conditionnel) ; informations manquantes pour un dossier à compléter.</td></tr>
-  <tr><td>Évolution</td><td>par jour jusqu'à 62 jours, par semaine au-delà ; chaque jour ou semaine existe, même à zéro.</td></tr>
+  <tr><th style="width:15%">Étape</th><th style="width:30%">Ce qu'on teste (fonctionnement)</th><th style="width:27%">Ce qu'on mesure (performance)</th><th>Jeu de données</th></tr>
+  <tr><td><b>OCR</b></td><td>Format détecté par octets, formats refusés, fichier absent, PDF natif et scan, cache, arabe et français</td><td>Champs attendus retrouvés ; F1 des mots ; temps par page, natif et scan</td><td>5 pièces natives + 5 scannées du dossier fictif</td></tr>
+  <tr><td><b>Classification</b></td><td>Chaque niveau seul ; cascade (court-circuit, zone grise, LLM en panne) ; contrôle déclaré/détecté ; trace</td><td>Exactitude, F1 macro, couverture et précision des règles, répartition des niveaux, latence par niveau, taux d'appel au LLM</td><td>26 documents étiquetés (français, arabe, natifs, scans, types hors dossier)</td></tr>
+  <tr><td><b>Extraction</b></td><td>Schéma par type, identité toujours demandée, cache distinct par type, réponse vide non enregistrée</td><td>Valeurs exactes retrouvées (revenu, dettes) sur le dossier fictif</td><td>Dossier fictif, valeurs attendues connues</td></tr>
+  <tr><td><b>RAG</b></td><td>Découpage (une opération par chunk, rien perdu), BM25, RRF, couverture des documents, mémoire, masquage</td><td>Rappel@k et MRR (dense, lexical, hybride) ; exactitude des réponses ; latence de recherche et de réponse</td><td>22 questions avec réponse attendue sur les 5 documents</td></tr>
+  <tr><td><b>Décision</b></td><td>Taux obligatoire, dette inconnue, garde-fous, critères, cache versionné, offres valides</td><td>Écart du calcul à une référence indépendante ; offres invalides ; stabilité du score ; latence</td><td>20 000 profils simulés ; dossier fictif avec le vrai modèle de langage</td></tr>
+  <tr><td><b>Notification, audit</b></td><td>Validation, annulation, délai, doublons, journal immuable, 409</td><td>(fonctionnel) — état exact à chaque transition</td><td>Tests unitaires et de câblage</td></tr>
+  <tr><td><b>Interface</b></td><td>Verrous du pipeline, popups, bandeaux, graphiques, géométrie</td><td>(fonctionnel)</td><td>Tests de composants</td></tr>
+  <tr><td><b>Déploiement</b></td><td>Build des trois images, santé des conteneurs</td><td>Taille des images, mémoire, latence HTTP, temps de démarrage</td><td>La machine virtuelle réelle</td></tr>
 </table>
-<p>La date d'une décision est celle de la <b>dernière</b> décision (champ dédié) : une nouvelle analyse met à jour la même ligne, et un horodatage automatique bougerait à chaque changement d'état de l'e-mail et fausserait les délais.</p>
-<p><b>Export Excel</b> (<code>.xlsx</code> généré par Apache POI) : feuilles Synthèse, Décisions (une ligne par décision, avec filtre automatique et en-tête figé), Motifs et Évolution. Les dates sont de vraies dates et les montants de vrais nombres : Excel peut trier, filtrer et calculer. Le fichier contient les noms des clients, jamais leur CIN.</p>
-<p><b>Visualisation.</b> Graphiques en SVG sans bibliothèque. Barres et colonnes fines (24 px au plus), bout arrondi sur la donnée et base carrée, 2 px de surface entre les segments empilés, grille en traits pleins discrets, échelle ronde (1, 2, 5, 10, 20, 50…). Une seule infobulle par colonne avec toutes les décisions (la valeur d'abord), la même au clavier qu'à la souris. Chaque graphique a sa vue en tableau.</p>
-<div class="box warn"><b>Couleurs.</b> Les décisions ont un sens : vert, ambre et rouge sont la palette « statut », le bleu est la série 1. Contrôle du validateur de palette : séparation pour le daltonisme 11,3 (seuil 8), distinction en vision normale 27,6 (seuil 15). Une règle échoue, la bande de luminosité, à cause de l'ambre, et son contraste est de 1,79:1 sur fond blanc : c'est la raison pour laquelle aucune information ne repose sur la couleur seule (libellé, valeur, icône, tableau de données). Il n'y a pas de thème sombre dans l'application, donc pas de variante sombre.</div>
+<span class="legende">Tableau 4.1 — Que tester et que mesurer, étape par étape</span>
 
-<h3>Le rapport PDF de la décision</h3>
-<p>Généré <b>côté serveur</b> (iText, déjà présent dans le projet) à partir du résultat enregistré : il peut être régénéré à tout moment, sans relancer l'analyse et sans stocker de fichier. Deux versions :</p>
+<h3>Pyramide de tests et outils</h3>
 <table>
-  <tr><th style="width:16%">Version</th><th>Contenu</th><th style="width:22%">Usage</th></tr>
-  <tr><td>Client</td><td>Décision, score (jamais pour un dossier « à compléter » : il serait provisoire), explication, informations à fournir (sans les réglages internes comme le taux d'intérêt), chiffres de la demande (montant, durée, mensualité, taux appliqué), conditions avant décaissement. Ni contrôles internes, ni risques, ni points de vigilance, ni CIN complet.</td><td>Pièce jointe de l'e-mail</td></tr>
-  <tr><td>Agent</td><td>Rapport complet : résumé, chiffres clés, contrôles réglementaires, capacité d'emprunt, simulations par durée, points forts et de vigilance, risques, plan recommandé, avertissements, note de calcul.</td><td>Bouton « Rapport complet » de l'écran de résultat</td></tr>
+  <tr><th style="width:20%">Niveau</th><th style="width:26%">Outil</th><th>Contenu</th></tr>
+  <tr><td>Unitaires Python</td><td><code>unittest</code>, modèles simulés</td><td>Modules du service IA ; embeddings et LLM remplacés par des simulations déterministes : aucun téléchargement, aucun appel réseau</td></tr>
+  <tr><td>Unitaires et d'intégration Java</td><td>JUnit 5, Mockito</td><td>Services, contrôleurs, câblage des services entre eux ; PDF et Excel relus après génération</td></tr>
+  <tr><td>Composants Angular</td><td>Vitest</td><td>Rendu et comportement de chaque écran</td></tr>
+  <tr><td>Évaluation de performance</td><td><code>benchmarks/mesurer_kpi.py</code></td><td>Vrais modèles (OCR, MiniLM, FAISS), vrai modèle de langage, jeu de test fictif</td></tr>
+  <tr><td>Mesures de déploiement</td><td><code>deploy/mesurer_vm.sh</code></td><td>Machine réelle, lecture seule</td></tr>
 </table>
-<p>Un chiffre non calculé est écrit « Non calculé » ou « Non calculée », jamais 0. Un titre de section ne reste jamais seul en bas de page.</p>
 
-<h3>Le chatbot RAG : indexation, découpage, recherche</h3>
-<p><b>RAG</b> (Retrieval-Augmented Generation) : on ne donne pas tout le dossier au LLM à chaque question. On <i>cherche</i> d'abord les passages utiles, puis on les lui donne avec la question. Fichier principal : <code>chatbot_service.py</code>.</p>
-<p><b>Indexation</b> = préparer les documents pour qu'on puisse les chercher vite, comme l'index d'un livre. Elle se fait une fois par analyse : (1) découper les textes OCR en chunks, (2) transformer chaque chunk en vecteur de 384 nombres avec le modèle d'embedding (MiniLM multilingue), (3) ranger les vecteurs dans <b>FAISS</b> (<code>IndexFlatIP</code>, recherche exacte par cosinus), plus un index lexical <b>BM25</b>. Les index sont <b>en mémoire</b>, un par dossier ; les textes viennent de PostgreSQL (<code>ocr_results</code>).</p>
-
-<h4>Découpage structurel et sémantique (<code>decoupage_rag.py</code>)</h4>
+<h2>4.2 Résultats des tests automatisés</h2>
+<div class="kpi">
+  <div><b class="ok">162 / 162</b><span>tests Python</span></div>
+  <div><b class="ok">222 / 223</b><span>tests Java (1 hors périmètre)</span></div>
+  <div><b class="ok">152 / 152</b><span>tests Angular de nos écrans (161 / 167 au total)</span></div>
+  <div><b class="ok">OK</b><span>construction du frontend</span></div>
+</div>
 <table>
-  <tr><th style="width:22%">Type de texte</th><th>Découpage</th></tr>
-  <tr><td>Relevé bancaire</td><td><b>Un chunk par opération</b> (une ligne datée). Chaque chunk répète l'en-tête « Date | Libellé | Débit | Crédit | Solde », et le <b>sens crédit / débit est déduit du solde</b> (ancien solde + montant = nouveau solde : crédit). Si le solde ne colle pas, aucun sens n'est inventé.</td></tr>
-  <tr><td>Document court (CIN, attestation…)</td><td>Un seul chunk : il n'est jamais coupé.</td></tr>
-  <tr><td>Texte libre</td><td><b>Coupure aux changements de sujet</b> (semantic chunking) : pour chaque frontière, on compare la moyenne des embeddings des 2 lignes avant à celle des 2 lignes après, et on coupe aux frontières dont la similarité est parmi les plus basses.</td></tr>
-  <tr><td>Tous</td><td>Taille maximale de 450 caractères, ce que le modèle lit réellement (128 tokens). Une coupure forcée par la taille garde une ligne de chevauchement ; une coupure sémantique n'en a pas besoin.</td></tr>
+  <tr><th style="width:17%">Couche</th><th style="width:8%">Tests</th><th>Détail par module</th></tr>
+  <tr><td>Service IA (Python)</td><td class="num-d">162</td><td>agent_regles (21) · propositions_ajustement (17) · classification_regles (24) · decoupage_rag (19) · recherche_hybride (18) · chatbot_memoire (17) · dettes_releve (12) · controle_type (10) · extraction_par_type (10) · dossier_texte (9) · chatbot_indexation (5)</td></tr>
+  <tr><td>Backend (Java)</td><td class="num-d">222</td><td>FichierServiceImpl (28) · NotificationValidation (29) · StatistiquesService (26) · DossierControllerRapport (23) · RapportPdfService (20) · AuditService (17) · NotificationDecisionService (15) · StatistiquesExcel (14) · AdminStatistiquesController (11) · ResultatEmailService (10) · IdentiteClient (9) · ChatbotServiceMemoire (9) · NotificationWiring (5) · DossierControllerEmail (3) · DossierControllerFichiers (3)</td></tr>
+  <tr><td>Frontend (Angular)</td><td class="num-d">152</td><td>statistiques (48) · credit-result (42) · pipeline-analyse (23) · upload-section (17) · export-button (8) · chat-assistant (7) · modèle de résultat (7)</td></tr>
 </table>
-<p>Avant, le découpage était positionnel (2 lignes avant, 3 après) : sur un relevé, une opération était coupée et les montants perdaient leur en-tête de colonnes.</p>
+<span class="legende">Tableau 4.2 — Tests automatisés (résultats au 8 octobre 2026)</span>
+<div class="box ko"><b>Échecs connus, non liés à nos changements.</b> <b>DemoApplicationTests</b> (Java) exige une vraie base PostgreSQL : il échoue hors de l'environnement complet. Six tests Angular générés par défaut (<code>app</code>, <code>document</code>, <code>register</code>, <code>verify-email</code>, deux <code>reset-password</code>) échouent : aucun de ces fichiers n'a été modifié ; il faut soit les écrire pour de bon, soit les retirer.</div>
+<div class="box warn"><b>Ce que les tests automatisés ne prouvent pas.</b> Les modèles d'embeddings et de langage sont simulés dans les tests unitaires : ils vérifient la logique du code, pas la qualité des modèles. C'est le rôle des mesures de la section 4.4, faites avec les vrais modèles. Les derniers écrans (bandeau de validation, journal, panneau des propositions) sont testés en structure, mais n'ont pas été relus dans un navigateur.</div>
 
-<h4>Recherche hybride (<code>recherche_hybride.py</code>)</h4>
+<h2>4.3 Protocole de mesure</h2>
+<h3>Matériel et logiciels</h3>
+<p>Toutes les mesures des sections 4.4.1 à 4.4.4 ont été faites <b>sur le poste de développement</b>, sur processeur, sans GPU (voir les caractéristiques exactes en tête de chaque fichier de résultats). Les temps absolus dépendent de cette machine ; les <b>rapports</b> entre étapes et les <b>taux</b> (exactitude, rappel) en dépendent beaucoup moins. Les temps sur la machine Azure sont à relever par le script de l'annexe E (section 4.4.6).</p>
+<h3>Jeux de données</h3>
+<table>
+  <tr><th style="width:30%">Jeu</th><th>Contenu</th></tr>
+  <tr><td>Dossier fictif (<code>test-data/dossier-12015060</code>)</td><td>5 pièces en deux versions : <b>natives</b> (texte sélectionnable) et <b>scannées</b> (images avec léger bruit, 7 pages), toutes avec la mention « DOCUMENT FICTIF ». Les valeurs attendues (CIN, noms, salaire net 2 100 DT, dette de 250 DT par mois, etc.) sont connues et documentées.</td></tr>
+  <tr><td>Banc de classification (<code>Python/tests/documents</code>)</td><td>16 documents étiquetés par leur nom, dont des types <b>absents</b> du dossier de test (assurance-vie, contrat de travail, déclaration fiscale, titre de séjour, menu de restaurant), en français et en arabe, natifs et scannés.</td></tr>
+</table>
+<span class="legende">Tableau 4.3 — Jeux de données d'évaluation</span>
+<div class="box warn"><b>Biais à connaître.</b> Ces documents ont été générés par nous : leurs titres ressemblent à nos mots-clés, donc les résultats sont <b>optimistes</b> par rapport à de vrais documents. Les mesures valident la chaîne ; elles ne remplacent pas une évaluation sur un corpus annoté de la banque.</div>
+<h3>Définitions des indicateurs</h3>
+<table>
+  <tr><th style="width:22%">Indicateur</th><th>Définition</th></tr>
+  <tr><td>Champs retrouvés</td><td>Part des valeurs attendues (numéro de CIN, noms, montants, dates…) présentes dans le texte lu, quelle que soit la mise en forme (espaces, casse, accents)</td></tr>
+  <tr><td>F1 des mots</td><td>Moyenne harmonique du rappel et de la précision d'un « sac de mots » du texte lu par OCR, comparé au texte natif du même document. <b>Choisi à la place du taux d'erreur par caractère</b> : l'ordre de lecture d'un texte mêlant arabe et latin diffère entre le texte natif et l'OCR, ce qui gonflerait artificiellement la distance d'édition.</td></tr>
+  <tr><td>Exactitude</td><td>Documents correctement classés ÷ documents</td></tr>
+  <tr><td>F1 macro</td><td>Moyenne, sur les types présents, des F1 par type : n'est pas dominée par les types fréquents</td></tr>
+  <tr><td>Rappel@k</td><td>Part des questions dont la réponse figure dans les k premiers extraits</td></tr>
+  <tr><td>MRR</td><td>Moyenne de 1 ÷ (rang du premier bon extrait) : 1,0 = toujours en première position</td></tr>
+  <tr><td>Médiane, P95</td><td>Temps tel que 50 % (respectivement 95 %) des appels sont plus rapides</td></tr>
+</table>
+<span class="legende">Tableau 4.4 — Indicateurs</span>
+<h3>Reproductibilité</h3>
+<p>Les mesures sont produites par un script unique, <code>Python/benchmarks/mesurer_kpi.py</code>, qui écrit un fichier JSON par étape dans <code>Python/benchmarks/resultats/</code> (date, machine et résultats détaillés). Les commandes sont à l'annexe E. Les mesures qui appellent un modèle de langage (zone grise de la classification, réponses de l'assistant, décision de bout en bout) utilisent le fournisseur configuré, avec les <b>seuls documents fictifs</b> ; l'option <code>--sans-llm</code> les désactive.</p>
+
+<h2>4.4 Indicateurs de performance par étape</h2>
+<p>Les mesures ont été faites le 8 octobre 2026 sur un poste Windows 11, processeur Intel de 11<sup>e</sup> génération à 8 cœurs, sans GPU. Les fichiers de résultats détaillés sont dans <code>Python/benchmarks/resultats/</code>.</p>
+
+<h3>4.4.1 OCR</h3>
+<p><b>Question :</b> l'OCR retrouve-t-il les informations utiles, et en combien de temps ? Protocole : les 5 pièces du dossier fictif en version native et en version scannée (7 pages scannées) ; 18 valeurs attendues (CIN, noms, date de naissance, montants, employeur, adresse…).</p>
+<div class="kpi">
+  <div><b class="ok">18 / 18</b><span>champs retrouvés sur les scans (100 %)</span></div>
+  <div><b class="ok">0,997</b><span>F1 moyen des mots, scan comparé au texte natif</span></div>
+  <div><b class="ko">44,5 s</b><span>par page scannée (médiane par document 44,7 s)</span></div>
+  <div><b class="ok">24 ms</b><span>par document natif (médiane)</span></div>
+</div>
+<table>
+  <tr><th>Document</th><th class="num-d">Pages</th><th class="num-d">Natif</th><th class="num-d">Scan</th><th class="num-d">Scan par page</th><th class="num-d">Champs (scan)</th><th class="num-d">F1 mots</th></tr>
+  <tr><td>CIN</td><td class="num-d">1</td><td class="num-d">36 ms</td><td class="num-d">32,0 s</td><td class="num-d">32,0 s</td><td class="num-d">5 / 5</td><td class="num-d">0,990</td></tr>
+  <tr><td>Fiche de paie</td><td class="num-d">1</td><td class="num-d">24 ms</td><td class="num-d">44,7 s</td><td class="num-d">44,7 s</td><td class="num-d">3 / 3</td><td class="num-d">1,000</td></tr>
+  <tr><td>Relevé bancaire</td><td class="num-d">3</td><td class="num-d">20 ms</td><td class="num-d">145,1 s</td><td class="num-d">48,4 s</td><td class="num-d">3 / 3</td><td class="num-d">1,000</td></tr>
+  <tr><td>Attestation d'emploi</td><td class="num-d">1</td><td class="num-d">20 ms</td><td class="num-d">48,2 s</td><td class="num-d">48,2 s</td><td class="num-d">4 / 4</td><td class="num-d">0,993</td></tr>
+  <tr><td>Justificatif de domicile</td><td class="num-d">1</td><td class="num-d">39 ms</td><td class="num-d">41,8 s</td><td class="num-d">41,8 s</td><td class="num-d">3 / 3</td><td class="num-d">1,000</td></tr>
+  <tr><td><b>Total</b></td><td class="num-d"><b>7</b></td><td class="num-d"><b>138 ms</b></td><td class="num-d"><b>311,8 s</b></td><td class="num-d"><b>44,5 s</b></td><td class="num-d"><b>18 / 18</b></td><td class="num-d"><b>0,997</b></td></tr>
+</table>
+<span class="legende">Tableau 4.5 — OCR : exactitude et temps (chargement des modèles : 9,7 s, une seule fois)</span>
+<div class="box"><b>Lecture.</b> La <b>qualité</b> est excellente sur ce jeu : toutes les valeurs attendues sont retrouvées, y compris sur les scans. La <b>vitesse</b> est le point faible : un scan prend environ 1 800 fois plus de temps qu'un PDF natif, car chaque zone est lue par deux modèles (arabe et latin) avant fusion. Un dossier de cinq pièces scannées demande ainsi plus de 5 minutes d'OCR, contre 138 ms pour les mêmes pièces natives.</div>
+<div class="box warn"><b>Limites.</b> Les scans sont <i>générés</i> (images propres avec léger bruit), pas de vraies photos de documents : sur des photos de téléphone (flou, ombres, inclinaison), la qualité sera inférieure. Le temps dépend du processeur ; sur la machine Azure (2 vCPU) il est à relever (section 4.4.6).</div>
+
+<h3>4.4.2 Classification des documents</h3>
+<p><b>Question :</b> la cascade identifie-t-elle correctement la nature des pièces, et quel niveau fait le travail ? Protocole : 26 documents étiquetés (16 du banc d'essai dont 5 types absents du dossier de test, 10 du dossier fictif), texte obtenu par l'OCR réel, classés par chaque niveau seul puis par la cascade.</p>
+<div class="diag" style="text-align:left">
+  <div class="barre"><span class="lib">Embeddings seuls</span><span class="piste"><i class="r" style="width:61.5%"></i></span><span class="val">61,5 % (16 / 26) · F1 macro 0,578</span></div>
+  <div class="barre"><span class="lib">Règles (quand elles répondent)</span><span class="piste"><i class="v" style="width:100%"></i></span><span class="val">100 % (24 / 24) sur 92,3 % des documents</span></div>
+  <div class="barre"><span class="lib">Cascade sans LLM</span><span class="piste"><i class="v" style="width:96.2%"></i></span><span class="val">96,2 % (25 / 26) · F1 macro 0,978</span></div>
+  <div class="barre"><span class="lib">Cascade complète (avec LLM)</span><span class="piste"><i class="v" style="width:96.2%"></i></span><span class="val">96,2 % (25 / 26) · F1 macro 0,978</span></div>
+</div>
+<span class="legende">Figure 4.1 — Exactitude de la classification (26 documents)</span>
+<table>
+  <tr><th style="width:34%">Indicateur</th><th>Valeur</th></tr>
+  <tr><td>Documents tranchés par les règles</td><td>24 sur 26 (92,3 %), sans aucune erreur</td></tr>
+  <tr><td>Documents tranchés par les embeddings</td><td>1 sur 26</td></tr>
+  <tr><td>Appels au modèle de langage</td><td>1 sur 26 (3,8 %) : le menu de restaurant, correctement rangé « AUTRE »</td></tr>
+  <tr><td>Latence des règles</td><td>médiane 2 ms, P95 16,5 ms</td></tr>
+  <tr><td>Latence des embeddings seuls</td><td>médiane 81 ms, P95 112 ms</td></tr>
+  <tr><td>Latence de la cascade complète (sans appel externe)</td><td>moyenne 7,8 ms, P95 63 ms</td></tr>
+  <tr><td>Latence d'un appel au modèle de langage</td><td>932 ms (un seul appel)</td></tr>
+</table>
+<span class="legende">Tableau 4.6 — Classification : couverture et vitesse</span>
+<div class="box"><b>Ce que les mesures ont justifié.</b> Les embeddings seuls ne classent correctement que 61,5 % des documents : 6 des 10 erreurs sont des pièces classées « CIN » (trois relevés bancaires, deux attestations d'emploi et un titre de séjour citent un numéro d'identité). Le niveau de règles, ajouté après cette constatation, porte l'exactitude à 96,2 % et rend la classification quasi instantanée et gratuite pour 92 % des documents.</div>
+<div class="box ko"><b>Une erreur silencieuse subsiste.</b> L'attestation d'emploi <b>en arabe</b> (<code>ATTESTATION_EMPLOI__natif_ar</code>) est classée « justificatif de domicile » : les règles s'abstiennent, les embeddings répondent avec une similarité au-dessus du seuil de 0,55 et le modèle de langage n'est donc pas consulté. C'est le cas le plus dangereux : un verdict faux avec une confiance affichée « suffisante ». Piste : relever le seuil, ou consulter le modèle de langage chaque fois que les règles s'abstiennent. Le contrôle déclaré/détecté limite le risque : le client ayant déposé ce document comme attestation d'emploi, le désaccord avec le type détecté (fiable, car au-dessus de 0,55) serait signalé à l'agent, qui devrait confirmer pour poursuivre.</div>
+<div class="box warn"><b>Biais.</b> Les règles ont été écrites en regardant une partie de ces documents : 100 % de précision quand elles répondent est <b>optimiste</b>. Seule une évaluation sur de vrais documents de la banque donnera la précision réelle.</div>
+
+<h3>4.4.3 Assistant documentaire (RAG)</h3>
+<p><b>Question :</b> l'assistant retrouve-t-il les bons passages, et répond-il juste ? Protocole : les 5 documents natifs du dossier fictif sont indexés ; 22 questions dont la réponse attendue est connue (12 sur des montants, numéros et dates, 10 en tournure libre, par exemple « Combien gagne le client par mois ? »). Une question est réussie si la valeur attendue figure dans les k premiers extraits.</p>
+<table>
+  <tr><th style="width:30%">Mode de recherche</th><th class="num-d">Rappel@1</th><th class="num-d">Rappel@3</th><th class="num-d">Rappel@5</th><th class="num-d">MRR</th></tr>
+  <tr><td>Sens seul (embeddings + FAISS)</td><td class="num-d">59,1 %</td><td class="num-d">77,3 %</td><td class="num-d">86,4 %</td><td class="num-d">0,699</td></tr>
+  <tr><td>Mots exacts seuls (BM25)</td><td class="num-d">59,1 %</td><td class="num-d">77,3 %</td><td class="num-d">77,3 %</td><td class="num-d">0,667</td></tr>
+  <tr><td><b>Hybride (fusion RRF)</b></td><td class="num-d"><b>68,2 %</b></td><td class="num-d"><b>86,4 %</b></td><td class="num-d"><b>95,5 %</b></td><td class="num-d"><b>0,792</b></td></tr>
+</table>
+<span class="legende">Tableau 4.7 — Recherche, toutes questions (22)</span>
+<table>
+  <tr><th style="width:30%">Type de question</th><th>Sens seul</th><th>Mots exacts</th><th>Hybride</th></tr>
+  <tr><td>Montants, numéros, dates (12) — rappel@5 / MRR</td><td>83,3 % / 0,644</td><td>91,7 % / 0,833</td><td><b>100 % / 0,854</b></td></tr>
+  <tr><td>Tournures libres (10) — rappel@5 / MRR</td><td>90,0 % / 0,767</td><td>60,0 % / 0,467</td><td>90,0 % / 0,717</td></tr>
+</table>
+<span class="legende">Tableau 4.8 — Recherche selon le type de question</span>
+<div class="box"><b>Lecture.</b> La recherche hybride apporte +9 points de rappel@5 (95,5 % contre 86,4 %) et +0,09 de MRR par rapport au sens seul. Elle est surtout utile pour les <b>valeurs exactes</b> (100 % de rappel@5) : la question « Quel est le numéro de CIN ? » ramène le bon extrait au rang 2 en hybride, au rang 36 avec le sens seul. Pour les tournures libres, la recherche hybride <b>n'améliore pas</b> le sens seul (même rappel@5, MRR légèrement inférieur : 0,717 contre 0,767) : les mots exacts n'aident pas quand la question ne contient pas les mots du document.</div>
+<table>
+  <tr><th style="width:42%">Indicateur</th><th>Valeur</th></tr>
+  <tr><td>Rappel dans les 12 extraits réellement envoyés au modèle</td><td>95,5 % (21 questions sur 22)</td></tr>
+  <tr><td>Documents → extraits</td><td>5 documents → 45 extraits ; 172 caractères en moyenne, 422 au plus (limite 450) ; 32 extraits viennent du relevé (un par opération)</td></tr>
+  <tr><td>Indexation d'un dossier (5 documents)</td><td>4,2 s (découpage sémantique compris)</td></tr>
+  <tr><td>Latence de recherche</td><td>médiane 20 ms, P95 32 ms</td></tr>
+  <tr><td>Réponses générées (12 questions)</td><td>9 obtenues ; <b>7 justes sur 9 (77,8 %)</b> ; 3 sans réponse (modèle de langage saturé, HTTP 429)</td></tr>
+  <tr><td>Temps d'une réponse complète</td><td>médiane 5,1 s, P95 14,6 s (dominé par le modèle de langage externe)</td></tr>
+</table>
+<span class="legende">Tableau 4.9 — Assistant : extraits, latence et réponses</span>
+<div class="box warn"><b>Sur les 2 réponses non justes.</b> L'une est <b>voulue</b> : à la question sur le numéro de CIN, l'assistant ne le donne pas, car les numéros d'identité sont masqués avant et après le modèle (protection des données). L'autre est une vraie erreur (montant de la facture d'électricité). Les 3 questions sans réponse proviennent de la saturation du fournisseur externe, pas de la recherche. L'échantillon (12 réponses) est petit : le 77,8 % est indicatif.</div>
+
+<h3>4.4.4 Moteur de décision hybride</h3>
+<p><b>Question :</b> les chiffres sont-ils exacts, les propositions valides, la décision stable, et à quelle vitesse ? Protocole en trois volets.</p>
+<h4>a) Exactitude du calcul</h4>
+<p>300 crédits tirés au hasard (montants de 1 000 à 60 000 DT, 6 à 84 mois, taux de 5 à 15 %) : la mensualité du moteur est comparée à une <b>référence indépendante</b>, trouvée par dichotomie sur un tableau d'amortissement (la formule n'y intervient pas). Écart maximal : <b>0,000000 DT</b> (inférieur à 10<sup>−6</sup>).</p>
+<h4>b) Cohérence interne et vitesse sur 20 000 dossiers simulés</h4>
+<div class="kpi">
+  <div><b class="ok">0</b><span>offre invalide sur 12 912 offres générées</span></div>
+  <div><b class="ok">38 µs</b><span>moteur de règles complet (médiane 36,6 µs ; P95 42,8 µs)</span></div>
+  <div><b class="ok">15 µs</b><span>calcul des propositions (médiane)</span></div>
+  <div><b>77,2 %</b><span>des dossiers trop endettés reçoivent au moins une offre</span></div>
+</div>
+<p>Parmi les 20 000 dossiers, 10 061 dépassaient 30 % d'endettement ; 7 767 d'entre eux (77,2 %) ont reçu au moins une offre. Chaque offre a été revérifiée à la main : endettement sous 30 %, plafond de 5 fois le salaire, durée au plus 84 mois, âge de 70 ans au plus en fin de crédit, montant inférieur ou égal à la demande. Les 22,8 % restants n'ont <b>aucune offre</b> parce qu'aucun montant d'au moins 500 DT ne respecte ces limites (le moteur prévoit ces cas : dettes en cours trop lourdes, âge, plafond du montant ; la répartition exacte entre ces causes n'a pas été mesurée) : il le dit au lieu d'inventer une offre.</p>
+<h4>c) De bout en bout, avec le vrai modèle de langage, sur le dossier fictif (5 essais)</h4>
+<table>
+  <tr><th style="width:44%">Indicateur</th><th>Valeur</th></tr>
+  <tr><td>Analyses abouties</td><td><b class="ko">2 sur 5</b> : les 3 autres ont reçu <b>HTTP 429</b> des deux fournisseurs (quota d'appels dépassé) et sont ressorties « indéterminées » avec un message clair, sans panne ni perte</td></tr>
+  <tr><td>Revenu lu : 2 100 DT (exact)</td><td>2 sur 2</td></tr>
+  <tr><td>Dettes détectées : 250 DT (exact)</td><td>2 sur 2</td></tr>
+  <tr><td>Taux d'endettement : 22,77 % (référence indépendante : 22,77 %)</td><td>2 sur 2</td></tr>
+  <tr><td>Décision</td><td>« ELIGIBLE » dans les 2 cas</td></tr>
+  <tr><td>Score du modèle de langage</td><td><b class="warn">78 et 85</b> (écart-type 3,5) : <b>les chiffres sont identiques d'un essai à l'autre, le score non</b></td></tr>
+  <tr><td>Durée d'une analyse aboutie</td><td>10,3 s et 19,7 s (un appel externe)</td></tr>
+</table>
+<span class="legende">Tableau 4.10 — Décision de bout en bout sur le dossier fictif</span>
+<div class="box warn"><b>À lire avec prudence.</b> Deux analyses abouties seulement : c'est trop peu pour une statistique, mais suffisant pour montrer l'<b>essentiel</b> : les valeurs financières sont exactes et stables parce qu'elles viennent des règles, alors que le score varie parce qu'il vient du modèle. Les échecs 429 sont dus aux limites des offres gratuites des fournisseurs, atteintes par la rafale de mesures de la même session. Ils illustrent un risque d'exploitation réel : <b>la disponibilité du service dépend de fournisseurs externes</b> (voir 4.5).</div>
+
+<h3>4.4.5 Chaîne complète : où va le temps</h3>
+<p>Pour un dossier de cinq pièces <b>scannées</b>, la somme des temps mesurés donne l'ordre de grandeur suivant (poste de développement) :</p>
+<div class="diag" style="text-align:left">
+  <div class="barre"><span class="lib">OCR (5 pièces, 7 pages)</span><span class="piste"><i class="r" style="width:93%"></i></span><span class="val">≈ 312 s</span></div>
+  <div class="barre"><span class="lib">Extraction JSON (appels externes)</span><span class="piste"><i class="o" style="width:3%"></i></span><span class="val">non mesurée isolément</span></div>
+  <div class="barre"><span class="lib">Décision (appel externe + règles)</span><span class="piste"><i class="o" style="width:4%"></i></span><span class="val">≈ 10 à 20 s</span></div>
+  <div class="barre"><span class="lib">Classification (cascade)</span><span class="piste"><i class="v" style="width:0.5%"></i></span><span class="val">&lt; 0,1 s</span></div>
+  <div class="barre"><span class="lib">Recherche RAG / règles du moteur</span><span class="piste"><i class="v" style="width:0.3%"></i></span><span class="val">≈ 20 ms / ≈ 40 µs</span></div>
+</div>
+<span class="legende">Figure 4.2 — Répartition du temps d'un dossier scanné (somme des mesures isolées, non un chronométrage de bout en bout)</span>
+<p><b>Conclusion de cette répartition :</b> l'OCR représente l'essentiel du temps de traitement (plus de 90 %). Les étapes déterministes sont négligeables. Toute optimisation doit donc viser l'OCR en premier (4.5).</p>
+
+<h3>4.4.6 Déploiement</h3>
+<p>Les mesures sur la machine virtuelle (taille des images, mémoire, latence HTTP, temps de démarrage) sont décrites en 5.7 et se relèvent avec <code>deploy/mesurer_vm.sh</code>. <span class="todo-inline">À reporter dans le tableau 5.2 avant la soutenance.</span></p>
+
+<h2>4.5 Analyse, limites et menaces sur la validité</h2>
+<h3>Ce que les résultats établissent</h3>
 <ul>
-  <li><b>Sens</b> : FAISS compare le vecteur de la question à ceux des chunks. « salaire » retrouve « NET A PAYER », en français comme en arabe.</li>
-  <li><b>Mots exacts</b> : BM25 (écrit en Python pur, sans dépendance) retrouve les montants, noms et numéros que les embeddings pèsent mal. Un montant « 2 100,000 » donne les jetons « 2100 » et « 2100000 ».</li>
-  <li><b>Fusion RRF</b> (Reciprocal Rank Fusion) : un chunk bien classé par l'une OU l'autre remonte.</li>
-  <li><b>Couverture</b> : au moins 2 chunks de chaque document, puis complément jusqu'à 12 chunks.</li>
+  <li><b>Les chiffres financiers sont fiables</b> : exacts à 10<sup>−6</sup> DT, stables, calculés en quelques dizaines de microsecondes, et sans aucune offre invalide sur 12 912.</li>
+  <li><b>La lecture est de qualité</b> sur nos documents (100 % des champs, F1 0,997), et la classification en cascade est précise et peu coûteuse (96,2 %, 3,8 % d'appels externes).</li>
+  <li><b>La recherche hybride vaut son coût</b> : +9 points de rappel@5, surtout sur les valeurs exactes.</li>
+</ul>
+<h3>Ce que les résultats révèlent comme faiblesses</h3>
+<table>
+  <tr><th style="width:24%">Faiblesse</th><th>Constat mesuré</th><th style="width:34%">Piste</th></tr>
+  <tr><td><b>Vitesse de l'OCR</b></td><td>44,5 s par page ; plus de 90 % du temps d'un dossier scanné</td><td>Un seul modèle de lecture selon la langue détectée, résolution adaptée, détection limitée, GPU, traitement en tâche de fond avec suivi</td></tr>
+  <tr><td><b>Erreur silencieuse de classification</b></td><td>Attestation arabe classée « justificatif de domicile » avec une confiance jugée suffisante</td><td>Consulter le modèle de langage quand les règles s'abstiennent ; relever le seuil des embeddings ; règles arabes enrichies</td></tr>
+  <tr><td><b>Disponibilité des fournisseurs de LLM</b></td><td>3 analyses sur 5 refusées par HTTP 429 (quota) pendant la mesure</td><td>Reprise automatique avec attente progressive, plan payant ou plus de fournisseurs, file d'attente des analyses</td></tr>
+  <tr><td><b>Score non reproductible</b></td><td>78 et 85 pour le même dossier (écart-type 3,5)</td><td>Grille de score déterministe avec détail par critère</td></tr>
+  <tr><td><b>Réponses de l'assistant</b></td><td>7 justes sur 9 ; une vraie erreur de montant</td><td>Re-classement des extraits, consigne de citer l'extrait, évaluation sur un échantillon plus large</td></tr>
+</table>
+<span class="legende">Tableau 4.11 — Faiblesses constatées et pistes</span>
+<h3>Menaces sur la validité</h3>
+<ul>
+  <li><b>Données fictives et propres.</b> Générées par nous, avec des titres proches de nos mots-clés : les taux de réussite sont optimistes.</li>
+  <li><b>Règles écrites en regardant les documents d'évaluation.</b> Risque de sur-ajustement : les 100 % de précision des règles ne se généralisent pas automatiquement.</li>
+  <li><b>Petits échantillons.</b> 26 documents, 22 questions, 12 réponses générées, 5 essais dont 2 aboutis : les pourcentages ont une grande marge d'incertitude.</li>
+  <li><b>Une seule machine, une seule session.</b> Les temps dépendent du matériel ; les modèles de langage externes varient dans le temps (quotas, charge).</li>
+  <li><b>Vérité terrain de l'OCR.</b> Le texte natif sert de référence : il suppose que le PDF natif est lui-même juste, ce qui est vrai pour des documents générés.</li>
 </ul>
 
-<h4>Mémoire de conversation</h4>
-<p><b>Problème.</b> Chaque question était traitée seule. À « Et depuis quand ? », le modèle ne savait pas de quoi on parlait, et surtout <b>la recherche non plus</b> : une relance ne contient aucun mot utile pour trouver les bons passages.</p>
+<h2>4.6 Synthèse à présenter en soutenance</h2>
+<p>Le tableau compare les mesures à des <b>objectifs proposés</b> (fixés pour ce rapport, à valider avec la banque : ils n'émanent pas d'une exigence contractuelle).</p>
+<table>
+  <tr><th style="width:12%">Étape</th><th style="width:28%">Indicateur</th><th style="width:18%">Objectif proposé</th><th style="width:16%">Mesuré</th><th>Verdict</th></tr>
+  <tr><td rowspan="2"><b>OCR</b></td><td>Champs retrouvés (scan)</td><td>≥ 95 %</td><td>100 %</td><td class="ok">atteint</td></tr>
+  <tr><td>Temps par page scannée</td><td>≤ 10 s</td><td>44,5 s</td><td class="ko">non atteint</td></tr>
+  <tr><td rowspan="4"><b>Classification</b></td><td>Exactitude (cascade)</td><td>≥ 90 %</td><td>96,2 %</td><td class="ok">atteint (optimiste)</td></tr>
+  <tr><td>Erreurs silencieuses</td><td>0</td><td>1</td><td class="ko">non atteint</td></tr>
+  <tr><td>Part d'appels au LLM</td><td>≤ 20 %</td><td>3,8 %</td><td class="ok">atteint</td></tr>
+  <tr><td>Latence des règles (médiane)</td><td>≤ 50 ms</td><td>2 ms</td><td class="ok">atteint</td></tr>
+  <tr><td rowspan="4"><b>RAG</b></td><td>Rappel@5</td><td>≥ 90 %</td><td>95,5 %</td><td class="ok">atteint</td></tr>
+  <tr><td>MRR</td><td>≥ 0,75</td><td>0,792</td><td class="ok">atteint</td></tr>
+  <tr><td>Latence de recherche (médiane)</td><td>≤ 100 ms</td><td>20 ms</td><td class="ok">atteint</td></tr>
+  <tr><td>Réponses justes</td><td>≥ 85 %</td><td>77,8 % (sur 9)</td><td class="warn">non atteint, échantillon faible</td></tr>
+  <tr><td rowspan="5"><b>Décision</b></td><td>Écart du calcul à la référence</td><td>0 DT (≤ 10<sup>−6</sup>)</td><td>0,000000 DT</td><td class="ok">atteint</td></tr>
+  <tr><td>Offres invalides</td><td>0</td><td>0 / 12 912</td><td class="ok">atteint</td></tr>
+  <tr><td>Latence du moteur de règles</td><td>≤ 1 ms</td><td>38 µs</td><td class="ok">atteint</td></tr>
+  <tr><td>Analyses abouties (LLM externe)</td><td>≥ 95 %</td><td>2 / 5</td><td class="ko">non atteint (quota)</td></tr>
+  <tr><td>Reproductibilité du score</td><td>écart-type ≤ 2</td><td>3,5 (n = 2)</td><td class="ko">non atteint</td></tr>
+  <tr><td><b>Déploiement</b></td><td colspan="4"><span class="todo-inline">à relever sur la VM (tableau 5.2)</span></td></tr>
+</table>
+<span class="legende">Tableau 4.12 — Mesures face aux objectifs proposés</span>
+<div class="box ok"><b>Message à retenir.</b> Les points <b>déterministes</b> (calculs, règles, recherche, classification par règles) sont fiables, rapides et testés. Les points qui dépendent d'un <b>modèle externe ou d'un calcul lourd</b> (OCR, modèle de langage) concentrent les faiblesses : vitesse, disponibilité, reproductibilité. L'architecture a justement été conçue pour que le modèle ne décide pas des chiffres : c'est ce qui explique que les valeurs restent exactes même quand le score varie.</div>
+
+<!-- ═════════ CHAPITRE 5 ═════════ -->
+<h1 id="ch5"><span class="num">Chapitre 5</span> — Déploiement</h1>
+<p>Ce chapitre décrit comment l'application est mise en ligne sur Microsoft Azure : l'infrastructure, la conteneurisation, l'automatisation, la configuration et les mesures à relever sur la machine.</p>
+
+<h2>5.1 Environnement cible</h2>
+<p>L'application tourne sur <b>une seule machine virtuelle Linux</b> d'un abonnement Azure étudiant. Ce choix est adapté à la charge attendue et au budget ; il a des conséquences (pas de haute disponibilité, une panne de la machine arrête le service) listées en 5.8.</p>
+<table>
+  <tr><th style="width:30%">Paramètre</th><th>Valeur par défaut (variables Terraform)</th></tr>
+  <tr><td>Taille de la machine</td><td><code>Standard_B2as_v2</code> : 2 vCPU, 8 Go de RAM (famille « burstable »)</td></tr>
+  <tr><td>Région</td><td><code>swedencentral</code> (une politique de l'abonnement étudiant limite les régions autorisées)</td></tr>
+  <tr><td>Disque système</td><td>64 Go</td></tr>
+  <tr><td>Système</td><td>Linux ; Docker installé au premier démarrage</td></tr>
+  <tr><td>Mémoire d'appoint</td><td>fichier d'échange de 4 Go : le service IA charge de gros modèles au démarrage</td></tr>
+  <tr><td>Nom de domaine</td><td>par défaut <code>&lt;adresse IP&gt;.nip.io</code> si aucun domaine n'est fourni ; certificat HTTPS automatique</td></tr>
+</table>
+<span class="legende">Tableau 5.1 — Environnement Azure</span>
+
+<h2>5.2 Infrastructure en tant que code (Terraform)</h2>
+<p>Terraform crée, de façon reproductible : le groupe de ressources (<code>credisense-rg</code>), le réseau virtuel et le sous-réseau, une adresse IP publique statique, un groupe de sécurité réseau (SSH sur le port 22, HTTP 80, HTTPS 443), l'interface réseau, la machine virtuelle et sa clé SSH. Les mots de passe de la base et le secret JWT sont <b>générés aléatoirement</b> (32 et 64 caractères). Un script <code>cloud-init</code> écrit les fichiers de configuration (<code>.env</code>, <code>ai.env</code>, <code>docker-compose.prod.yml</code>, <code>Caddyfile</code>) dans <code>/opt/credisense</code>, active le fichier d'échange, installe Docker et démarre PostgreSQL.</p>
+<div class="box warn"><b>Contraintes rencontrées sur l'abonnement étudiant</b> : région limitée par une politique, quota par famille de machines, erreurs de capacité (<code>SkuNotAvailable</code>). Les variables <code>location</code> et <code>vm_size</code> doivent être fixées ensemble, faute de quoi une nouvelle exécution tente de recréer la machine. Le script <code>recover-state.sh</code> et les commentaires de <code>terraform.tfvars.example</code> documentent ces cas.</div>
+
+<h2>5.3 Conteneurisation</h2>
+<div class="diag">
+  <div class="row">
+    <div class="node c"><b>caddy</b><small>2-alpine · ports 80, 443</small></div>
+    <div class="node a"><b>frontend</b><small>Node 22 · Angular SSR · 4000</small></div>
+    <div class="node a"><b>backend</b><small>Java 17 · Spring Boot · 8081 · <code>-Xmx768m</code></small></div>
+  </div>
+  <div class="row">
+    <div class="node b"><b>ai</b><small>Python 3.11 · FastAPI · 8002 · PaddleOCR, MiniLM</small></div>
+    <div class="node b"><b>postgres</b><small>16-alpine · base « creditsense »</small></div>
+    <div class="node"><b>Volumes</b><small>pgdata · uploads · caddy_data · caddy_config</small></div>
+  </div>
+</div>
+<span class="legende">Figure 5.1 — Les cinq services Docker Compose et leurs volumes</span>
+<ul>
+  <li><b>Images construites en plusieurs étapes</b> (compilation puis exécution) : Maven puis JRE 17 pour le backend, Node 22 pour le frontend, Python 3.11 pour le service IA. Dans l'image IA, PyTorch est installé en version processeur, les versions de PaddleOCR (3.4.0) et PaddlePaddle (3.3.1) sont alignées et les modèles sont <b>pré-téléchargés dans l'image</b> pour éviter un téléchargement au premier appel. La cause d'un échec de build antérieur était un décalage de versions Paddle.</li>
+  <li><b>Santé et ordre de démarrage</b> : PostgreSQL et le service IA exposent un contrôle de santé ; le backend attend que la base soit saine. Le service IA bénéficie d'un délai de grâce de 120 s (chargement des modèles).</li>
+  <li><b>Persistance</b> : la base (<code>pgdata</code>) et les fichiers des clients (<code>uploads</code>, partagé entre backend et service IA au même chemin) sont sur des volumes qui survivent aux redéploiements. Un défaut initial perdait les dépôts à chaque redéploiement ; il est corrigé.</li>
+  <li><b>Redémarrage automatique</b> (<code>unless-stopped</code>) de chaque service.</li>
+</ul>
+
+<h2>5.4 Intégration et déploiement continus</h2>
+<p>Le workflow GitHub Actions <code>deploy.yml</code> se déclenche à chaque envoi sur <code>main</code> ou <code>deploy/azure</code>. Il construit en parallèle les trois images (backend, frontend, ia) avec cache de construction, les publie sur le registre GHCR sous le numéro du commit et sous <code>latest</code>, copie les fichiers Compose sur la machine par SCP, puis s'y connecte par SSH pour télécharger les nouvelles images, mettre à jour <code>IMAGE_TAG</code> dans <code>.env</code> et relancer la pile (<code>docker compose up -d</code>), avant de purger les anciennes images. Sur la machine actuelle, les images ont aussi été construites localement (<code>IMAGE_TAG=latest</code>, option <code>--pull never</code>).</p>
+<table>
+  <tr><th style="width:8%">Étape</th><th style="width:34%">Action</th><th>Garantie</th></tr>
+  <tr><td>1</td><td>Construction des trois images en parallèle</td><td>Une image défaillante n'interrompt pas les autres (<code>fail-fast: false</code>)</td></tr>
+  <tr><td>2</td><td>Publication sous le SHA du commit</td><td>Retour arrière possible vers un commit précis</td></tr>
+  <tr><td>3</td><td>Mise à jour par SSH</td><td>Les secrets restent sur la machine : le workflow ne modifie que <code>IMAGE_TAG</code></td></tr>
+</table>
+
+<h2>5.5 Configuration et secrets</h2>
+<p>Aucun secret n'est dans le code. Le fichier <code>.env</code> (mots de passe générés, JWT, clés, SMTP, domaine) et <code>ai.env</code> (clés des modèles de langage, taux d'intérêt) sont écrits sur la machine avec les droits <code>0600</code>. Les réglages de la notification sont des variables du backend : <code>AUTO_ENVOI_EMAIL</code>, <code>VALIDATION_REQUISE_POUR</code> et <code>DELAI_ENVOI_MINUTES</code> (voir l'annexe C). Le <b>taux d'intérêt annuel</b> <code>CREDIT_TAUX_ANNUEL</code> est obligatoire : sans lui, tout dossier reste « À COMPLÉTER ». La base se met à jour seule au démarrage du backend (<code>ddl-auto=update</code>), y compris la table du journal et les colonnes de notification.</p>
+
+<h2>5.6 Mise en ligne d'une version</h2>
 <ol>
-  <li><b>Envoi de l'historique</b> : Angular garde déjà les messages et envoie maintenant les 6 derniers échanges réels avec chaque question (sans la salutation ni les messages d'erreur, qui n'ont pas été dits au modèle). Le contrôleur Java les transmet à <code>/ai/chat</code>.</li>
-  <li><b>Historique donné au LLM</b> : les tours précédents sont insérés au format chat (system, user, assistant, user), tronqués à 6 messages de 600 caractères. Le prompt système précise que l'historique sert à comprendre la question de suivi et n'est pas une source de vérité : une valeur citée plus tôt n'est une donnée du dossier que si elle figure aussi dans le contexte.</li>
-  <li><b>Question de recherche complétée</b> : une question « relance » (courte, commençant par « et », « mais », « pourquoi »…, ou contenant « précédent », « même », « cela »…) est cherchée avec la ou les questions précédentes de l'agent. C'est une règle, sans appel LLM de plus.</li>
-  <li><b>Sécurité de l'historique</b> : il vient du navigateur, donc il n'est pas cru. Seuls les rôles « user » et « assistant » sont gardés (un faux message « system » est ignoré), les CIN, RIB et IBAN sont masqués, les messages sont tronqués. Le nettoyage est fait côté Java et refait côté Python, qui fait foi.</li>
-</ol>
-<p><b>Résultat mesuré</b> (vrai modèle MiniLM, après « Y a-t-il une échéance de prêt prélevée ? ») : la relance « Et depuis quand ? » ramenait sans mémoire l'attestation d'emploi (hors sujet) ; avec mémoire elle retrouve les trois prélèvements du prêt dans le relevé.</p>
-
-<h4>Génération et garde-fous</h4>
-<p>Les 12 chunks sont envoyés au LLM étiquetés « [Source 3 : Fiche de paie] ». CIN, RIB et IBAN sont masqués avant l'envoi et dans la réponse. Le prompt impose de ne répondre que sur le dossier, de traiter toute donnée absente du contexte comme une hypothèse, et de lire correctement les montants tunisiens (« 4 800,000 » vaut 4800 DT).</p>
-
-<h4>Mesures sur le dossier de test (vrai modèle MiniLM)</h4>
-<table>
-  <tr><th>Constat</th><th>Résultat</th></tr>
-  <tr><td>Relevé de 155 lignes</td><td>Avant : 39 chunks de 6 lignes qui coupaient les opérations. Maintenant : 32 chunks, une opération chacun, avec l'en-tête des colonnes et le sens déduit.</td></tr>
-  <tr><td>Question « Que signifie 250,000 ? »</td><td>Similarité sémantique seule : 0,27 (faible). BM25 : 5,60. Les 3 premiers résultats sont bien les opérations de 250,000 du relevé.</td></tr>
-  <tr><td>Question « montant du virement de salaire »</td><td>Les opérations de salaire du relevé arrivent aux rangs 4 et 7 sur 12 ; les 5 documents du dossier sont couverts.</td></tr>
-  <tr><td>Taille maximale d'un chunk</td><td>430 caractères (limite : 450).</td></tr>
-</table>
-<div class="box warn"><b>Limites.</b> Index en mémoire : perdu au redémarrage du service IA (il se reconstruit à la prochaine analyse, en attendant le chatbot répond « pas encore de données »). La conversation n'est pas conservée en base : elle vit dans le navigateur et disparaît quand on quitte la page (une table de messages par dossier la rendrait consultable et traçable). La détection des relances est une règle de mots, pas une compréhension : une question longue mais dépendante de la précédente n'est pas complétée. Pas de re-classement après la recherche. Le sens crédit / débit est une déduction, signalée comme telle dans le chunk. Ces mesures portent sur nos documents de test : la qualité réelle sera validée avec de vrais relevés.</div>
-
-<h3>Le détecteur de dettes (<code>dettes_releve.py</code>)</h3>
-<p>Il lit le texte du relevé, regroupe les opérations par date (un PDF natif met chaque cellule du tableau sur une ligne séparée), repère les mots d'échéance de prêt sur du texte sans accents, exclut salaire, total et solde, et retient le plus fort total mensuel des deux derniers mois. Une échéance déjà soldée n'est plus comptée.</p>
-<div class="box"><b>Limite assumée.</b> C'est une heuristique sur du texte. Le résultat est toujours présenté comme « détecté, à confirmer ».</div>
-
-<h2>5. Détail des changements</h2>
-<h3>5.1 Déploiement et infrastructure</h3>
-<ul>
-  <li>Stack de production : <code>deploy/docker-compose.prod.yml</code> (postgres, ai, backend, frontend, caddy) et <code>deploy/Caddyfile</code>.</li>
-  <li>Terraform (<code>infra/terraform</code>) : VM, réseau, <code>cloud-init</code>. Variables <code>location</code> et <code>vm_size</code> à fixer ensemble, sinon une relance tente de recréer la VM.</li>
-  <li>Configuration par variables d'environnement (<code>application.properties</code>) : base, JWT, URL du service IA, chemin des uploads, SMTP, CORS.</li>
-  <li><code>deploy/redeploy.sh</code> : script de mise à jour de la VM (non commité à ce stade).</li>
-</ul>
-<h3>5.2 Service IA</h3>
-<ul>
-  <li><b>Image</b> : PaddleOCR 3.4.0 et PaddlePaddle 3.3.1, modèles préchargés, scipy/skimage/sklearn figés, zlib système forcé. La cause réelle de l'échec était le décalage de versions Paddle.</li>
-  <li><b>OCR</b> (<code>ocr_service.py</code>) : détection du format par octets, images réduites au-delà de 4 000 px, fusion arabe/latin, limite de 25 Mo, fichier temporaire toujours supprimé.</li>
-  <li><b>Classification</b> : <code>classification_regles.py</code> (règles par mots-clés, niveau 0 de la cascade), <code>controle_type.py</code> (comparaison déclaré / détecté, seuils par méthode), endpoint <code>/ai/classify-hybrid</code> enrichi du bloc « controle ».</li>
-  <li><b>Extraction JSON</b> (<code>groq_service.py</code>) : schéma et consignes par type de document ; le type classé arrive jusqu'au prompt.</li>
-  <li><b>Texte du dossier</b> (<code>dossier_texte.py</code>) : budget par document.</li>
-  <li><b>Scoring</b> (<code>agent_service.py</code>) : règles, taux obligatoire, données manquantes, cache versionné. Les messages lus par l'agent sont sans jargon : le taux manquant est annoncé « à renseigner par l'administrateur (réglage du service d'analyse) », sans nom de variable.</li>
-  <li><b>Chatbot</b> : index construit sans LLM, un libellé par document, journaux sans données personnelles ; découpage structurel et sémantique (<code>decoupage_rag.py</code>) ; recherche hybride sens + mots exacts avec fusion RRF (<code>recherche_hybride.py</code>) ; mémoire de conversation (historique transmis au LLM, relances complétées pour la recherche).</li>
-</ul>
-<h3>5.3 Backend</h3>
-<ul>
-  <li><code>FichierServiceImpl</code> : séparation vérifier / analyser, saut des documents déjà lus, une ligne OCR par fichier (mise à jour au lieu d'un doublon), extraction en échec non enregistrée, garde 409 sur le CIN, message clair si le fichier a disparu du disque.</li>
-  <li><code>Fichier</code> : nouveaux champs <code>typeDetecte</code>, <code>confianceType</code>, <code>methodeType</code>, <code>typeConflit</code>, <code>classificationJson</code> (réponse complète de la classification, trace comprise ; colonnes créées automatiquement au démarrage par <code>ddl-auto=update</code>).</li>
-  <li><code>FichierController</code> : endpoints <code>verifier-dossier</code> et <code>analyser-dossier</code>, avec les codes d'erreur <code>CIN_INCOHERENT</code> et <code>TYPE_INCOHERENT</code>.</li>
-  <li><code>DemandeCreditController</code> : écriture dans le volume persistant, CIN et nom de fichier assainis.</li>
-  <li><code>DossierController</code> : e-mail de résultat adapté à « À COMPLÉTER », libellés lisibles, bloc de score omis tant que la décision n'est pas rendue.</li>
-  <li><b>Réponse automatique</b> : <code>NotificationDecisionService</code> (quand et si l'on envoie), <code>ResultatEmailService</code> (e-mail HTML avec PDF joint ; le texte venu de l'IA ou de la base est neutralisé avant d'entrer dans le HTML), <code>RapportPdfService</code> (rapport PDF, deux versions). <code>DecisionFinale</code> garde l'état de l'envoi (statut, date, destinataire, décision envoyée, erreur). Nouveaux endpoints : <code>GET /api/dossiers/{id}/rapport-pdf?version=agent|client</code> ; l'état de l'envoi est ajouté à <code>/resultat</code> ; <code>send-result-email</code> utilise désormais le résultat enregistré.</li>
-  <li><b>Contrôle avant envoi et journal</b> : <code>NotificationDecisionService</code> gère trois chemins (validation, délai annulable, immédiat) et les actions de l'agent ; <code>AuditService</code> et l'entité immuable <code>AuditEvent</code> tiennent le journal ; <code>DecisionFinale</code> garde l'état de la réponse (statut, mode, acteur, heure prévue) et la date de la dernière décision. Nouveaux endpoints : <code>POST /api/dossiers/{id}/reponse/valider</code>, <code>POST …/reponse/annuler</code> (409 si rien en attente ou décision changée), <code>GET …/audit</code>.</li>
-  <li><b>Statistiques</b> : <code>StatistiquesService</code> (calculs), <code>StatistiquesExcelService</code> (export), <code>AdminStatistiquesController</code> (<code>/api/admin/statistiques</code>, validation de la période, rôle ADMIN).</li>
-  <li><b>Nom de la banque</b> : « Attijari Bank » dans l'e-mail (sujets, en-tête, pied de page), l'e-mail de mot de passe agent, le pied de page du portail client et les consignes des modèles de langage (qui pouvaient reprendre le nom dans leurs réponses).</li>
-  <li><b>Alerte d'identité</b> : la comparaison entre les noms lus dans les documents et ceux du client se fait par <b>mots</b>, sans tenir compte de l'ordre nom / prénom, des accents, de la casse ni des noms composés. Avant, une fiche client enregistrée avec nom et prénom inversés (« nom = Meriem, prénom = Rehouma ») déclenchait une fausse alerte face à des documents « Rehouma Meriem ». Deux personnes différentes, ou un seul mot en commun, restent détectés.</li>
-  <li><code>ChatbotController</code> / <code>ChatbotService</code> : la requête accepte un historique facultatif, nettoyé (6 derniers messages, rôles connus, 600 caractères) puis transmis au service IA.</li>
-</ul>
-<h3>5.4 Frontend</h3>
-<ul>
-  <li><code>upload-section</code> : deux boutons réellement verrouillés, confirmation du CIN, affichage de la raison d'échec OCR.</li>
-  <li><code>pipeline-analyse</code> : calcule si l'analyse est autorisée, directement ou après confirmation (CIN incohérent ou type contredit).</li>
-  <li><code>upload-section</code> : message « déposé comme X, le contenu ressemble à Y » sur le document, confirmation unique pour les deux types d'incohérence, ligne de résumé de la classification sur chaque document et popup de détail (cascade niveau par niveau, CIN lu face au CIN du client).</li>
-  <li><code>pipeline-analyse</code> : une incohérence confirmée par l'agent (ou déjà analysée) passe les étapes 1 et 2 au vert, avec mention.</li>
-  <li><code>credit-result</code> : écran de résultat complet (section 3-I). Le modèle exporte <code>mapperResultat</code>, qui recopie tous les champs. Avant, plusieurs champs étaient perdus à la copie, donc invisibles.</li>
-  <li><code>chat-assistant</code> : envoie les derniers échanges réels avec chaque question.</li>
-  <li><code>statistiques</code> (nouveau) : tableau de bord de l'administrateur, branché dans l'onglet « Statistiques » : filtres de période sur une ligne, tuiles de chiffres clés, répartition, évolution en colonnes empilées, motifs, délais, état des envois, export Excel, vues en tableau.</li>
-  <li><code>credit-result</code> : boutons « Valider et envoyer » / « Ne pas envoyer » (ou « Envoyer maintenant » / « Annuler l'envoi »), et frise « Journal du dossier ».</li>
-  <li><code>export-button</code> : remplace la coquille vide par le vrai téléchargement du rapport PDF (« Rapport complet » et « Version client »), avec messages d'erreur clairs.</li>
-  <li><code>credit-result</code> : bandeau « Réponse envoyée au client » (destinataire, date, PDF joint), en rouge avec la marche à suivre si l'envoi a échoué ; le bouton devient « Renvoyer la réponse au client » une fois la réponse partie.</li>
-  <li><code>credit-result</code>, chiffres clés : un chiffre calculé qui manque est annoncé « Non calculé » (mensualité : « Non calculée », dettes : « Inconnues »), jamais 0 ni une case vide ; une mensualité à 0 est traitée comme non calculée ; libellés lisibles (« Âge du client », « Type de contrat », « Date d'embauche »).</li>
-  <li>Icône et titre de l'onglet.</li>
-</ul>
-
-<h2 class="pb">6. Tests</h2>
-<h3>Résultats</h3>
-<table>
-  <tr><th style="width:18%">Couche</th><th style="width:22%">Résultat</th><th>Ce qui est couvert</th></tr>
-  <tr><td>Service IA (Python)</td><td><span class="ok">145 / 145 passent</span></td>
-    <td><b>test_agent_regles (18)</b> : taux obligatoire (absent, illisible, en pourcentage), dette inconnue jamais traitée comme zéro, DTI, capacité, simulations, décision « À COMPLÉTER », cohérence LLM/règles, clé de cache.<br>
-    <b>test_dettes_releve (12)</b> : relevé natif et scanné, prêt soldé, salaire exclu, relevé illisible, absence de relevé.<br>
-    <b>test_dossier_texte (9)</b> : répartition du budget, début et fin conservés, aucun document perdu.<br>
-    <b>test_chatbot_indexation (5)</b> : un libellé par document, aucun appel LLM.<br>
-    <b>test_classification_regles (24)</b> : documents français et arabe, OCR sans accents, attestation qui cite la CIN, relevé qui mentionne une facture, attestation de réussite (abstention), cascade (les règles court-circuitent embeddings et LLM) ; diagnostic expliqué (verdict net, abstention, texte court, aucun mot-clé) ; trace de la cascade dans chaque cas (règles seules, trois niveaux, embeddings sûrs, similarité trop basse, LLM en panne, sérialisable en JSON).<br>
-    <b>test_controle_type (10)</b> : conflit seulement si le verdict est fiable, seuil par méthode, type non déclaré, entrées mal formées.<br>
-    <b>test_extraction_par_type (10)</b> : schéma par type, identité toujours demandée, le type classé change le prompt, cache distinct selon le type.<br>
-    <b>test_decoupage_rag (19)</b> : un chunk par opération, en-tête de colonnes répété, sens crédit / débit déduit du solde (et non inventé si le solde ne colle pas), document court non coupé, aucun chunk au-delà de 450 caractères, aucune ligne perdue, coupure au changement de sujet, embeddings en panne sans effet.<br>
-    <b>test_recherche_hybride (18)</b> : jetons des montants, BM25 sur montant exact, fusion RRF, retriever hybride (montant exact en tête, couverture des documents, repli sans BM25).<br>
-    <b>test_chatbot_memoire (17)</b> : historique inséré dans l'ordre entre le système et la question, 6 derniers messages, troncature, faux message « system » ignoré, CIN et RIB masqués, entrées invalides, détection des relances, chaîne de relances, la recherche suit le sujet de la conversation.</td></tr>
-  <tr><td>Backend (Java)</td><td><span class="ok">217 / 218 passent</span> (le 218e, <code>DemoApplicationTests</code>, exige une vraie base PostgreSQL)</td>
-    <td><b>FichierServiceImplTest (17)</b> : garde 409 sur le CIN, retraitement évité, extraction en échec non enregistrée ; <b>nouveaux (9)</b> : conflit de type enregistré et extraction faite avec le type détecté, verdict incertain sans conflit, type non déclaré complété, panne de classification sans blocage, verrou « type contredit », CIN et type signalés ensemble, confirmation, le scoring voit le vrai type.<br>
-    <b>DossierControllerEmailTest (3)</b> : e-mail pour « À COMPLÉTER », sans réglage technique, sans bloc de score.<br>
-    <b>RapportPdfServiceTest (15)</b> : contenu des deux versions (lu dans le PDF généré), rien d'interne chez le client, « à compléter » sans score ni réglage technique, « non calculé » jamais 0, rapport sur plusieurs pages, formats de montants, caractères hors police, exemples consultables.<br>
-    <b>ResultatEmailServiceTest (10)</b> : « Attijari Bank » dans chaque sujet et dans le corps, PDF joint sous un nom lisible, e-mail parti même si le PDF échoue, sans adresse, messagerie en panne, HTML venu de l'IA neutralisé.<br>
-    <b>NotificationDecisionServiceTest (15)</b> : envoi pour chaque décision rendue, pas de doublon, renvoi si la décision change, rien pour une analyse ratée, interrupteur, échec enregistré sans exception, nouvel essai après échec, base en panne.<br>
-    <b>NotificationWiringTest (5)</b> : les services se câblent ensemble, expéditeur, interrupteur actif par défaut et pilotable.<br>
-    <b>DossierControllerRapportTest (11)</b> : l'e-mail part du résultat enregistré (requête falsifiée sans effet), téléchargement du rapport en deux versions, absence de résultat, état de l'envoi dans le résultat. <b>FichierServiceImplTest</b> : 4 tests du déclenchement automatique.<br>
-    <b>AuditServiceTest (17)</b> : acteur lu dans le jeton ou SYSTEME, version des règles et détail conservés, une base en panne n'annule pas l'opération, journal lu dans l'ordre avec des phrases lisibles, entité immuable et aucune méthode de suppression.<br>
-    <b>NotificationValidationTest (29)</b> : un refus attend la validation, liste configurable, pas de remise en attente, valider (journal), décision changée refusée, rien en attente refusé, pas de double envoi, annuler et ne pas ressusciter, nouveau cycle si la décision change, envoi différé, tâche planifiée tolérante aux pannes, envoi manuel, envoi automatique coupé.<br>
-    <b>StatistiquesServiceTest (26)</b> : chaque définition (décisions définitives, taux absents et non à 0, délais, motifs, évolution par jour et par semaine, envois, période bornée, une seule lecture de la base).<br>
-    <b>StatistiquesExcelServiceTest (14)</b> : fichier relu avec POI : quatre feuilles, vrais nombres et vraies dates, filtre et en-tête figé, libellés lisibles, aucun CIN, fichier valide sans donnée.<br>
-    <b>AdminStatistiquesControllerTest (11)</b> : période par défaut, dates invalides, début après la fin, période trop longue, export servi comme fichier Excel, routes d'administration protégées par le rôle ADMIN. <b>DossierControllerRapportTest</b> : valider (200, 409, 404), annuler, journal, journalisation des téléchargements et des changements de statut. <b>FichierServiceImplTest</b> : analyse au journal avec la version des règles, confirmation d'incohérence journalisée.<br>
-    <b>IdentiteClientTest (9)</b> : nom et prénom inversés, casse et accents, noms composés, OCR qui colle un mot, deux personnes différentes, un seul mot en commun, rien à comparer, noms arabes ; <b>FichierServiceImplTest</b> : deux tests de bout en bout (identité inversée sans alerte, autre personne avec alerte).<br>
-    <b>DossierControllerFichiersTest (3)</b> : le détail de la classification et sa trace sont transmis à l'écran ; document non classé : valeur nulle ; détail illisible : la liste n'échoue pas.<br>
-    <b>ChatbotServiceMemoireTest (9)</b> : historique transmis dans l'ordre, absent ou null donne une liste vide, 6 derniers messages, troncature, rôles inconnus et messages vides écartés, service IA indisponible, contrôleur avec et sans historique.</td></tr>
-  <tr><td>Frontend (Angular)</td><td><span class="ok">147 / 147 passent</span> sur nos fichiers (156 sur 162 au total)</td>
-    <td><b>pipeline-analyse (23)</b> : règles de verrouillage, dont 6 sur le conflit de type et 8 sur la confirmation de l'agent (étapes 1 et 2 au vert avec mention, relance sans redemander, dossier déjà analysé, CIN et type ensemble, identité manquante et document requis absent non masqués).<br>
-    <b>upload-section (17)</b> : verdicts, ligne de résumé (pourcentage pour les règles, similarité pour les embeddings), cascade (règles seules, trois niveaux, LLM en panne), ouverture, fermeture et contenu du popup, CIN lu face au CIN du client, confirmation de l'agent et remise à zéro au changement de dossier.<br>
-    <b>export-button (8)</b> : téléchargement de chaque version, nom de fichier, un seul téléchargement à la fois, sans dossier, erreur 404 et erreur serveur.<br>
-    <b>credit-result</b> : 7 tests sur le bandeau de l'envoi (envoyé, échec, non envoyé, désactivé, aucune notification, date illisible, dossier transmis au bouton d'export).<br>
-    <b>statistiques (48)</b> : période par défaut et préréglages, dates invalides sans requête, tuiles, taux absents, état vide, répartition, échelle ronde, géométrie des colonnes (24 px au plus, 2 px entre segments, bout arrondi seulement en haut, hauteur proportionnelle), regroupement par semaine, infobulle au survol et au clavier, vues en tableau, motifs, envois, rechargement qui garde les chiffres, export.<br>
-    <b>credit-result</b> : 19 tests sur la validation avant envoi (bandeau et boutons, décision lue envoyée, double clic, 409, panne, annulation, envoi différé) et le journal (frise, acteur « Système », journal indisponible).<br>
-    <b>chat-assistant (7)</b> : la salutation et les messages d'erreur ne sont pas envoyés comme historique, les deux premiers échanges dans l'ordre, 6 derniers messages, la question en cours jamais dans l'historique.<br>
-    <b>credit-result (11)</b> : affichage complet, cas « à compléter », absence de blocs parasites, et 7 tests sur les chiffres clés (libellés lisibles, « non calculé » au lieu de 0, mensualité à 0, dettes connues à 0, aucune case vide).<br>
-    <b>credit-analysis-result.model (6)</b> : aucun champ perdu, valeurs par défaut sûres, score 0 conservé.</td></tr>
-  <tr><td>Build</td><td><span class="ok">OK</span></td><td><code>ng build</code> passe. Avertissements sur le budget CSS et NG8107, déjà présents.</td></tr>
-</table>
-
-<h3>Vérification sur le dossier de test (CIN 12015060)</h3>
-<ul>
-  <li>Taux fixé à 10 % pour le test : dette détectée de <b>250 DT</b>, mensualité de <b>228,263 DT</b>, taux d'endettement de <b>22,77 %</b>.</li>
-  <li>Même dossier <b>sans taux</b> : décision « À COMPLÉTER », aucun chiffre inventé.</li>
-</ul>
-
-<div class="box ko"><b>Échecs connus, non liés à nos changements.</b>
-<ul>
-  <li><b>6 tests frontend</b> générés par défaut par Angular échouent : <code>app.spec</code>, <code>reset-password</code> (×2), <code>verify-email</code>, <code>register</code>, <code>document.spec</code> (le test du chat, lui aussi généré par défaut, a été remplacé par de vrais tests). Aucun de ces fichiers n'a été modifié. Il faut soit les écrire pour de bon, soit les retirer.</li>
-  <li><b>DemoApplicationTests</b> (Java) échoue : il a besoin d'une vraie base de données.</li>
-</ul></div>
-
-<h3>Ce qui n'est pas testé</h3>
-<ul>
-  <li>Aucun essai dans un vrai navigateur après les derniers changements de l'écran de résultat.</li>
-  <li>Aucun essai avec un vrai appel LLM sur la nouvelle logique de décision : les tests simulent la réponse du LLM.</li>
-  <li>Les seuils réglementaires ne sont pas validés par une source officielle.</li>
-  <li>Aucune mesure de qualité du <b>score</b> : il vient toujours du LLM. La phase 2 prévoit une grille de score déterministe.</li>
-</ul>
-
-<h2>7. Limites connues et suite</h2>
-<h3>Fonctionnement</h3>
-<table>
-  <tr><th style="width:30%">Sujet</th><th>État</th></tr>
-  <tr><td>Classification des documents</td><td>Branchée. Précision réelle inconnue : les mesures portent sur nos documents de test (voir section 4). Le seuil des embeddings (0,55) reste bas : une similarité n'est pas une probabilité. Non branché : <code>/ai/verify-documents</code> (pièces requises selon l'âge, le contrat, la nationalité) : le portail impose déjà les emplacements, mais ce contrôle ne s'applique pas encore côté agent. La classification n'est lancée qu'à l'étape « Vérifier » : un document lu avant cette version n'a pas de type détecté tant qu'il n'est pas relu.</td></tr>
-  <tr><td>Score</td><td>Produit par le LLM, donc peu reproductible. Prévu : grille de score déterministe avec détail par critère.</td></tr>
-  <tr><td>Statut automatique</td><td>« ELIGIBLE » met le dossier en « APPROUVE » sans validation humaine. À discuter : une banque voudrait probablement une validation de l'agent.</td></tr>
-  <tr><td>Appels LLM</td><td>Une analyse complète fait environ une extraction par document, une extraction supplémentaire pour la vérification d'identité et un appel de scoring. La vérification d'identité pourrait réutiliser les extractions déjà faites.</td></tr>
-  <tr><td>Vitesse de l'OCR</td><td>Environ 42 s par page scannée sur CPU. Pistes : résolution plus basse, taille de détection limitée, oneDNN si la version le permet.</td></tr>
-  <tr><td>Taux d'intérêt</td><td>Doit être renseigné par la banque dans <code>CREDIT_TAUX_ANNUEL</code>. Le 10 % utilisé pour les essais n'est <b>pas</b> un taux réel.</td></tr>
-</table>
-
-<div class="box warn"><b>Détail de la classification : à savoir.</b> Il n'existe que pour les documents classés avec cette version : un document lu avant n'a pas de détail (le popup l'indique et propose de relancer « Vérifier les documents », qui ne retraite toutefois pas un document déjà lu et extrait : il faut le renvoyer). L'aspect visuel du popup n'a pas été vérifié dans un navigateur : seule sa structure est testée.</div>
-
-<div class="box warn"><b>Réponse automatique : à connaître avant un usage réel.</b>
-<ul>
-  <li><b>Validation humaine</b> : par défaut un refus attend un agent, mais les acceptations, conditionnels et « à compléter » partent seuls. C'est réglable (<code>VALIDATION_REQUISE_POUR</code>, <code>DELAI_ENVOI_MINUTES</code>). La validation est un contrôle de relecture, pas une seconde analyse : le score reste produit par le modèle de langage.</li>
-  <li><b>Statistiques</b> : calculées à la demande en relisant les décisions de la période (instantané pour quelques milliers de dossiers, à précalculer au-delà). Les motifs s'appuient sur les contrôles du résultat enregistré ; un refus sans critère en échec est rangé dans « appréciation de l'analyse ».</li>
-  <li><b>Journal</b> : les dossiers analysés avant cette version n'ont pas d'historique ; il commence à leur prochaine analyse.</li>
-  <li><b>Messagerie</b> : l'envoi suppose que <code>SMTP_USERNAME</code> et <code>SMTP_PASSWORD</code> soient renseignés sur la VM. Sinon l'e-mail échoue et l'agent voit « L'envoi automatique a échoué ».</li>
-  <li><b>Arabe</b> : la police du PDF ne contient pas l'alphabet arabe ; un nom écrit en arabe apparaît avec des « ? ». Le français est entièrement géré.</li>
-  <li><b>Alerte d'identité</b> : elle n'est pas conservée avec le résultat enregistré, donc absente du PDF généré après coup.</li>
-  <li>Le PDF n'est pas stocké : il est régénéré à chaque téléchargement (jamais périmé, pas de donnée personnelle de plus au repos).</li>
-</ul></div>
-
-<h3>Sécurité (à traiter avant tout usage réel)</h3>
-<ul>
-  <li><code>/api/fichiers/**</code>, <code>/api/chatbot/**</code>, <code>/api/clients/**</code> et l'envoi d'e-mail de résultat sont ouverts sans authentification (<code>permitAll</code>).</li>
-  <li><code>/api/fichiers/view/**</code> sert des fichiers à partir d'un chemin : risque de lecture de fichiers hors du dossier prévu (path traversal).</li>
-  <li>Le dossier <code>Backend/uploads/</code> contient des pièces d'identité suivies par git : données personnelles à retirer de l'historique.</li>
-  <li>Des clés d'API ont été exposées pendant le travail : à <b>renouveler</b>.</li>
-  <li>Le résultat d'identité (<code>alerteIdentite</code>) n'est pas conservé dans le résultat stocké.</li>
-</ul>
-
-<h3>Phases suivantes (proposées, pas commencées)</h3>
-<ol>
-  <li><b>Phase 2</b> : grille de score déterministe avec détail par critère.</li>
-  <li><b>Phase 3</b> : schémas et graphiques, plans distincts pour le client et pour l'agent, aperçu avant envoi de l'e-mail.</li>
-  <li><b>Phase 4</b> (reste) : jeu d'évaluation avec de vrais documents de la banque pour mesurer la précision de la cascade, recalibrage des seuils, contrôle des pièces requises côté agent.</li>
+  <li>Vérifier que <code>/opt/credisense/ai.env</code> contient le taux (<code>CREDIT_TAUX_ANNUEL=0.10</code> par exemple) et que le SMTP est renseigné pour l'envoi des réponses.</li>
+  <li>Envoyer le code sur la branche : GitHub Actions construit, publie et redémarre.</li>
+  <li>En cas de construction locale : <code>IMAGE_TAG=latest</code> puis <code>docker compose -f docker-compose.prod.yml up -d --force-recreate</code>.</li>
+  <li>Vérifier l'état (<code>docker compose ps</code>) et les journaux du backend (démarrage, création des tables).</li>
+  <li>Rafraîchir le navigateur (Ctrl + F5) pour charger la nouvelle version du frontend.</li>
 </ol>
 
-<h3>Mise en ligne de cette version sur la VM</h3>
-<ol>
-  <li>Dans <code>/opt/credisense/ai.env</code>, ajouter <code>CREDIT_TAUX_ANNUEL=&lt;taux annuel de la banque en décimal, par exemple 0.10&gt;</code>. Sans lui, tous les dossiers restent « À COMPLÉTER ».</li>
-  <li>Reconstruire les images ai, backend et frontend (ou laisser GitHub Actions les construire).</li>
-  <li>Vérifier <code>IMAGE_TAG=latest</code>, puis <code>docker compose up -d --force-recreate</code>.</li>
-  <li>Rafraîchir le navigateur avec Ctrl+F5 pour voir la nouvelle icône.</li>
-</ol>
+<h2>5.7 Mesures de déploiement</h2>
+<p>Un script en <b>lecture seule</b>, <code>deploy/mesurer_vm.sh</code>, relève sur la machine : ressources, taille des images, état et santé des conteneurs, consommation processeur et mémoire au repos, temps de démarrage lu dans les journaux, et latence HTTP de la page d'accueil, de l'API et du service IA (dix requêtes chacune, minimum, médiane, moyenne et maximum). Il ne redémarre rien, ne lit aucune donnée et n'affiche aucun secret.</p>
+<table>
+  <tr><th style="width:36%">Indicateur</th><th style="width:24%">Valeur mesurée sur la VM</th><th>Source</th></tr>
+  <tr><td>Taille de chaque image (backend, frontend, ia)</td><td><span class="todo-inline">à relever</span></td><td><code>docker images</code></td></tr>
+  <tr><td>Mémoire utilisée au repos / disponible</td><td><span class="todo-inline">à relever</span></td><td><code>free -m</code>, <code>docker stats</code></td></tr>
+  <tr><td>CPU et mémoire par conteneur</td><td><span class="todo-inline">à relever</span></td><td><code>docker stats --no-stream</code></td></tr>
+  <tr><td>Temps de démarrage du backend</td><td><span class="todo-inline">à relever</span></td><td>journal « Started … in X seconds »</td></tr>
+  <tr><td>Latence page d'accueil (médiane)</td><td><span class="todo-inline">à relever</span></td><td>10 requêtes <code>curl</code></td></tr>
+  <tr><td>Latence API (médiane)</td><td><span class="todo-inline">à relever</span></td><td>10 requêtes <code>curl</code></td></tr>
+  <tr><td>Latence interne du service IA</td><td><span class="todo-inline">à relever</span></td><td>10 appels à <code>/health</code></td></tr>
+</table>
+<span class="legende">Tableau 5.2 — Mesures de déploiement à relever sur la VM (commande à l'annexe E)</span>
+<div class="box todo"><b>Pourquoi ces valeurs sont à relever.</b> Elles dépendent de la machine réelle et ne peuvent pas être mesurées depuis un poste de développement. La commande de l'annexe E les produit en quelques secondes ; reportez-les dans ce tableau avant la soutenance.</div>
 
-<h2 class="pb">8. Speech : présenter l'architecture (environ 4 minutes)</h2>
+<h2>5.8 Limites du déploiement</h2>
+<ul>
+  <li><b>Une seule machine</b> : pas de haute disponibilité ; une panne ou une mise à jour interrompt brièvement le service.</li>
+  <li><b>Pas de sauvegarde automatisée</b> de la base ni du volume des fichiers : à mettre en place (instantané de disque ou export planifié).</li>
+  <li><b>Supervision</b> limitée aux contrôles de santé Docker et aux journaux ; pas d'alerte.</li>
+  <li><b>Accès SSH</b> ouvert à toutes les adresses par défaut (<code>allowed_ssh_source_ip = "*"</code>) : à restreindre.</li>
+  <li><b>Sécurité applicative</b> : voir 2.7.</li>
+  <li><b>OCR sur processeur</b> : la lenteur mesurée au chapitre 4 est directement liée à la taille de la machine ; une machine à processeur plus puissant ou un GPU réduirait fortement ce temps.</li>
+</ul>
+
+<!-- ═════════ CONCLUSION ═════════ -->
+<h1 id="concl">Conclusion générale et perspectives</h1>
+<p>Ce projet a produit une plateforme complète d'aide à la décision pour le crédit à la consommation : portail client, espace agent, administration, et un service d'intelligence artificielle couvrant la lecture des pièces, leur classification, l'extraction des données, un assistant documentaire et un moteur de décision. L'ensemble est testé automatiquement, déployé sur Azure de façon reproductible et mis à jour par une chaîne d'intégration continue.</p>
+<h3>Ce que le projet démontre</h3>
+<ul>
+  <li><b>Une séparation nette entre lecture et décision.</b> Le modèle de langage lit et rédige ; mensualité, endettement, capacité, simulations, propositions d'ajustement et verdicts sont recalculés par des règles déterministes, mesurées au chapitre 4 comme exactes à l'arrondi près et sans aucune offre invalide.</li>
+  <li><b>Une chaîne qui préfère dire « il manque une information » plutôt que d'inventer.</b> Taux obligatoire, dette inconnue distincte de zéro, décision « À COMPLÉTER ».</li>
+  <li><b>Un humain dans la boucle et des comptes à rendre.</b> Validation avant envoi, confirmation des incohérences, journal d'audit en ajout seul avec la version des règles.</li>
+  <li><b>Des décisions de conception prises sur des mesures</b>, par exemple l'ajout d'un niveau de règles à la classification et la recherche hybride du chatbot.</li>
+</ul>
+<h3>Limites reconnues</h3>
+<ul>
+  <li><b>Validation sur données fictives.</b> Les mesures prouvent le bon fonctionnement de la chaîne, pas sa précision sur de vrais dossiers : la qualité réelle de l'OCR, de la classification et de l'extraction ne sera connue qu'avec des documents bancaires réels.</li>
+  <li><b>Score non déterministe.</b> Il provient encore du modèle de langage.</li>
+  <li><b>Vitesse de l'OCR sur processeur</b> (de l'ordre de 40 secondes par page) : acceptable en traitement différé, pas pour un usage interactif.</li>
+  <li><b>Seuils réglementaires non confrontés à une source officielle.</b></li>
+  <li><b>Sécurité applicative et exploitation à finaliser</b> (routes ouvertes, secrets à renouveler, sauvegardes, supervision).</li>
+</ul>
+<h3>Perspectives</h3>
+<table>
+  <tr><th style="width:5%">#</th><th style="width:30%">Axe</th><th>Contenu</th></tr>
+  <tr><td>1</td><td>Sécurité</td><td>Protéger toutes les routes, corriger la lecture de fichiers par chemin, retirer les données personnelles de l'historique git, renouveler les clés</td></tr>
+  <tr><td>2</td><td>Score déterministe</td><td>Grille de score par critère, détail explicable, remplacement du score du modèle</td></tr>
+  <tr><td>3</td><td>Jeu d'évaluation réel</td><td>Constituer, avec la banque, un corpus annoté (documents réels anonymisés) pour mesurer et recalibrer les seuils de la cascade</td></tr>
+  <tr><td>4</td><td>Performance de l'OCR</td><td>Résolution adaptée, détection limitée, un seul modèle de lecture selon la langue détectée, GPU</td></tr>
+  <tr><td>5</td><td>Conseiller de décision</td><td>Documents manquants demandés automatiquement au client ; scénarios pour les refus</td></tr>
+  <tr><td>6</td><td>Exploitation</td><td>Sauvegardes, supervision et alertes, conservation de la conversation de l'assistant en base, relances automatiques des dossiers « à compléter », politique de conservation des données (RGPD)</td></tr>
+</table>
+
+<!-- ═════════ ANNEXES ═════════ -->
+<h1 id="annexes">Annexes</h1>
+
+<h2>Annexe A — Glossaire</h2>
+<table>
+  <tr><th style="width:22%">Terme</th><th>Définition</th></tr>
+  <tr><td>Embedding</td><td>Représentation d'un texte par un vecteur de nombres ; deux textes de sens proche ont des vecteurs proches</td></tr>
+  <tr><td>Chunk</td><td>Morceau de texte indexé séparément pour la recherche</td></tr>
+  <tr><td>Indexation</td><td>Préparation des documents pour qu'on puisse les chercher vite (comme l'index d'un livre)</td></tr>
+  <tr><td>BM25</td><td>Classement par mots exacts, adapté aux montants, noms et numéros</td></tr>
+  <tr><td>RRF</td><td>Fusion de deux classements : <code>score = Σ 1 / (60 + rang)</code></td></tr>
+  <tr><td>Taux d'endettement (DTI)</td><td>Part du revenu net absorbée par les mensualités de crédit</td></tr>
+  <tr><td>Annuité constante</td><td>Mode de remboursement où la mensualité est identique chaque mois</td></tr>
+  <tr><td>Zone grise (classification)</td><td>Similarité entre 0,20 et 0,55 : les embeddings ne tranchent pas, le modèle de langage est consulté</td></tr>
+  <tr><td>Ajout seul (append-only)</td><td>Table où l'on ne fait qu'ajouter des lignes, jamais les modifier ni les supprimer</td></tr>
+</table>
+
+<h2>Annexe B — Points d'entrée de l'API</h2>
+<h4>Service IA (FastAPI)</h4>
+<table>
+  <tr><th style="width:36%">Route</th><th>Rôle</th></tr>
+  <tr><td><code>POST /ocr</code>, <code>/ocr/extract</code></td><td>Lecture d'un document</td></tr>
+  <tr><td><code>POST /ai/classify-hybrid</code></td><td>Cascade de classification et contrôle déclaré/détecté</td></tr>
+  <tr><td><code>POST /ai/extract-json</code></td><td>Extraction structurée selon le type</td></tr>
+  <tr><td><code>POST /ai/chat/index</code>, <code>/ai/chat</code></td><td>Indexation du dossier ; question à l'assistant</td></tr>
+  <tr><td><code>POST /ai/score/consommation</code></td><td>Moteur de décision</td></tr>
+  <tr><td><code>GET /health</code>, <code>/…/stats</code></td><td>Santé et statistiques d'usage</td></tr>
+</table>
+<h4>Backend (Spring Boot)</h4>
+<table>
+  <tr><th style="width:44%">Route</th><th>Rôle</th></tr>
+  <tr><td><code>POST /api/public/demande</code>, <code>/api/public/upload</code></td><td>Demande et dépôt des pièces par le client</td></tr>
+  <tr><td><code>POST /api/fichiers/verifier-dossier/{id}</code></td><td>OCR, classification, extraction, cohérence du CIN</td></tr>
+  <tr><td><code>POST /api/fichiers/analyser-dossier/{id}</code></td><td>Analyse ; 409 sans confirmation d'une incohérence</td></tr>
+  <tr><td><code>GET /api/dossiers/{id}/resultat</code>, <code>/audit</code>, <code>/rapport-pdf</code></td><td>Résultat, journal, rapport PDF (agent ou client)</td></tr>
+  <tr><td><code>POST /api/dossiers/{id}/reponse/valider</code>, <code>/reponse/annuler</code></td><td>Contrôle humain avant l'envoi</td></tr>
+  <tr><td><code>POST /api/dossiers/{id}/send-result-email</code></td><td>Envoi à la demande, depuis le résultat enregistré</td></tr>
+  <tr><td><code>POST /api/chatbot/question</code></td><td>Assistant documentaire</td></tr>
+  <tr><td><code>GET /api/admin/statistiques</code>, <code>/export.xlsx</code></td><td>Tableau de bord et export (rôle ADMIN)</td></tr>
+</table>
+
+<h2>Annexe C — Variables de configuration</h2>
+<table>
+  <tr><th style="width:32%">Variable</th><th style="width:22%">Défaut</th><th>Effet</th></tr>
+  <tr><td><code>CREDIT_TAUX_ANNUEL</code> (service IA)</td><td>aucun</td><td>Taux annuel du crédit, en décimal (0.10 = 10 %). <b>Obligatoire</b> : sans lui, aucune mensualité ni décision</td></tr>
+  <tr><td><code>AUTO_ENVOI_EMAIL</code></td><td><code>true</code></td><td>Coupe tout l'envoi automatique si <code>false</code> (le bouton manuel reste)</td></tr>
+  <tr><td><code>VALIDATION_REQUISE_POUR</code></td><td><code>REFUS</code></td><td>Liste de décisions qui attendent une validation ; vide : aucune</td></tr>
+  <tr><td><code>DELAI_ENVOI_MINUTES</code></td><td><code>0</code></td><td>Délai annulable avant l'envoi des autres décisions</td></tr>
+  <tr><td><code>SMTP_USERNAME</code>, <code>SMTP_PASSWORD</code></td><td>vides</td><td>Messagerie ; sans elles, l'envoi échoue et l'agent le voit</td></tr>
+  <tr><td><code>DOMAIN</code>, <code>IMAGE_PREFIX</code>, <code>IMAGE_TAG</code></td><td>—</td><td>Domaine HTTPS, dépôt d'images et version déployée</td></tr>
+</table>
+
+<h2>Annexe D — Speech de présentation de l'architecture (environ 4 minutes)</h2>
 <div class="speech">
 <p><b>Ouverture.</b> Bonjour. Je vais vous présenter CrediSense AI, une application qui aide un conseiller bancaire à étudier une demande de crédit à la consommation. Le problème de départ est simple : un dossier arrive avec cinq ou six documents, souvent scannés, en arabe et en français, et le conseiller doit tout relire pour savoir si le client peut rembourser. Notre application fait cette lecture et ce calcul, puis explique son résultat.</p>
 
@@ -555,7 +926,7 @@
 <p><b>Conclusion.</b> En résumé : une architecture à trois couches claire, un pipeline verrouillé étape par étape, un calcul que l'on peut expliquer, et un système qui préfère dire « il me manque une information » plutôt que d'inventer une réponse. Merci, je suis prêt pour vos questions.</p>
 </div>
 
-<h3>Questions probables et réponses courtes</h3>
+<h4>Questions probables et réponses courtes</h4>
 <table>
   <tr><th style="width:36%">Question</th><th>Réponse</th></tr>
   <tr><td>Pourquoi un LLM et des règles ?</td><td>Le LLM comprend des documents variés. Les règles garantissent des calculs reproductibles et conformes. Chacun fait ce qu'il fait bien.</td></tr>
@@ -564,7 +935,7 @@
   <tr><td>Que se passe-t-il si un document est illisible ?</td><td>Le statut OCR « FAILED » et sa raison s'affichent sur le document. Aucune extraction vide n'est enregistrée comme valide.</td></tr>
   <tr><td>Comment gérez-vous l'arabe ?</td><td>Deux lectures de la même zone, par un modèle arabe et un modèle latin, fusionnées zone par zone.</td></tr>
   <tr><td>Les données personnelles sont-elles protégées ?</td><td>Le chatbot masque RIB, IBAN et CIN, et les journaux n'affichent plus le texte OCR. Les routes API doivent encore être protégées : c'est notre priorité de sécurité.</td></tr>
-  <tr><td>Quelle est la précision ?</td><td>Calculs : déterministes et testés. Classification : 10 documents sur 10 avec les règles sur notre dossier de test, mais ce dossier est écrit par nous, donc le chiffre est optimiste ; sur les embeddings seuls, 3 sur 5. La vraie précision se mesurera avec des documents réels de la banque. Score : celui du LLM, non mesuré pour l'instant.</td></tr>
+  <tr><td>Quelle est la précision ?</td><td>Mesurée le 8 octobre sur nos documents fictifs. OCR : 18 champs sur 18 retrouvés, F1 des mots 0,997. Classification : 96,2 % (25 sur 26) avec la cascade, contre 61,5 % avec les embeddings seuls. Recherche du chatbot : rappel@5 de 95,5 %. Calculs : écart nul à une référence indépendante, aucune offre invalide sur 12 912. Ces chiffres sont optimistes (documents écrits par nous) : la vraie précision se mesurera avec des documents réels de la banque. Score : il varie (78 et 85 pour le même dossier), car il vient du modèle de langage.</td></tr>
   <tr><td>Un refus peut-il partir sans qu'un humain l'ait vu ?</td><td>Non par défaut : un refus attend « Valider et envoyer » de l'agent, qui peut aussi décider de ne pas l'envoyer. La validation porte sur la décision lue : si une nouvelle analyse l'a changée, le serveur refuse. Les autres décisions peuvent partir seules ou après un délai annulable, c'est réglable.</td></tr>
   <tr><td>Comment prouvez-vous qui a décidé quoi ?</td><td>Un journal d'audit en ajout seul : chaque analyse (décision, score, version des règles, fournisseur d'IA) et chaque étape de la réponse (mise en attente, validation, annulation, envoi, échec) est consignée avec l'agent et l'heure. Aucune route ne permet de le modifier.</td></tr>
   <tr><td>Que montre le tableau de bord ?</td><td>Taux d'acceptation (éligibles ÷ décisions définitives, avec une version « avec conditions »), répartition des décisions, délais de traitement et d'envoi, motifs de refus, évolution dans le temps et état des envois, avec un export Excel. Les définitions sont affichées à l'écran.</td></tr>
@@ -572,7 +943,30 @@
   <tr><td>Comment gérez-vous la mémoire du chatbot ?</td><td>Le navigateur renvoie les 6 derniers messages avec chaque question. Le modèle les reçoit comme historique de conversation, et une question de suivi est complétée avec la question précédente pour la recherche, par une règle simple qui n'ajoute aucun appel LLM. L'historique n'est pas cru : rôles filtrés, identifiants masqués, messages tronqués.</td></tr>
   <tr><td>Pourquoi une recherche hybride ?</td><td>Les embeddings comprennent le sens mais pèsent mal les valeurs exactes. Sur « 250,000 », la similarité sémantique n'est que de 0,27, alors que BM25 retrouve immédiatement l'opération. Les deux sont complémentaires.</td></tr>
   <tr><td>Que se passe-t-il si le client dépose le mauvais document ?</td><td>La classification le détecte, le pipeline affiche « déposé comme fiche de paie, le contenu ressemble à relevé bancaire », et « Analyser » reste bloqué jusqu'à ce que le conseiller confirme. Si la classification n'est pas sûre, elle ne bloque rien.</td></tr>
+
+  <tr><td>Quelle est la vitesse du système ?</td><td>Les étapes déterministes sont instantanées (règles du moteur : 38 microsecondes ; recherche : 20 ms). L'OCR d'un scan prend en moyenne 44,5 secondes par page sur processeur : c'est plus de 90 % du temps d'un dossier scanné, donc la première piste d'optimisation.</td></tr>
+  <tr><td>Quelle est la faiblesse mesurée la plus grave ?</td><td>Une erreur silencieuse de classification : une attestation d'emploi arabe classée « justificatif de domicile » avec une confiance jugée suffisante. Et la disponibilité des fournisseurs de modèles de langage : 3 analyses sur 5 ont reçu un refus de quota pendant la mesure. Les deux ont des pistes de correction.</td></tr>
+  <tr><td>Pourquoi appeler cela un « moteur de décision hybride » ?</td><td>Hybride : un modèle de langage lit et rédige, des règles calculent et tranchent. Moteur : il applique des règles versionnées et testables, sans autonomie. Le nom « agent » laissait croire à une décision autonome.</td></tr>
 </table>
+</div>
+
+<h2>Annexe E — Commandes de reproduction des mesures</h2>
+<h4>Mesures d'une étape (poste de développement, depuis le dossier <code>Python/</code>, environnement virtuel activé)</h4>
+<pre style="background:var(--soft);padding:8px 10px;border-radius:6px;font-size:9pt;white-space:pre-wrap;text-align:left">python benchmarks/mesurer_kpi.py ocr
+python benchmarks/mesurer_kpi.py classification            # ajouter --sans-llm pour éviter tout appel réseau
+python benchmarks/mesurer_kpi.py rag
+python benchmarks/mesurer_kpi.py decision --runs 5
+python benchmarks/mesurer_kpi.py all                       # tout enchaîner (long : l'OCR des scans prend plusieurs minutes)</pre>
+<p>Chaque commande écrit <code>Python/benchmarks/resultats/kpi_&lt;étape&gt;.json</code>.</p>
+<h4>Tests automatisés</h4>
+<pre style="background:var(--soft);padding:8px 10px;border-radius:6px;font-size:9pt;white-space:pre-wrap;text-align:left">cd Python   &amp;&amp; python -m unittest discover -s tests
+cd Backend/backend &amp;&amp; ./mvnw -q -o test              # JDK 17 à 20 (JDK 23 est incompatible avec Lombok)
+cd frontend &amp;&amp; npx ng test --watch=false &amp;&amp; npx ng build</pre>
+<h4>Mesures de déploiement (sur la machine virtuelle, depuis Azure Cloud Shell, lecture seule)</h4>
+<p>Téléverser <code>deploy/mesurer_vm.sh</code> dans Cloud Shell (bouton « Charger / Télécharger »), puis :</p>
+<pre style="background:var(--soft);padding:8px 10px;border-radius:6px;font-size:9pt;white-space:pre-wrap;text-align:left">az vm run-command invoke -g CREDISENSE-RG -n credisense-vm \
+    --command-id RunShellScript --scripts @mesurer_vm.sh</pre>
+<p>La sortie est un JSON dont le champ <code>message</code> contient les relevés ; reporter les valeurs dans le tableau 5.2.</p>
 
 </body>
 </html>

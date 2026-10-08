@@ -179,6 +179,29 @@
     </div>
   </div>
 
+  <!-- ── Propositions d'ajustement (dossier conditionnel) ── -->
+  <div class="cr-section cr-offres" *ngIf="result.adjustedOffers as propositions">
+    <h4 class="cr-section-title">Propositions d'ajustement</h4>
+    <p class="cr-offres-note">{{ propositions.message }}</p>
+    <div class="cr-table-wrap" *ngIf="propositions.offers.length > 0">
+      <table class="cr-table cr-table-offres">
+        <thead>
+          <tr><th>Proposition</th><th>Montant</th><th>Durée</th><th>Mensualité</th><th>Taux d'endettement</th><th>Coût total</th></tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let o of propositions.offers">
+            <td><strong>{{ o.label }}</strong><span class="cr-offre-detail">{{ o.explanation }}</span></td>
+            <td>{{ formatDT(o.amount) }}</td>
+            <td>{{ o.duration }} mois</td>
+            <td>{{ formatDT(o.monthlyPayment) }}</td>
+            <td>{{ o.dti }} %</td>
+            <td>{{ formatDT(o.totalCost) }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
   <!-- ── Simulation par durée ── -->
   <div class="cr-section" *ngIf="result.simulations && result.simulations.length > 0">
     <h4 class="cr-section-title">Simulation par durée</h4>

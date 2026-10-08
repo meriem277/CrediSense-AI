@@ -289,4 +289,64 @@ class RapportPdfServiceTest {
 
         assertTrue(java.nio.file.Files.size(dossierSortie.resolve("eligible-agent.pdf")) > 1000);
     }
+
+    // ── Propositions d'ajustement (dossier conditionnel) ─────────────────────
+
+    private Map<String, Object> resultatConditionnel() {
+        Map<String, Object> r = resultatEligible();
+        r.put("eligibility", "CONDITIONNEL");
+        r.put("adjustedOffers", Map.of(
+                "applicable", true,
+                "message", "Propositions indicatives, calculées par les règles, sous réserve de validation par l'agent.",
+                "unresolved", List.of(),
+                "offers", List.of(
+                        Map.of("kind", "MONTANT_REDUIT", "label", "Montant réduit, même durée", "amount", 6800,
+                               "duration", 12, "monthlyPayment", 597.828, "dti", 29.89, "totalCost", 7173.936,
+                               "explanation", "x"),
+                        Map.of("kind", "DUREE_ALLONGEE", "label", "Même montant, durée allongée", "amount", 10000,
+                               "duration", 24, "monthlyPayment", 461.449, "dti", 23.07, "totalCost", 11074.782,
+                               "explanation", "y"))));
+        return r;
+    }
+
+    @Test
+    void lePdfAgentContientLesPropositionsDAjustement() throws Exception {
+        String t = texte(service.generer(dossier, resultatConditionnel(), RapportPdfService.Version.AGENT));
+        assertTrue(t.toUpperCase().contains("PROPOSITIONS D'AJUSTEMENT"), t);     // titres de section en capitales
+        assertTrue(t.contains("Montant réduit, même durée"), t);
+        assertTrue(t.contains("Même montant, durée allongée"), t);
+        assertTrue(t.contains("sous réserve de validation"), t);
+        assertTrue(t.contains("24 mois"), t);
+    }
+
+    @Test
+    void lePdfClientNeContientJamaisLesPropositionsDAjustement() throws Exception {
+        String t = texte(service.generer(dossier, resultatConditionnel(), RapportPdfService.Version.CLIENT));
+        assertFalse(t.toUpperCase().contains("PROPOSITIONS D'AJUSTEMENT"), t);
+        assertFalse(t.contains("Montant réduit, même durée"), t);
+    }
+
+    @Test
+    void sansPropositionsAucuneSectionNEstAjoutee() throws Exception {
+        String t = texte(service.generer(dossier, resultatEligible(), RapportPdfService.Version.AGENT));
+        assertFalse(t.toUpperCase().contains("PROPOSITIONS D'AJUSTEMENT"), t);
+    }
+
+    @Test
+    void sansOffreLeMessageEstAfficheSansTableau() throws Exception {
+        Map<String, Object> r = resultatEligible();
+        r.put("adjustedOffers", Map.of("applicable", false, "offers", List.of(), "unresolved", List.of(),
+                "message", "L'endettement, le plafond et la durée sont déjà respectés."));
+        String t = texte(service.generer(dossier, r, RapportPdfService.Version.AGENT));
+        assertTrue(t.contains("déjà respectés"), t);
+        assertFalse(t.contains("Proposition Montant"), t);            // pas d'en-tête du tableau des offres
+    }
+
+    @Test
+    void desPropositionsMalFormeesNePlantentPas() throws Exception {
+        Map<String, Object> r = resultatEligible();
+        r.put("adjustedOffers", Map.of("applicable", true, "message", "m", "unresolved", List.of(),
+                "offers", List.of("texte", 42, new HashMap<>())));
+        assertTrue(service.generer(dossier, r, RapportPdfService.Version.AGENT).length > 0);
+    }
 }

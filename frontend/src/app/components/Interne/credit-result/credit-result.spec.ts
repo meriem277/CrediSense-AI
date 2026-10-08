@@ -575,3 +575,70 @@ describe("CreditResult — validation avant envoi et journal", () => {
     expect(c.dateJournal(null)).toBe('');
   });
 });
+
+describe("CreditResult — propositions d'ajustement", () => {
+  let fixture: ComponentFixture<CreditResult>;
+  let etat: CreditStateService;
+
+  const PROPOSITIONS = {
+    applicable: true,
+    message: "Propositions indicatives, calculées par les règles, sous réserve de validation par l'agent.",
+    unresolved: [],
+    offers: [
+      { kind: 'MONTANT_REDUIT', label: 'Montant réduit, même durée', amount: 6800, duration: 12,
+        monthlyPayment: 597.828, dti: 29.89, totalCost: 7173.936, explanation: 'Sur 12 mois, 6 800 DT est le montant le plus élevé.' },
+      { kind: 'DUREE_ALLONGEE', label: 'Même montant, durée allongée', amount: 10000, duration: 24,
+        monthlyPayment: 461.449, dti: 23.07, totalCost: 11074.782, explanation: 'En allongeant à 24 mois, le montant passe.' },
+    ],
+  };
+  const CONDITIONNEL = { ...RESULTAT_COMPLET, eligibility: 'CONDITIONNEL', eligibilityScore: 55, adjustedOffers: PROPOSITIONS };
+
+  const afficher = (resultat: unknown) => { etat.setResult(mapperResultat(resultat)); fixture.detectChanges(); };
+  const texte = () => (fixture.nativeElement as HTMLElement).textContent!.replace(/\s+/g, ' ');
+  const requete = (s: string) => (fixture.nativeElement as HTMLElement).querySelectorAll(s);
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [CreditResult],
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    }).compileComponents();
+    fixture = TestBed.createComponent(CreditResult);
+    etat = TestBed.inject(CreditStateService);
+    fixture.detectChanges();
+  });
+
+  it("affiche chaque proposition avec son montant, sa durée et son taux d'endettement", () => {
+    afficher(CONDITIONNEL);
+    expect(requete('.cr-table-offres tbody tr').length).toBe(2);
+    const t = texte();
+    expect(t).toContain("Propositions d'ajustement");
+    expect(t).toContain('Montant réduit, même durée');
+    expect(t).toContain('Même montant, durée allongée');
+    expect(t).toContain('24 mois');
+    expect(t).toContain('29.89 %');
+  });
+
+  it('rappelle que les propositions sont indicatives et soumises à validation', () => {
+    afficher(CONDITIONNEL);
+    expect(texte()).toContain('sous réserve de validation');
+  });
+
+  it('quand rien ne peut être ajusté, affiche le message sans tableau', () => {
+    afficher({ ...CONDITIONNEL, adjustedOffers: {
+      applicable: false, offers: [], unresolved: ["Ancienneté dans l'emploi"],
+      message: "L'endettement, le plafond et la durée sont déjà respectés : changer le montant ou la durée ne suffit pas." } });
+    expect(requete('.cr-table-offres').length).toBe(0);
+    expect(texte()).toContain('déjà respectés');
+  });
+
+  it("n'affiche aucun panneau pour une décision sans propositions", () => {
+    afficher(RESULTAT_COMPLET);
+    expect(requete('.cr-offres').length).toBe(0);
+    expect(texte()).not.toContain("Propositions d'ajustement");
+  });
+
+  it('conserve les propositions lors de la conversion du résultat', () => {
+    expect(mapperResultat(CONDITIONNEL).adjustedOffers?.offers.length).toBe(2);
+    expect(mapperResultat(RESULTAT_COMPLET).adjustedOffers).toBeUndefined();
+  });
+});

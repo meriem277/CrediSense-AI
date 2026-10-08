@@ -46,6 +46,26 @@ export interface CapaciteEmprunt {
 }
 
 /** Mensualité et taux d'endettement pour une durée donnée. */
+/** Une proposition de montant ou de durée calculée par les règles pour un dossier CONDITIONNEL. */
+export interface OffreAjustee {
+  kind: 'MONTANT_REDUIT' | 'DUREE_ALLONGEE' | 'COMBINE';
+  label: string;
+  amount: number;
+  duration: number;
+  monthlyPayment: number;
+  dti: number;
+  totalCost: number;
+  explanation: string;
+}
+
+export interface PropositionsAjustement {
+  applicable: boolean;
+  message: string;
+  offers: OffreAjustee[];
+  /** Critères non conformes qu'un changement de montant ou de durée ne règle pas. */
+  unresolved: string[];
+}
+
 export interface SimulationDuree {
   duration: number;
   monthlyPayment: number;
@@ -107,6 +127,8 @@ export interface CreditAnalysisResult {
   regulatoryChecks?: ControleReglementaire[];
   capacity?: CapaciteEmprunt;
   simulations?: SimulationDuree[];
+  /** Propositions de montant / durée (dossier CONDITIONNEL uniquement). */
+  adjustedOffers?: PropositionsAjustement;
   calculationNote?: string;
   tauxAnnuelApplique?: number | null;
   /** Ce qui manque pour pouvoir décider, avec où le trouver. */
@@ -141,6 +163,7 @@ export function mapperResultat(src: any): CreditAnalysisResult {
     regulatoryChecks:   s.regulatoryChecks || [],
     capacity:           s.capacity || undefined,
     simulations:        s.simulations || [],
+    adjustedOffers:     s.adjustedOffers || undefined,
     calculationNote:    s.calculationNote || undefined,
     tauxAnnuelApplique: s.tauxAnnuelApplique ?? null,
     donneesManquantes:  s.donneesManquantes || [],
