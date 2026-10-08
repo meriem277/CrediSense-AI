@@ -28,31 +28,53 @@
 <!-- Result state -->
 <div class="cr-result" *ngIf="!loading && result">
 
-  <!-- ── En-tête éligibilité ── -->
-  <div class="cr-header">
-    <div class="cr-badge" [ngClass]="eligibilityColor">{{ eligibilityLabel }}</div>
-    <div class="cr-type">{{ result.creditType }}</div>
+  <!-- ── En-tête : décision, synthèse et score ── -->
+  <section class="cr-hero" [ngClass]="eligibilityColor">
+    <div class="cr-hero-main">
+      <div class="cr-header">
+        <div class="cr-badge" [ngClass]="eligibilityColor">{{ eligibilityLabel }}</div>
+        <div class="cr-type">{{ result.creditType }}</div>
+      </div>
 
-    <div class="cr-header-actions">
-      <button class="cr-send-btn" *ngIf="!reponseEnAttente"
-              [class.sent]="emailSent"
-              [disabled]="sendingEmail || emailSent"
-              (click)="sendResultToClient()">
-        <svg *ngIf="!sendingEmail && !emailSent" width="15" height="15"
-             viewBox="0 0 24 24" fill="none" stroke="currentColor"
-             stroke-width="2" stroke-linecap="round">
-          <path d="M22 2L11 13"/>
-          <path d="M22 2l-7 20-4-9-9-4 20-7z"/>
-        </svg>
-        <span class="cr-send-spinner" *ngIf="sendingEmail" aria-hidden="true"></span>
-        <svg *ngIf="emailSent" width="15" height="15" viewBox="0 0 24 24"
-             fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-          <polyline points="20 6 9 17 4 12"/>
-        </svg>
-        <span>{{ sendingEmail ? 'Envoi...' : (emailSent ? 'Envoyé' : (reponseDejaEnvoyee ? 'Renvoyer la réponse au client' : 'Envoyer la réponse au client')) }}</span>
-      </button>
+      <p class="cr-summary" *ngIf="result.summary">{{ result.summary }}</p>
+
+      <div class="cr-header-actions">
+        <button class="cr-send-btn" *ngIf="!reponseEnAttente"
+                [class.sent]="emailSent"
+                [disabled]="sendingEmail || emailSent"
+                (click)="sendResultToClient()">
+          <svg *ngIf="!sendingEmail && !emailSent" width="15" height="15"
+               viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round">
+            <path d="M22 2L11 13"/>
+            <path d="M22 2l-7 20-4-9-9-4 20-7z"/>
+          </svg>
+          <span class="cr-send-spinner" *ngIf="sendingEmail" aria-hidden="true"></span>
+          <svg *ngIf="emailSent" width="15" height="15" viewBox="0 0 24 24"
+               fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+          <span>{{ sendingEmail ? 'Envoi...' : (emailSent ? 'Envoyé' : (reponseDejaEnvoyee ? 'Renvoyer la réponse au client' : 'Envoyer la réponse au client')) }}</span>
+        </button>
+      </div>
     </div>
-  </div>
+
+    <div class="cr-score-ring" [ngClass]="classeScore" role="img"
+         [attr.aria-label]="'Score de crédit : ' + result.eligibilityScore + ' sur 100'">
+      <svg viewBox="0 0 120 120" aria-hidden="true">
+        <circle class="ring-piste" cx="60" cy="60" r="52"/>
+        <circle class="ring-valeur" cx="60" cy="60" r="52" [attr.stroke-dasharray]="scoreTrait"/>
+      </svg>
+      <div class="cr-score-centre">
+        <strong>{{ result.eligibilityScore }}</strong>
+        <span>sur 100</span>
+      </div>
+      <div class="cr-score-legende">
+        Score de crédit
+        <em class="cr-provisoire" *ngIf="result.scoreProvisoire">provisoire</em>
+      </div>
+    </div>
+  </section>
 
   <!-- ── Alerte identité client ── -->
   <div class="cr-alerte-identite" *ngIf="result.alerteIdentite">
@@ -112,26 +134,7 @@
     </ul>
   </div>
 
-  <!-- ── Résumé ── -->
-  <p class="cr-summary" *ngIf="result.summary">{{ result.summary }}</p>
-
-  <!-- ── Score ── -->
-  <div class="cr-score-block">
-    <div class="cr-score-label">
-      <span>Score de crédit <em class="cr-provisoire" *ngIf="result.scoreProvisoire">provisoire</em></span>
-      <strong>{{ result.eligibilityScore }} / 100</strong>
-    </div>
-    <div class="cr-score-bar">
-      <div class="cr-score-fill"
-           [style.width.%]="result.eligibilityScore"
-           [class.fill-green]="result.eligibilityScore >= 70"
-           [class.fill-amber]="result.eligibilityScore >= 40 && result.eligibilityScore < 70"
-           [class.fill-red]="result.eligibilityScore < 40">
-      </div>
-    </div>
-  </div>
-
-  <!-- ── Métriques financières ── -->
+  <!-- ── Chiffres clés ── -->
   <div class="cr-metrics">
     <div class="cr-metric" *ngFor="let m of metriquesAffichees" [class.cr-metric-manquante]="m.manquante">
       <div class="cr-metric-key">{{ m.libelle }}</div>
@@ -139,95 +142,189 @@
     </div>
   </div>
 
+  <!-- ── Endettement et capacité : la règle graduée ── -->
+  <div class="cr-duo" *ngIf="dtiValeur !== null || (result.capacity && result.capacity.explanation)">
+    <section class="cr-card cr-dti" *ngIf="dtiValeur !== null">
+      <h4 class="cr-section-title">Taux d'endettement</h4>
+      <div class="dti-valeur" [ngClass]="'dti-' + dtiStatut">{{ pct(dtiValeur) }}</div>
+      <div class="dti-regle" role="img" [attr.aria-label]="dtiMessage">
+        <div class="dti-zones">
+          <span class="zone-ok"   [style.width.%]="ligne30"></span>
+          <span class="zone-warn" [style.width.%]="ligne35 - ligne30"></span>
+          <span class="zone-ko"   [style.width.%]="100 - ligne35"></span>
+        </div>
+        <div class="dti-repere" [style.left.%]="dtiPosition" [ngClass]="'dti-' + dtiStatut"></div>
+      </div>
+      <div class="dti-graduations">
+        <span>0 %</span>
+        <span [style.left.%]="ligne30">30 %</span>
+        <span [style.left.%]="ligne35">35 %</span>
+        <span class="fin">50 %</span>
+      </div>
+      <p class="dti-message" [ngClass]="'dti-' + dtiStatut">{{ dtiMessage }}</p>
+
+      <div class="comparaison" *ngIf="mensualiteDemandee !== null && capaciteMensuelle !== null">
+        <div class="comp-ligne">
+          <span class="comp-lib">Mensualité demandée</span>
+          <span class="comp-piste"><i class="comp-barre" [class.depasse]="depasseLaCapacite" [style.width.%]="largeurComparaison(mensualiteDemandee)"></i></span>
+          <strong>{{ formatDT(mensualiteDemandee) }}</strong>
+        </div>
+        <div class="comp-ligne">
+          <span class="comp-lib">Capacité maximale (30 %)</span>
+          <span class="comp-piste"><i class="comp-barre capacite" [style.width.%]="largeurComparaison(capaciteMensuelle)"></i></span>
+          <strong>{{ formatDT(capaciteMensuelle) }}</strong>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Capacité d'emprunt ── -->
+    <section class="cr-card cr-capacity-card" *ngIf="result.capacity && result.capacity.explanation">
+      <h4 class="cr-section-title">Capacité d'emprunt</h4>
+      <div class="cr-capacity">
+        <div class="cr-capacity-figures">
+          <div><span>Mensualité maximale</span><strong>{{ formatDT(result.capacity.maxMonthlyPayment) }}</strong></div>
+          <div [class.negatif]="(result.capacity.remainingMonthly ?? 0) < 0"><span>Reste après la demande</span><strong>{{ formatDT(result.capacity.remainingMonthly) }}</strong></div>
+          <div><span>Montant empruntable ({{ result.capacity.referenceDuration }} mois)</span><strong>{{ formatDT(result.capacity.maxAmountForDuration) }}</strong></div>
+        </div>
+        <p>{{ result.capacity.explanation }}</p>
+      </div>
+    </section>
+  </div>
+
   <!-- ── Contrôles réglementaires (calculés par le moteur de règles, pas par le LLM) ── -->
-  <div class="cr-section" *ngIf="result.regulatoryChecks && result.regulatoryChecks.length > 0">
+  <section class="cr-card" *ngIf="result.regulatoryChecks && result.regulatoryChecks.length > 0">
     <h4 class="cr-section-title">
       Contrôles réglementaires
       <span class="cr-count">{{ result.regulatoryChecks.length }}</span>
     </h4>
-    <div class="cr-table-wrap">
-      <table class="cr-table">
-        <thead>
-          <tr><th>Critère</th><th>Résultat</th><th>Valeur</th><th>Seuil</th><th>Explication</th></tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let c of result.regulatoryChecks">
-            <td>
-              <strong>{{ c.criterion }}</strong>
-              <span class="cr-bloquant" *ngIf="c.blocking" title="Un échec sur ce critère bloque la décision favorable">bloquant</span>
-            </td>
-            <td><span class="cr-ctl" [ngClass]="controleClass(c.status)">{{ controleLabel(c.status) }}</span></td>
-            <td>{{ c.value }}</td>
-            <td>{{ c.threshold }}</td>
-            <td>{{ c.explanation }}</td>
-          </tr>
-        </tbody>
-      </table>
+    <div class="cr-bilan">
+      <span class="bilan ctl-ok"   *ngIf="compteursControles.ok">✓ {{ compteursControles.ok }} conforme{{ compteursControles.ok > 1 ? 's' : '' }}</span>
+      <span class="bilan ctl-warn" *ngIf="compteursControles.warn">! {{ compteursControles.warn }} à surveiller</span>
+      <span class="bilan ctl-ko"   *ngIf="compteursControles.ko">✕ {{ compteursControles.ko }} non conforme{{ compteursControles.ko > 1 ? 's' : '' }}</span>
+      <span class="bilan ctl-todo" *ngIf="compteursControles.todo">? {{ compteursControles.todo }} à vérifier</span>
     </div>
-  </div>
-
-  <!-- ── Capacité d'emprunt ── -->
-  <div class="cr-section" *ngIf="result.capacity && result.capacity.explanation">
-    <h4 class="cr-section-title">Capacité d'emprunt</h4>
-    <div class="cr-capacity">
-      <div class="cr-capacity-figures">
-        <div><span>Mensualité maximale</span><strong>{{ formatDT(result.capacity.maxMonthlyPayment) }}</strong></div>
-        <div><span>Reste après la demande</span><strong>{{ formatDT(result.capacity.remainingMonthly) }}</strong></div>
-        <div><span>Montant empruntable ({{ result.capacity.referenceDuration }} mois)</span><strong>{{ formatDT(result.capacity.maxAmountForDuration) }}</strong></div>
+    <div class="cr-controles">
+      <article class="controle" *ngFor="let c of result.regulatoryChecks" [ngClass]="controleClass(c.status)">
+        <span class="controle-icone" aria-hidden="true">{{ iconeControle(c.status) }}</span>
+        <div class="controle-corps">
+          <div class="controle-titre">
+            <strong>{{ c.criterion }}</strong>
+            <span class="cr-bloquant" *ngIf="c.blocking" title="Un échec sur ce critère bloque la décision favorable">bloquant</span>
+          </div>
+          <div class="controle-valeurs"><b>{{ c.value }}</b> <span>· seuil {{ c.threshold }}</span></div>
+          <p class="controle-explication">{{ c.explanation }}</p>
+        </div>
+        <span class="controle-etat">{{ controleLabel(c.status) }}</span>
+      </article>
+    </div>
+    <details class="cr-vue-tableau">
+      <summary>Vue en tableau</summary>
+      <div class="cr-table-wrap">
+        <table class="cr-table">
+          <thead>
+            <tr><th>Critère</th><th>Résultat</th><th>Valeur</th><th>Seuil</th><th>Explication</th></tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let c of result.regulatoryChecks">
+              <td><strong>{{ c.criterion }}</strong></td>
+              <td><span class="cr-ctl" [ngClass]="controleClass(c.status)">{{ controleLabel(c.status) }}</span></td>
+              <td>{{ c.value }}</td>
+              <td>{{ c.threshold }}</td>
+              <td>{{ c.explanation }}</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
-      <p>{{ result.capacity.explanation }}</p>
-    </div>
-  </div>
+    </details>
+  </section>
 
   <!-- ── Propositions d'ajustement (dossier conditionnel) ── -->
-  <div class="cr-section cr-offres" *ngIf="result.adjustedOffers as propositions">
+  <section class="cr-card cr-offres" *ngIf="result.adjustedOffers as propositions">
     <h4 class="cr-section-title">Propositions d'ajustement</h4>
     <p class="cr-offres-note">{{ propositions.message }}</p>
-    <div class="cr-table-wrap" *ngIf="propositions.offers.length > 0">
-      <table class="cr-table cr-table-offres">
-        <thead>
-          <tr><th>Proposition</th><th>Montant</th><th>Durée</th><th>Mensualité</th><th>Taux d'endettement</th><th>Coût total</th></tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let o of propositions.offers">
-            <td><strong>{{ o.label }}</strong><span class="cr-offre-detail">{{ o.explanation }}</span></td>
-            <td>{{ formatDT(o.amount) }}</td>
-            <td>{{ o.duration }} mois</td>
-            <td>{{ formatDT(o.monthlyPayment) }}</td>
-            <td>{{ o.dti }} %</td>
-            <td>{{ formatDT(o.totalCost) }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
 
-  <!-- ── Simulation par durée ── -->
-  <div class="cr-section" *ngIf="result.simulations && result.simulations.length > 0">
-    <h4 class="cr-section-title">Simulation par durée</h4>
-    <div class="cr-table-wrap">
-      <table class="cr-table cr-table-sim">
-        <thead>
-          <tr><th>Durée</th><th>Mensualité</th><th>Taux d'endettement</th><th>Coût total</th><th>Résultat</th></tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let s of result.simulations" [class.cr-row-demandee]="s.isRequested">
-            <td>{{ s.duration }} mois <span class="cr-demandee" *ngIf="s.isRequested">demandée</span></td>
-            <td>{{ formatDT(s.monthlyPayment) }}</td>
-            <td>{{ s.dti }} %</td>
-            <td>{{ formatDT(s.totalCost) }}</td>
-            <td><span class="cr-ctl" [ngClass]="controleClass(s.status)">{{ controleLabel(s.status) }}</span></td>
-          </tr>
-        </tbody>
-      </table>
+    <div class="cr-offres-grille" *ngIf="propositions.offers.length > 0">
+      <article class="offre" *ngFor="let o of propositions.offers; let i = index">
+        <div class="offre-etiquette">Option {{ i + 1 }}</div>
+        <h5>{{ o.label }}</h5>
+        <div class="offre-montant">{{ formatDT(o.amount) }}</div>
+        <div class="offre-ecart">{{ ecartMontant(o.amount) }}</div>
+        <dl class="offre-details">
+          <div><dt>Durée</dt><dd>{{ o.duration }} mois <small>{{ ecartDuree(o.duration) }}</small></dd></div>
+          <div><dt>Mensualité</dt><dd>{{ formatDT(o.monthlyPayment) }}</dd></div>
+          <div><dt>Endettement</dt><dd>{{ pct(o.dti) }}
+            <span class="mini-jauge"><i [style.width.%]="hauteurDti(o.dti)"></i><b [style.left.%]="ligne30"></b></span></dd></div>
+          <div><dt>Coût total</dt><dd>{{ formatDT(o.totalCost) }}</dd></div>
+        </dl>
+        <p class="offre-explication">{{ o.explanation }}</p>
+      </article>
     </div>
-  </div>
+
+    <details class="cr-vue-tableau" *ngIf="propositions.offers.length > 0">
+      <summary>Vue en tableau</summary>
+      <div class="cr-table-wrap">
+        <table class="cr-table cr-table-offres">
+          <thead>
+            <tr><th>Proposition</th><th>Montant</th><th>Durée</th><th>Mensualité</th><th>Taux d'endettement</th><th>Coût total</th></tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let o of propositions.offers">
+              <td><strong>{{ o.label }}</strong><span class="cr-offre-detail">{{ o.explanation }}</span></td>
+              <td>{{ formatDT(o.amount) }}</td>
+              <td>{{ o.duration }} mois</td>
+              <td>{{ formatDT(o.monthlyPayment) }}</td>
+              <td>{{ o.dti }} %</td>
+              <td>{{ formatDT(o.totalCost) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </details>
+  </section>
+
+  <!-- ── Simulation par durée : un graphique, le tableau en repli ── -->
+  <section class="cr-card" *ngIf="result.simulations && result.simulations.length > 0">
+    <h4 class="cr-section-title">Simulation par durée</h4>
+    <div class="cr-sim">
+      <div class="sim-graph">
+        <span class="sim-ligne l30" [style.--p]="ligne30 / 100"><em>30 %</em></span>
+        <span class="sim-ligne l35" [style.--p]="ligne35 / 100"><em>35 %</em></span>
+        <div class="sim-col" *ngFor="let s of result.simulations" [class.demandee]="s.isRequested"
+             [attr.title]="s.duration + ' mois : ' + controleLabel(s.status)">
+          <span class="sim-valeur">{{ pct(s.dti) }}</span>
+          <span class="sim-barre" [ngClass]="controleClass(s.status)" [style.height.%]="hauteurDti(s.dti)"></span>
+          <span class="sim-duree">{{ s.duration }} mois</span>
+          <span class="sim-etiquette" *ngIf="s.isRequested">demandée</span>
+        </div>
+      </div>
+      <p class="sim-legende">Taux d'endettement par durée de remboursement ; au-dessus de 35 %, un crédit n'est pas acceptable.</p>
+    </div>
+    <details class="cr-vue-tableau">
+      <summary>Vue en tableau</summary>
+      <div class="cr-table-wrap">
+        <table class="cr-table cr-table-sim">
+          <thead>
+            <tr><th>Durée</th><th>Mensualité</th><th>Taux d'endettement</th><th>Coût total</th><th>Résultat</th></tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let s of result.simulations" [class.cr-row-demandee]="s.isRequested">
+              <td>{{ s.duration }} mois <span class="cr-demandee" *ngIf="s.isRequested">demandée</span></td>
+              <td>{{ formatDT(s.monthlyPayment) }}</td>
+              <td>{{ s.dti }} %</td>
+              <td>{{ formatDT(s.totalCost) }}</td>
+              <td><span class="cr-ctl" [ngClass]="controleClass(s.status)">{{ controleLabel(s.status) }}</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </details>
+  </section>
 
   <p class="cr-note" *ngIf="result.calculationNote">{{ result.calculationNote }}</p>
 
   <!-- ── Points forts et points de vigilance ── -->
   <div class="cr-two-col" *ngIf="result.strengths?.length || result.weaknesses?.length">
-    <div class="cr-section" *ngIf="result.strengths?.length">
+    <div class="cr-card cr-section" *ngIf="result.strengths?.length">
       <h4 class="cr-section-title cr-title-strength">Points forts</h4>
       <ul class="cr-points cr-points-ok">
         <li *ngFor="let p of result.strengths">
@@ -237,7 +334,7 @@
         </li>
       </ul>
     </div>
-    <div class="cr-section" *ngIf="result.weaknesses?.length">
+    <div class="cr-card cr-section" *ngIf="result.weaknesses?.length">
       <h4 class="cr-section-title cr-title-weak">Points de vigilance</h4>
       <ul class="cr-points cr-points-warn">
         <li *ngFor="let p of result.weaknesses">
@@ -250,7 +347,7 @@
   </div>
 
   <!-- ── Conditions avant décaissement ── -->
-  <div class="cr-section" *ngIf="result.conditions?.length">
+  <div class="cr-card cr-section" *ngIf="result.conditions?.length">
     <h4 class="cr-section-title">Conditions avant décaissement</h4>
     <ul class="cr-conditions">
       <li *ngFor="let c of result.conditions">{{ c }}</li>
@@ -258,7 +355,7 @@
   </div>
 
   <!-- ── Risques identifiés ── -->
-  <div class="cr-section" *ngIf="result.risks && result.risks.length > 0">
+  <div class="cr-card cr-section" *ngIf="result.risks && result.risks.length > 0">
     <h4 class="cr-section-title cr-title-risk">
       Risques identifiés
       <span class="cr-count">{{ result.risks.length }}</span>
@@ -284,7 +381,7 @@
   </div>
 
   <!-- ── Plan recommandé ── -->
-  <div class="cr-section"
+  <div class="cr-card cr-section"
        *ngIf="result.recommendedPlan && result.recommendedPlan.length > 0">
     <h4 class="cr-section-title cr-title-plan">Plan recommandé</h4>
     <div class="cr-plan-list">
@@ -310,7 +407,7 @@
   </div>
 
   <!-- ── Sources extraites ── -->
-  <div class="cr-section cr-sources-section"
+  <div class="cr-card cr-section cr-sources-section"
        *ngIf="result.documentSources && result.documentSources.length > 0">
     <h4 class="cr-section-title">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
@@ -330,21 +427,16 @@
     </div>
   </div>
 
-  <!-- ── Analyse détaillée ── -->
-  <div class="cr-section cr-explication-section" *ngIf="result.rawExplanation">
-    <h4 class="cr-section-title">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-           stroke="currentColor" stroke-width="2" stroke-linecap="round">
-        <circle cx="12" cy="12" r="10"/>
-        <path d="M12 16v-4M12 8h.01"/>
-      </svg>
-      Analyse détaillée
-    </h4>
+  <!-- ── Analyse détaillée : rédigée par le modèle de langage, donc indicative ── -->
+  <details class="cr-card cr-explication-section" *ngIf="result.rawExplanation">
+    <summary>
+      <span class="cr-section-title">Analyse détaillée</span>
+      <span class="cr-explication-mention">rédigée par l'IA, indicative : les chiffres de référence sont ceux calculés plus haut</span>
+    </summary>
     <div class="cr-explanation-box">
-      <div class="cr-explanation-quote-mark">"</div>
       <p class="cr-explanation-text">{{ result.rawExplanation }}</p>
     </div>
-  </div>
+  </details>
 
   <!-- ── Journal du dossier : qui a décidé quoi, quand, avec quelles règles ── -->
   <details class="cr-journal" *ngIf="journal.length > 0">

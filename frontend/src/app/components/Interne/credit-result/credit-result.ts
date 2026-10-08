@@ -156,6 +156,120 @@ export class CreditResult implements OnInit, OnDestroy, OnChanges {
       }));
   }
 
+  // ── Visualisation ─────────────────────────────────────────────────────────
+  // Seuils d'endettement du moteur de règles (agent_service.py : DTI_ACCEPTABLE et DTI_MAX). Ils ne servent
+  // ici qu'à DESSINER les zones de la règle graduée ; les verdicts viennent toujours du service.
+  readonly SEUIL_DTI_ACCEPTABLE = 30;
+  readonly SEUIL_DTI_MAX        = 35;
+  readonly ECHELLE_DTI          = 50;
+  readonly RAYON_SCORE          = 52;
+
+  private metrique(cle: string): number | null {
+    const v = Number((this.result?.financialMetrics as Record<string, any> | undefined)?.[cle]);
+    return Number.isFinite(v) && v > 0 ? v : null;
+  }
+
+  /** Longueur de l'arc de la jauge de score (cercle de rayon 52). */
+  get scoreTrait(): string {
+    const circonference = 2 * Math.PI * this.RAYON_SCORE;
+    const score = Math.max(0, Math.min(100, Number(this.result?.eligibilityScore ?? 0)));
+    return `${(circonference * score) / 100} ${circonference}`;
+  }
+
+  get classeScore(): string {
+    const s = Number(this.result?.eligibilityScore ?? 0);
+    return s >= 70 ? 'score-vert' : s >= 40 ? 'score-orange' : 'score-rouge';
+  }
+
+  get dtiValeur(): number | null { return this.metrique('dti'); }
+
+  /** Position du repère sur la règle graduée de 0 à 50 %, en pourcentage de la largeur. */
+  get dtiPosition(): number {
+    return Math.min(this.dtiValeur ?? 0, this.ECHELLE_DTI) / this.ECHELLE_DTI * 100;
+  }
+
+  get dtiStatut(): 'ok' | 'warn' | 'ko' {
+    const d = this.dtiValeur ?? 0;
+    return d < this.SEUIL_DTI_ACCEPTABLE ? 'ok' : d <= this.SEUIL_DTI_MAX ? 'warn' : 'ko';
+  }
+
+  get dtiMessage(): string {
+    const d = this.dtiValeur;
+    if (d === null) return '';
+    const texte = this.pct(d);
+    return this.dtiStatut === 'ok'   ? `${texte} : sous le seuil de ${this.SEUIL_DTI_ACCEPTABLE} %`
+         : this.dtiStatut === 'warn' ? `${texte} : zone de risque (${this.SEUIL_DTI_ACCEPTABLE} à ${this.SEUIL_DTI_MAX} %)`
+         :                             `${texte} : au-dessus du maximum de ${this.SEUIL_DTI_MAX} %`;
+  }
+
+  get mensualiteDemandee(): number | null { return this.metrique('monthlyPayment'); }
+  get capaciteMensuelle(): number | null {
+    const v = Number(this.result?.capacity?.maxMonthlyPayment);
+    return Number.isFinite(v) && v > 0 ? v : null;
+  }
+
+  /** Largeur des deux barres « mensualité demandée » / « capacité », rapportées à la plus grande. */
+  largeurComparaison(valeur: number | null): number {
+    const max = Math.max(this.mensualiteDemandee ?? 0, this.capaciteMensuelle ?? 0);
+    return valeur && max ? Math.round(valeur / max * 100) : 0;
+  }
+
+  get depasseLaCapacite(): boolean {
+    return this.mensualiteDemandee !== null && this.capaciteMensuelle !== null
+        && this.mensualiteDemandee > this.capaciteMensuelle;
+  }
+
+  pct(valeur: number | null | undefined): string {
+    if (valeur === null || valeur === undefined || isNaN(Number(valeur))) return '—';
+    return `${Number(valeur).toFixed(2).replace('.', ',')} %`;
+  }
+
+  // Contrôles réglementaires : compteurs et icônes (jamais la couleur seule)
+  get compteursControles(): { ok: number; warn: number; ko: number; todo: number } {
+    const c = { ok: 0, warn: 0, ko: 0, todo: 0 };
+    for (const k of this.result?.regulatoryChecks ?? []) {
+      if (k.status === 'OK') c.ok++;
+      else if (k.status === 'ATTENTION') c.warn++;
+      else if (k.status === 'KO') c.ko++;
+      else c.todo++;
+    }
+    return c;
+  }
+
+  iconeControle(statut: string): string {
+    return ({ 'OK': '✓', 'ATTENTION': '!', 'KO': '✕', 'A_VERIFIER': '?' } as Record<string, string>)[statut] ?? '?';
+  }
+
+  // Simulation par durée : une colonne par durée, hauteur proportionnelle au taux d'endettement
+  hauteurDti(valeur: number): number {
+    return Math.min(Math.max(Number(valeur) || 0, 0), this.ECHELLE_DTI) / this.ECHELLE_DTI * 100;
+  }
+
+  get ligne30(): number { return this.SEUIL_DTI_ACCEPTABLE / this.ECHELLE_DTI * 100; }
+  get ligne35(): number { return this.SEUIL_DTI_MAX / this.ECHELLE_DTI * 100; }
+
+  // Propositions d'ajustement : écart par rapport à la demande
+  get montantDemande(): number | null { return this.metrique('requestedAmount'); }
+  get dureeDemandee(): number | null { return this.metrique('duration'); }
+
+  private entier(n: number): string {
+    return new Intl.NumberFormat('fr-TN', { maximumFractionDigits: 0 }).format(Math.abs(n));
+  }
+
+  ecartMontant(montant: number): string {
+    const demande = this.montantDemande;
+    if (demande === null) return '';
+    const ecart = Math.round(montant - demande);
+    return ecart === 0 ? 'montant demandé conservé' : `${ecart > 0 ? '+' : '−'}${this.entier(ecart)} DT par rapport à la demande`;
+  }
+
+  ecartDuree(duree: number): string {
+    const demande = this.dureeDemandee;
+    if (demande === null) return '';
+    const ecart = duree - demande;
+    return ecart === 0 ? 'durée demandée conservée' : `${ecart > 0 ? '+' : '−'}${Math.abs(ecart)} mois`;
+  }
+
   /** Montant en dinars avec 3 décimales (millimes) : 2100 -> « 2 100,000 DT ». */
   formatDT(valeur: number | null | undefined): string {
     if (valeur === null || valeur === undefined || isNaN(Number(valeur))) return '—';

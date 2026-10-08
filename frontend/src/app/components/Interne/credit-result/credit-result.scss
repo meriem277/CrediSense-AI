@@ -663,3 +663,223 @@
   td strong { display: block; color: #1f2937; }
   .cr-offre-detail { display: block; margin-top: 2px; font-size: 12px; color: #6b7280; font-weight: 400; }
 }
+
+/* ═════════ Présentation moderne : cartes, jauge, règle d'endettement ═════════ */
+$vert:   #1FA67A;
+$orange: #E8A317;
+$rouge:  #D03B3B;
+$encre:  #1a1a2e;
+$gris:   #6b7280;
+$trait:  #eceef3;
+
+.cr-result { max-width: 980px; gap: 20px; background: transparent; }
+
+.cr-card {
+  background: #fff; border: 1px solid $trait; border-radius: 16px;
+  padding: 20px 22px; box-shadow: 0 1px 2px rgba(20, 24, 40, 0.04);
+  display: flex; flex-direction: column; gap: 14px;
+}
+.cr-card .cr-section-title { border-bottom: none; padding-bottom: 0; font-size: 16px; }
+
+/* ── Héros : décision + synthèse + score ── */
+.cr-hero {
+  display: grid; grid-template-columns: 1fr auto; gap: 28px; align-items: center;
+  padding: 26px 28px; border-radius: 20px; border: 1px solid $trait;
+  background: linear-gradient(135deg, #fff 55%, #fafbfd);
+  position: relative; overflow: hidden;
+  &::before { content: ''; position: absolute; inset: 0 auto 0 0; width: 6px; background: #c9ced8; }
+  &.color-eligible::before     { background: $vert; }
+  &.color-conditionnel::before { background: $orange; }
+  &.color-refus::before        { background: $rouge; }
+  &.color-acompleter::before   { background: #3b82f6; }
+  /* la couleur de décision ne sert qu'au liseré : le fond reste neutre */
+  &.color-eligible, &.color-conditionnel, &.color-refus, &.color-acompleter, &.color-indetermine {
+    background: linear-gradient(135deg, #fff 55%, #fafbfd); color: inherit;
+  }
+}
+.cr-hero-main { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.cr-hero .cr-header { border-bottom: none; padding-bottom: 0; }
+.cr-hero .cr-badge { font-size: 14px; padding: 7px 18px; }
+.cr-hero .cr-summary {
+  margin: 0; font-size: 15.5px; line-height: 1.6; color: #2b3040;
+  background: none; border: none; padding: 0;
+}
+.cr-hero .cr-header-actions { margin-left: 0; }
+
+.cr-score-ring {
+  position: relative; width: 150px; display: flex; flex-direction: column; align-items: center; gap: 8px;
+  svg { width: 150px; height: 150px; transform: rotate(-90deg); }
+  .ring-piste  { fill: none; stroke: #eef0f5; stroke-width: 11; }
+  .ring-valeur { fill: none; stroke: #c9ced8; stroke-width: 11; stroke-linecap: round;
+                 transition: stroke-dasharray 0.9s cubic-bezier(0.4, 0, 0.2, 1); }
+  &.score-vert   .ring-valeur { stroke: $vert; }
+  &.score-orange .ring-valeur { stroke: $orange; }
+  &.score-rouge  .ring-valeur { stroke: $rouge; }
+}
+.cr-score-centre {
+  position: absolute; top: 0; left: 0; width: 150px; height: 150px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  strong { font-size: 40px; line-height: 1; color: $encre; font-variant-numeric: tabular-nums; }
+  span { font-size: 12px; color: $gris; margin-top: 2px; }
+}
+.cr-score-legende {
+  font-size: 12.5px; color: $gris; text-align: center; font-weight: 600;
+  .cr-provisoire { display: block; margin-top: 2px; font-style: normal; font-weight: 600; color: #b36b00; }
+}
+
+/* ── Chiffres clés : tuiles ── */
+.cr-metrics { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
+.cr-metric {
+  border-radius: 14px; border: 1px solid $trait; padding: 14px 16px 15px; background: #fff;
+  .cr-metric-key { text-transform: none; letter-spacing: 0; font-size: 12.5px; font-weight: 500; color: $gris; margin-bottom: 4px; }
+  .cr-metric-val { font-size: 20px; font-variant-numeric: tabular-nums; }
+}
+.cr-metric-manquante .cr-metric-val { color: #9aa1af; font-size: 15px; font-weight: 600; }
+
+/* ── Endettement + capacité côte à côte ── */
+.cr-duo { display: grid; grid-template-columns: 1.15fr 1fr; gap: 20px; align-items: stretch; }
+
+.cr-dti { gap: 10px; }
+.dti-valeur { font-size: 38px; font-weight: 700; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.dti-ok   { color: #0d7a56; } .dti-warn { color: #b36b00; } .dti-ko { color: #b3261e; }
+.dti-regle { position: relative; height: 14px; margin: 16px 2px 4px; }
+.dti-zones { display: flex; height: 100%; border-radius: 99px; overflow: hidden; gap: 2px; }
+.dti-zones span { display: block; height: 100%; }
+.zone-ok   { background: $vert; opacity: 0.85; }
+.zone-warn { background: $orange; }
+.zone-ko   { background: $rouge; opacity: 0.85; }
+.dti-repere {
+  position: absolute; top: -5px; width: 24px; height: 24px; margin-left: -12px; border-radius: 50%;
+  background: #fff; border: 4px solid $encre; box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+  &.dti-ok { border-color: #0d7a56; } &.dti-warn { border-color: #b36b00; } &.dti-ko { border-color: #b3261e; }
+}
+.dti-graduations {
+  position: relative; height: 16px; font-size: 11px; color: $gris; margin: 2px 2px 0;
+  span { position: absolute; transform: translateX(-50%); }
+  span:first-child { left: 0; transform: none; }
+  span.fin { right: 0; transform: none; }
+}
+.dti-message { margin: 4px 0 0; font-size: 13px; font-weight: 600; }
+
+.comparaison { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; padding-top: 12px; border-top: 1px dashed $trait; }
+.comp-ligne {
+  display: grid; grid-template-columns: 150px 1fr auto; gap: 10px; align-items: center; font-size: 12.5px;
+  .comp-lib { color: $gris; }
+  strong { font-variant-numeric: tabular-nums; color: $encre; }
+}
+.comp-piste { display: block; height: 10px; background: #f1f3f7; border-radius: 99px; overflow: hidden; }
+.comp-barre { display: block; height: 100%; border-radius: 99px; background: $vert; transition: width 0.6s ease;
+  &.depasse { background: $rouge; } &.capacite { background: #8b93a7; } }
+
+.cr-capacity-card .cr-capacity { background: none; border: none; padding: 0; }
+.cr-capacity-card .cr-capacity-figures {
+  grid-template-columns: 1fr; gap: 0;
+  div { flex-direction: row; justify-content: space-between; align-items: baseline; gap: 10px; padding: 10px 0; border-bottom: 1px solid #f2f3f7; }
+  div:last-child { border-bottom: none; }
+  span { font-size: 13px; } strong { font-size: 17px; font-variant-numeric: tabular-nums; }
+  .negatif strong { color: #b3261e; }
+}
+.cr-capacity-card .cr-capacity p { font-size: 12.5px; color: $gris; margin: 10px 0 0; }
+
+/* ── Contrôles réglementaires : cartes ── */
+.cr-bilan { display: flex; gap: 8px; flex-wrap: wrap; }
+.bilan { font-size: 12.5px; font-weight: 700; padding: 5px 12px; border-radius: 99px; }
+.cr-controles { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 10px; }
+.controle {
+  display: grid; grid-template-columns: 34px 1fr; gap: 12px; position: relative;
+  padding: 12px 14px; border: 1px solid $trait; border-radius: 12px; background: #fff; color: $encre;
+  .controle-icone { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+                    font-weight: 800; font-size: 15px; background: #e9ecf3; color: #4b5563; }
+  .controle-titre { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding-right: 78px; strong { font-size: 13.5px; } }
+  .controle-valeurs { font-size: 12.5px; margin-top: 2px; b { font-variant-numeric: tabular-nums; } span { color: $gris; } }
+  .controle-explication { margin: 4px 0 0; font-size: 12px; color: $gris; line-height: 1.45; }
+  .controle-etat { position: absolute; top: 10px; right: 12px; font-size: 11px; font-weight: 700; letter-spacing: 0.3px; }
+  &.ctl-ok   { background: #fff; color: $encre; .controle-icone { background: rgba(31,166,122,0.15); color: #0d7a56; } .controle-etat { color: #0d7a56; } }
+  &.ctl-warn { background: #fffaf0; color: $encre; border-color: #f4dfb0; .controle-icone { background: rgba(232,163,23,0.2); color: #8a5a00; } .controle-etat { color: #8a5a00; } }
+  &.ctl-ko   { background: #fff6f5; color: $encre; border-color: #f3c9c6; .controle-icone { background: rgba(208,59,59,0.16); color: #b3261e; } .controle-etat { color: #b3261e; } }
+  &.ctl-todo { background: #fafbfc; color: $encre; .controle-etat { color: $gris; } }
+}
+
+.cr-vue-tableau {
+  margin-top: 4px; font-size: 13px;
+  summary { cursor: pointer; color: $gris; font-weight: 600; padding: 4px 0; list-style: none; }
+  summary::before { content: '▸ '; }
+  &[open] summary::before { content: '▾ '; }
+  summary:focus-visible { outline: 2px solid #F47920; outline-offset: 2px; border-radius: 4px; }
+}
+
+/* ── Propositions d'ajustement : cartes ── */
+.cr-offres-grille { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 14px; }
+.offre {
+  border: 1px solid $trait; border-radius: 14px; padding: 16px 18px; display: flex; flex-direction: column; gap: 4px;
+  background: linear-gradient(180deg, #fff, #fbfcfe);
+  &:first-child { border-color: #bfe6d6; }
+  h5 { margin: 0; font-size: 13.5px; color: $encre; }
+  .offre-etiquette { font-size: 11px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: #0d7a56; }
+  .offre-montant { font-size: 28px; font-weight: 700; color: $encre; font-variant-numeric: tabular-nums; line-height: 1.15; margin-top: 4px; }
+  .offre-ecart { font-size: 12.5px; color: $gris; margin-bottom: 8px; }
+  .offre-details { margin: 0; display: grid; gap: 0;
+    div { display: flex; justify-content: space-between; gap: 10px; padding: 7px 0; border-top: 1px solid #f2f3f7; font-size: 13px; }
+    dt { color: $gris; }
+    dd { margin: 0; font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
+    small { display: block; font-weight: 400; color: $gris; font-size: 11.5px; } }
+  .offre-explication { margin: 8px 0 0; font-size: 12px; color: $gris; line-height: 1.45; }
+}
+.mini-jauge { position: relative; display: block; width: 110px; height: 6px; background: #eef0f5; border-radius: 99px; margin: 5px 0 0 auto;
+  i { display: block; height: 100%; border-radius: 99px; background: $vert; }
+  b { position: absolute; top: -3px; width: 2px; height: 12px; background: $encre; opacity: 0.55; } }
+.cr-table-offres td strong { display: block; }
+
+/* ── Simulation par durée : colonnes ── */
+.cr-sim { --h: 170px; }
+.sim-graph {
+  position: relative; display: flex; gap: 14px; align-items: flex-end; justify-content: space-around;
+  height: calc(var(--h) + 70px); padding: 24px 6px 46px;
+}
+.sim-ligne {
+  position: absolute; left: 0; right: 0; height: 0; border-top: 1px dashed #b9bfcc;
+  bottom: calc(46px + var(--h) * var(--p));
+  em { position: absolute; right: 0; top: -17px; font-style: normal; font-size: 10.5px; color: $gris; background: #fff; padding-left: 4px; }
+  &.l35 { border-top-color: $rouge; em { color: #b3261e; } }
+}
+.sim-col {
+  position: relative; flex: 1; max-width: 90px; height: var(--h);
+  display: flex; flex-direction: column; justify-content: flex-end; align-items: center;
+  .sim-valeur { font-size: 11.5px; font-weight: 700; color: $encre; margin-bottom: 4px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .sim-barre { width: 34px; max-width: 70%; min-height: 3px; border-radius: 6px 6px 0 0; background: #c9ced8;
+    transition: height 0.7s cubic-bezier(0.4, 0, 0.2, 1); }
+  .sim-barre.ctl-ok   { background: $vert; }
+  .sim-barre.ctl-warn { background: $orange; }
+  .sim-barre.ctl-ko   { background: $rouge; }
+  .sim-duree { position: absolute; top: calc(100% + 8px); font-size: 12px; font-weight: 600; color: #374151; white-space: nowrap; }
+  .sim-etiquette { position: absolute; top: calc(100% + 26px); font-size: 10.5px; font-weight: 700; color: #F47920; text-transform: uppercase; letter-spacing: 0.4px; }
+  &.demandee .sim-barre { box-shadow: 0 0 0 3px rgba(244,121,32,0.28); }
+  &.demandee .sim-duree { color: #F47920; }
+}
+.sim-legende { margin: 0; font-size: 12px; color: $gris; }
+
+/* ── Analyse détaillée : repliée, indicative ── */
+.cr-explication-section {
+  gap: 0;
+  summary { cursor: pointer; list-style: none; display: flex; flex-direction: column; gap: 2px; }
+  summary::-webkit-details-marker { display: none; }
+  summary .cr-section-title::after { content: '▾'; margin-left: auto; color: $gris; font-size: 13px; }
+  &[open] summary .cr-section-title::after { content: '▴'; }
+  .cr-explication-mention { font-size: 12px; color: $gris; }
+  .cr-explanation-box { margin-top: 12px; }
+}
+
+/* ── Journal : frise ── */
+.cr-journal ol { border-left: 2px solid $trait; margin-left: 6px; padding-left: 4px; }
+.cr-journal li { position: relative; }
+.cr-journal li::before {
+  content: ''; position: absolute; left: -11px; top: 12px; width: 8px; height: 8px; border-radius: 50%; background: #F47920;
+}
+
+/* ── Petits écrans ── */
+@media (max-width: 760px) {
+  .cr-hero { grid-template-columns: 1fr; justify-items: start; }
+  .cr-duo { grid-template-columns: 1fr; }
+  .comp-ligne { grid-template-columns: 1fr; gap: 4px; }
+  .sim-col .sim-barre { width: 24px; }
+}

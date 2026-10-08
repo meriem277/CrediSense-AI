@@ -642,3 +642,132 @@ describe("CreditResult — propositions d'ajustement", () => {
     expect(mapperResultat(RESULTAT_COMPLET).adjustedOffers).toBeUndefined();
   });
 });
+
+
+describe("CreditResult — présentation visuelle", () => {
+  let fixture: ComponentFixture<CreditResult>;
+  let etat: CreditStateService;
+
+  const afficher = (resultat: unknown) => { etat.setResult(mapperResultat(resultat)); fixture.detectChanges(); };
+  const composant = () => fixture.componentInstance;
+  const requete = (s: string) => (fixture.nativeElement as HTMLElement).querySelectorAll(s);
+  const sansEspaces = (t: string) => t.replace(/\s/g, "");
+  const avecDti = (dti: number | null) => ({ ...RESULTAT_COMPLET, financialMetrics: { ...RESULTAT_COMPLET.financialMetrics, dti } });
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [CreditResult],
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    }).compileComponents();
+    fixture = TestBed.createComponent(CreditResult);
+    etat = TestBed.inject(CreditStateService);
+    fixture.detectChanges();
+  });
+
+  it("dessine l'arc du score proportionnellement au score", () => {
+    afficher({ ...RESULTAT_COMPLET, eligibilityScore: 50 });
+    const [arc, circonference] = composant().scoreTrait.split(" ").map(Number);
+    expect(arc / circonference).toBeCloseTo(0.5, 5);
+    expect(requete(".cr-score-centre strong")[0].textContent).toContain("50");
+  });
+
+  it("borne l'arc du score entre 0 et 100", () => {
+    afficher({ ...RESULTAT_COMPLET, eligibilityScore: 140 });
+    const [arc, circonference] = composant().scoreTrait.split(" ").map(Number);
+    expect(arc).toBeCloseTo(circonference, 5);
+  });
+
+  it("classe le taux d'endettement selon les seuils du moteur", () => {
+    afficher(avecDti(25));
+    expect(composant().dtiStatut).toBe("ok");
+    afficher(avecDti(32));
+    expect(composant().dtiStatut).toBe("warn");
+    afficher(avecDti(36.63));
+    expect(composant().dtiStatut).toBe("ko");
+    expect(composant().dtiMessage).toContain("au-dessus du maximum de 35 %");
+  });
+
+  it("place le repère sur la règle graduée et le plafonne à la fin de l'échelle", () => {
+    afficher(avecDti(25));
+    expect(composant().dtiPosition).toBeCloseTo(50, 5);          // 25 % sur une échelle de 0 à 50 %
+    afficher(avecDti(80));
+    expect(composant().dtiPosition).toBe(100);
+  });
+
+  it("n'affiche pas la règle d'endettement quand le taux n'est pas calculé", () => {
+    afficher({ ...avecDti(0), capacity: undefined });
+    expect(requete(".cr-dti").length).toBe(0);
+    expect(requete(".dti-repere").length).toBe(0);
+  });
+
+  it("affiche les contrôles en cartes avec une icône et un bilan chiffré", () => {
+    afficher(RESULTAT_COMPLET);
+    expect(requete(".controle").length).toBe(3);
+    expect(requete(".controle-icone")[0].textContent).toContain("✓");        // conforme
+    expect(requete(".controle-icone")[2].textContent).toContain("?");        // à vérifier
+    expect(composant().compteursControles).toEqual({ ok: 2, warn: 0, ko: 0, todo: 1 });
+    expect(requete(".cr-bilan")[0].textContent).toContain("2 conformes");
+  });
+
+  it("garde le tableau des contrôles, replié, comme vue de remplacement", () => {
+    afficher(RESULTAT_COMPLET);
+    const vue = requete("details.cr-vue-tableau")[0] as HTMLDetailsElement;
+    expect(vue.open).toBe(false);
+    expect(vue.querySelectorAll("tbody tr").length).toBe(3);
+  });
+
+  it("compare la mensualité demandée à la capacité et signale le dépassement", () => {
+    afficher({ ...RESULTAT_COMPLET,
+      financialMetrics: { ...RESULTAT_COMPLET.financialMetrics, dti: 36.63, monthlyPayment: 1758.318 },
+      capacity: { ...RESULTAT_COMPLET.capacity, maxMonthlyPayment: 1440, remainingMonthly: -318.318 } });
+    expect(composant().depasseLaCapacite).toBe(true);
+    expect(composant().largeurComparaison(1440)).toBe(82);                    // 1 440 ÷ 1 758 de la barre pleine
+    expect(requete(".comp-barre.depasse").length).toBe(1);
+    expect(requete(".cr-capacity-figures .negatif").length).toBe(1);          // « Reste après la demande » négatif
+  });
+
+  it("ne signale pas de dépassement quand la mensualité tient dans la capacité", () => {
+    afficher({ ...RESULTAT_COMPLET,
+      financialMetrics: { ...RESULTAT_COMPLET.financialMetrics, monthlyPayment: 228.3 },
+      capacity: { ...RESULTAT_COMPLET.capacity, maxMonthlyPayment: 380 } });
+    expect(composant().depasseLaCapacite).toBe(false);
+    expect(requete(".comp-barre.depasse").length).toBe(0);
+  });
+
+  it("décrit l'écart de chaque proposition par rapport à la demande", () => {
+    afficher({ ...RESULTAT_COMPLET, financialMetrics: { ...RESULTAT_COMPLET.financialMetrics, requestedAmount: 20000, duration: 12 } });
+    expect(sansEspaces(composant().ecartMontant(16300))).toBe(sansEspaces("−3 700 DT par rapport à la demande"));
+    expect(composant().ecartMontant(20000)).toBe("montant demandé conservé");
+    expect(composant().ecartDuree(18)).toBe("+6 mois");
+    expect(composant().ecartDuree(12)).toBe("durée demandée conservée");
+  });
+
+  it("n'invente aucun écart quand la demande est inconnue", () => {
+    afficher({ ...RESULTAT_COMPLET, financialMetrics: { dti: 20 } });
+    expect(composant().ecartMontant(16300)).toBe("");
+    expect(composant().ecartDuree(18)).toBe("");
+  });
+
+  it("trace une colonne par durée simulée et repère la durée demandée", () => {
+    afficher(RESULTAT_COMPLET);
+    expect(requete(".sim-col").length).toBe(2);
+    expect(requete(".sim-col.demandee").length).toBe(1);
+    expect(requete(".sim-ligne").length).toBe(2);                              // seuils de 30 % et de 35 %
+    expect(composant().hauteurDti(25)).toBeCloseTo(50, 5);
+    expect(composant().hauteurDti(90)).toBe(100);                              // plafonnée à l'échelle
+    expect(composant().hauteurDti(-3)).toBe(0);
+  });
+
+  it("replie l'analyse rédigée par l'IA et la présente comme indicative", () => {
+    afficher({ ...RESULTAT_COMPLET, rawExplanation: "Texte rédigé par le modèle." });
+    const analyse = requete("details.cr-explication-section")[0] as HTMLDetailsElement;
+    expect(analyse.open).toBe(false);
+    expect(analyse.textContent).toContain("indicative");
+    expect(analyse.textContent).toContain("Texte rédigé par le modèle.");
+  });
+
+  it("formate un pourcentage à la française", () => {
+    expect(composant().pct(36.63)).toBe("36,63 %");
+    expect(composant().pct(null)).toBe("—");
+  });
+});
