@@ -27,7 +27,7 @@
         <p>Suivez l'état de vos dossiers de crédit</p>
       </div>
       <button class="btn-nouvelle" (click)="nouvelleDemande()">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
           <line x1="12" y1="5" x2="12" y2="19"/>
           <line x1="5" y1="12" x2="19" y2="12"/>
         </svg>
@@ -35,120 +35,169 @@
       </button>
     </div>
 
-    <!-- Stats -->
-    <div class="stats-row" *ngIf="!loading && dossiers.length > 0">
-      <div class="stat-card">
-        <div class="stat-icon stat-icon-total">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-            <polyline points="14 2 14 8 20 8"/>
-          </svg>
-        </div>
-        <div class="stat-label">Total dossiers</div>
-        <div class="stat-value orange">{{ totalDossiers }}</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon stat-icon-attente">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-            <circle cx="12" cy="12" r="10"/>
-            <polyline points="12 6 12 12 16 14"/>
-          </svg>
-        </div>
-        <div class="stat-label">En attente</div>
-        <div class="stat-value">{{ enAttente }}</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon stat-icon-approuve">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-            <polyline points="20 6 9 17 4 12"/>
-          </svg>
-        </div>
-        <div class="stat-label">Approuvés</div>
-        <div class="stat-value">{{ approuves }}</div>
-      </div>
-    </div>
-
-    <div *ngIf="loading" class="hist-loading">
+    <div *ngIf="loading" class="hist-loading" role="status">
       <div class="spinner-lg"></div>
       <p>Chargement de vos dossiers...</p>
     </div>
 
-    <div *ngIf="errorMsg" class="alert-error">{{ errorMsg }}</div>
+    <div *ngIf="errorMsg" class="alert-error" role="alert">{{ errorMsg }}</div>
 
-    <div *ngIf="!loading && dossiers.length === 0" class="hist-empty">
-      <p>Aucune demande trouvée</p>
-      <button class="btn-nouvelle" (click)="nouvelleDemande()">
-        Faire une première demande
-      </button>
+    <div *ngIf="!loading && !errorMsg && dossiers.length === 0" class="hist-empty">
+      <div class="empty-icone" aria-hidden="true">
+        <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="12" y1="18" x2="12" y2="12"/>
+          <line x1="9" y1="15" x2="15" y2="15"/>
+        </svg>
+      </div>
+      <h2>Aucune demande pour le moment</h2>
+      <p>Déposez votre première demande de crédit : elle sera suivie ici, étape par étape.</p>
+      <button class="btn-nouvelle" (click)="nouvelleDemande()">Faire une première demande</button>
     </div>
 
-    <!-- ✅ Tableau des dossiers (remplace dossiers-grid) -->
-    <div *ngIf="!loading && dossiers.length > 0" class="dossiers-table-wrap">
-      <table class="dossiers-table">
-        <thead>
-          <tr>
-            <th>Type de crédit</th>
-            <th>N° dossier</th>
-           <th class="th-sortable" (click)="toggleSortDate()">
-            Date de création
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
-       [style.transform]="sortDateAsc ? 'rotate(180deg)' : 'none'">
-    <polyline points="6 9 12 15 18 9"/>
-  </svg>
-            </th>
-            <th>Statut</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let d of dossiers">
-            <td>
-              <div class="td-type">
-                <div class="td-icon">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                    <polyline points="14 2 14 8 20 8"/>
-                  </svg>
-                </div>
-                Crédit {{ d.typeCredit }}
-              </div>
-            </td>
-            <td class="td-id">{{ d.dossierId | slice:0:8 }}...</td>
-<td class="td-date">{{ formatDate(d.createdAt) }}</td>            <td>
-              <span class="statut-badge" [class]="getStatutClass(d.statut)">
-                {{ getStatutLabel(d.statut) }}
-              </span>
-            </td>
-            <td class="td-action">
-              <span class="card-link" (click)="voirDetails(d)">Voir détails →</span>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+    <ng-container *ngIf="!loading && dossiers.length > 0">
+
+      <!-- ── Dernière demande ── -->
+      <section class="hero" *ngIf="dernierDossier as dernier" [ngClass]="getStatutClass(dernier.statut)" aria-label="Votre dernière demande">
+        <div class="hero-main">
+          <span class="hero-etiquette">Votre dernière demande</span>
+          <h2>{{ libelleType(dernier.typeCredit) }}</h2>
+          <p class="hero-meta">N° {{ reference(dernier) }} · déposée le {{ formatDateLongue(dernier.createdAt) }}</p>
+          <p class="hero-message">{{ messageStatut(dernier.statut) }}</p>
+          <button class="btn-secondaire" (click)="voirDetails(dernier)">Voir les documents</button>
+        </div>
+
+        <ol class="frise" [attr.aria-label]="'Avancement : ' + getStatutLabel(dernier.statut)">
+          <li *ngFor="let e of etapes; let i = index"
+              [class.faite]="etapeActive(dernier.statut) > i + 1"
+              [class.courante]="etapeActive(dernier.statut) === i + 1"
+              [attr.aria-current]="etapeActive(dernier.statut) === i + 1 ? 'step' : null">
+            <span class="frise-point" aria-hidden="true">
+              <ng-container *ngIf="etapeActive(dernier.statut) > i + 1">✓</ng-container>
+              <ng-container *ngIf="etapeActive(dernier.statut) <= i + 1">{{ i + 1 }}</ng-container>
+            </span>
+            <span class="frise-nom">{{ i === 2 && etapeActive(dernier.statut) === 3 ? getStatutLabel(dernier.statut) : e }}</span>
+          </li>
+        </ol>
+      </section>
+
+      <!-- ── Chiffres ── -->
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-label">Total des demandes</div>
+          <div class="stat-value">{{ totalDossiers }}</div>
+        </div>
+        <div class="stat-card stat-etude">
+          <div class="stat-label">En étude</div>
+          <div class="stat-value">{{ enEtude }}</div>
+        </div>
+        <div class="stat-card stat-approuve">
+          <div class="stat-label">Approuvées</div>
+          <div class="stat-value">{{ approuves }}</div>
+        </div>
+        <div class="stat-card stat-refuse">
+          <div class="stat-label">Refusées</div>
+          <div class="stat-value">{{ refuses }}</div>
+        </div>
+      </div>
+
+      <!-- ── Filtres ── -->
+      <div class="barre-outils">
+        <div class="filtres" role="group" aria-label="Filtrer par statut">
+          <button type="button" class="filtre" *ngFor="let f of filtres"
+              [class.actif]="filtre === f.id" [attr.aria-pressed]="filtre === f.id"
+              (click)="choisirFiltre(f.id)">
+            {{ f.nom }} <span class="filtre-nombre">{{ compteurFiltre(f.id) }}</span>
+          </button>
+        </div>
+        <div class="outils-droite">
+          <label class="recherche">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+              <circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <input type="search" placeholder="Rechercher un n° de dossier" [(ngModel)]="recherche" aria-label="Rechercher un numéro de dossier" />
+          </label>
+          <select class="tri" [(ngModel)]="tri" aria-label="Trier par date">
+            <option value="recent">Plus récentes d'abord</option>
+            <option value="ancien">Plus anciennes d'abord</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- ── Liste ── -->
+      <ul class="liste-dossiers" *ngIf="dossiersAffiches.length > 0">
+        <li class="dossier" *ngFor="let d of dossiersAffiches" [ngClass]="getStatutClass(d.statut)">
+          <span class="dossier-icone" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+            </svg>
+          </span>
+
+          <div class="dossier-corps">
+            <strong class="dossier-titre">{{ libelleType(d.typeCredit) }}</strong>
+            <span class="dossier-meta">N° {{ reference(d) }} · {{ formatDate(d.createdAt) }}</span>
+          </div>
+
+          <div class="dossier-etat">
+            <span class="statut-badge" [ngClass]="getStatutClass(d.statut)">{{ getStatutLabel(d.statut) }}</span>
+            <span class="mini-frise" aria-hidden="true">
+              <i *ngFor="let e of etapes; let i = index" [class.on]="etapeActive(d.statut) > i"></i>
+            </span>
+          </div>
+
+          <button type="button" class="btn-details" (click)="voirDetails(d)"
+                  [attr.aria-label]="'Voir les détails du dossier ' + reference(d)">
+            Voir détails
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </button>
+        </li>
+      </ul>
+
+      <div class="aucun-resultat" *ngIf="dossiersAffiches.length === 0">
+        <p>Aucune demande ne correspond à votre recherche.</p>
+        <button type="button" class="btn-secondaire" (click)="reinitialiserFiltres()">Afficher toutes les demandes</button>
+      </div>
+
+    </ng-container>
 
   </div>
 
   <p class="hist-footer">CrediSense — Attijari Bank · Crédit Consommation en ligne</p>
 
-  <!-- ✅ Modal détails dossier -->
+  <!-- ── Détails d'un dossier ── -->
   <div class="modal-overlay" *ngIf="selectedDossier" (click)="fermerDetails()">
-    <div class="modal-box" (click)="$event.stopPropagation()">
+    <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="modal-titre" (click)="$event.stopPropagation()">
       <div class="modal-header">
-        <h3>Crédit {{ selectedDossier.typeCredit }}</h3>
-        <button class="modal-close" (click)="fermerDetails()">✕</button>
-      </div>
-      <div class="modal-loading" *ngIf="loadingFichiers">
-        <div class="spinner-lg"></div>
-      </div>
-      <div class="modal-files" *ngIf="!loadingFichiers && fichiers.length > 0">
-        <div class="file-row" *ngFor="let f of fichiers">
-          <span class="file-name">{{ f.nomFichier || f.typeDocument }}</span>
-          <span class="statut-badge" [class]="getStatutClass(f.statut)">{{ getStatutLabel(f.statut) }}</span>
-           <a class="btn-voir" [href]="getFileUrl(f.id)" target="_blank">Voir</a>
-
+        <div>
+          <h3 id="modal-titre">{{ libelleType(selectedDossier.typeCredit) }}</h3>
+          <span class="modal-sous-titre">N° {{ reference(selectedDossier) }} · déposée le {{ formatDateLongue(selectedDossier.createdAt) }}</span>
         </div>
+        <button class="modal-close" (click)="fermerDetails()" aria-label="Fermer">✕</button>
       </div>
+
+      <div class="modal-statut" [ngClass]="getStatutClass(selectedDossier.statut)">
+        <span class="statut-badge" [ngClass]="getStatutClass(selectedDossier.statut)">{{ getStatutLabel(selectedDossier.statut) }}</span>
+        <span>{{ messageStatut(selectedDossier.statut) }}</span>
+      </div>
+
+      <h4 class="modal-section">Documents déposés</h4>
+      <div class="modal-loading" *ngIf="loadingFichiers" role="status"><div class="spinner-lg"></div></div>
+      <ul class="modal-files" *ngIf="!loadingFichiers && fichiers.length > 0">
+        <li class="file-row" *ngFor="let f of fichiers">
+          <span class="file-icone" aria-hidden="true">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+            </svg>
+          </span>
+          <span class="file-nom">
+            <strong>{{ libelleDocument(f) }}</strong>
+            <small *ngIf="f.nomFichier">{{ f.nomFichier }}</small>
+          </span>
+          <a class="btn-voir" [href]="getFileUrl(f.id)" target="_blank" rel="noopener">Voir</a>
+        </li>
+      </ul>
       <div class="modal-empty" *ngIf="!loadingFichiers && fichiers.length === 0">
         Aucun fichier trouvé pour ce dossier.
       </div>
